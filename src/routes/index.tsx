@@ -252,7 +252,15 @@ function Index() {
       </main>
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
-        ClearPath · Lumin AI · To illuminate your educational journey
+        <p>ClearPath · Lumin AI · To illuminate your educational journey</p>
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <Link to="/terms" className="hover:text-foreground">
+            Terms of Service
+          </Link>
+          <Link to="/privacy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
+        </div>
       </footer>
     </div>
   );

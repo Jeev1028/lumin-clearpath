@@ -168,6 +168,18 @@ function AuthPage() {
             Continue with Google
           </Button>
 
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            By continuing, you agree to ClearPath's{" "}
+            <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+
           <button
             type="button"
             className="mt-6 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
