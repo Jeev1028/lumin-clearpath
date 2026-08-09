@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { LuminWordmark } from "@/components/lumin/LuminMark";
@@ -8,6 +8,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            use_fedcm_for_prompt?: boolean;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: {
+              type?: "standard" | "icon";
+              theme?: "outline" | "filled_blue" | "filled_black";
+              size?: "large" | "medium" | "small";
+              text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+              shape?: "rectangular" | "pill" | "circle" | "square";
+              logo_alignment?: "left" | "center";
+              width?: string | number;
+            },
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -24,28 +52,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-function GoogleLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden>
-      <path
-        fill="#FFC107"
-        d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
-      />
-      <path
-        fill="#FF3D00"
-        d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
-      />
-      <path
-        fill="#4CAF50"
-        d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
-      />
-      <path
-        fill="#1976D2"
-        d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
-      />
-    </svg>
-  );
-}
+const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | undefined;
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -54,10 +61,69 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && session) void navigate({ to: "/chat" });
   }, [loading, session, navigate]);
+
+  // Google Identity Services: a fully client-side sign-in that talks to Google
+  // directly from this origin, so the account picker shows "ClearPath" (from
+  // the OAuth consent screen) instead of the Supabase project domain.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    async function handleCredentialResponse(response: { credential: string }) {
+      setBusy(true);
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: response.credential,
+      });
+      if (error) {
+        setBusy(false);
+        toast.error("Google sign-in failed. Please try again.");
+        return;
+      }
+      void navigate({ to: "/chat" });
+    }
+
+    function init() {
+      if (!window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID!,
+        callback: (response) => void handleCredentialResponse(response),
+        use_fedcm_for_prompt: true,
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "filled_black",
+        size: "large",
+        shape: "pill",
+        text: "continue_with",
+        logo_alignment: "left",
+        width: 360,
+      });
+    }
+
+    if (window.google) {
+      init();
+      return;
+    }
+
+    const existing = document.getElementById("google-identity-script");
+    if (existing) {
+      existing.addEventListener("load", init);
+      return () => existing.removeEventListener("load", init);
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-identity-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = init;
+    document.head.appendChild(script);
+    return undefined;
+  }, [navigate]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -80,23 +146,6 @@ function AuthPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function handleGoogle() {
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/chat`,
-      },
-    });
-    if (error) {
-      setBusy(false);
-      toast.error("Google sign-in failed. Please try again.");
-      return;
-    }
-    // On success, Supabase redirects the browser to Google's consent screen and
-    // back to redirectTo above — no further action needed here.
   }
 
   return (
@@ -160,15 +209,12 @@ function AuthPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full gap-2 border-border/70 bg-background/40 text-foreground transition-all duration-200 hover:scale-[1.02] hover:border-accent/50 hover:bg-background/70 hover:text-foreground"
-            disabled={busy}
-            onClick={handleGoogle}
-          >
-            <GoogleLogo className="h-4 w-4" />
-            Continue with Google
-          </Button>
+          <div ref={googleButtonRef} className="flex justify-center [&>div]:!w-full" />
+          {!GOOGLE_CLIENT_ID && (
+            <p className="text-center text-xs text-destructive">
+              Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
+            </p>
+          )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
             By continuing, you agree to ClearPath's{" "}
