@@ -192,6 +192,41 @@
   box-shadow: var(--shadow-panel);
 }
 
+@utility glow-orb {
+  background: radial-gradient(circle, oklch(0.66 0.145 245 / 0.55) 0%, transparent 70%);
+  filter: blur(60px);
+}
+
+@utility animate-glow-pulse {
+  animation: lumin-glow-pulse 3.5s ease-in-out infinite;
+}
+
+@keyframes lumin-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@utility animate-float {
+  animation: lumin-float 6s ease-in-out infinite;
+}
+
+@keyframes lumin-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 @utility lumin-md {
   & > * + * {
     margin-top: 0.85em;

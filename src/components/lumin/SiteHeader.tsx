@@ -14,24 +14,33 @@ export function SiteHeader() {
   const { session } = useAuth();
 
   return (
-    <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
-      <Link to="/">
-        <LuminWordmark />
-      </Link>
-      <nav className="flex items-center gap-1">
-        {links.map((link) => (
-          <Button key={link.to} asChild variant="ghost" size="sm">
-            <Link to={link.to} activeProps={{ className: "text-foreground" }}>
-              {link.label}
-            </Link>
-          </Button>
-        ))}
-        {!session && (
-          <Button asChild size="sm" className="bg-gradient-lumin text-primary-foreground">
-            <Link to="/auth">Sign in</Link>
-          </Button>
-        )}
-      </nav>
+    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <Link to="/" className="transition-transform duration-200 hover:scale-[1.02]">
+          <LuminWordmark />
+        </Link>
+        <nav className="flex items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1">
+          {links.map((link) => (
+            <Button key={link.to} asChild variant="ghost" size="sm" className="rounded-full">
+              <Link
+                to={link.to}
+                activeProps={{ className: "!bg-secondary/70 text-foreground" }}
+              >
+                {link.label}
+              </Link>
+            </Button>
+          ))}
+          {!session && (
+            <Button
+              asChild
+              size="sm"
+              className="rounded-full bg-gradient-lumin px-4 text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-105"
+            >
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          )}
+        </nav>
+      </div>
     </header>
   );
 }

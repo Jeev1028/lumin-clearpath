@@ -14,6 +14,7 @@ import { LuminMark } from "@/components/lumin/LuminMark";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -87,50 +88,87 @@ function Index() {
   const { session, loading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-deep">
+    <div className="relative min-h-screen overflow-hidden bg-deep">
+      {/* Ambient background glow orbs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+        <div className="glow-orb absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 opacity-70" />
+        <div className="glow-orb absolute top-[28rem] -left-32 h-96 w-96 opacity-40" />
+        <div className="glow-orb absolute top-[52rem] -right-24 h-[28rem] w-[28rem] opacity-40" />
+      </div>
+
       <SiteHeader />
 
       <main>
-        <section className="mx-auto max-w-3xl px-6 pb-20 pt-16 text-center">
-          <LuminMark className="mx-auto mb-8 h-20 w-20" />
-          <p className="mb-4 inline-flex items-center rounded-full border border-border/70 bg-card/60 px-4 py-1.5 text-xs tracking-widest text-muted-foreground uppercase">
+        <section className="mx-auto max-w-3xl px-6 pt-20 pb-24 text-center">
+          <LuminMark className="animate-float mx-auto mb-8 h-24 w-24 sm:h-28 sm:w-28" />
+          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-1.5 text-xs tracking-widest text-muted-foreground uppercase">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+            </span>
             ClearPath · Your platform for academic excellence
           </p>
-          <h1 className="text-balance text-5xl font-bold sm:text-6xl italic">
-            "il<span className="text-gradient-lumin">LUMIN</span>ate your
+          <h1 className="text-balance text-5xl leading-[1.2] font-bold sm:text-7xl italic">
+            "il<span className="text-gradient-lumin pr-[0.1em] -mr-[0.1em]">LUMIN</span>ate your
             <br /> educational journey"
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
             ClearPath brings your tasks, your class schedule and Lumin AI together in one calm
             place. It illuminates the path. You still walk it.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg" className="bg-gradient-lumin px-8 text-primary-foreground shadow-glow">
+            <Button
+              asChild
+              size="lg"
+              className="bg-gradient-lumin px-8 text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-105"
+            >
               <Link to={session ? "/tasks" : "/auth"}>
                 {loading ? "Enter ClearPath" : session ? "Enter ClearPath" : "Get started"}
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="px-8">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-border/70 bg-card/40 px-8 text-foreground backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-accent/60 hover:bg-card/70 hover:text-foreground"
+            >
               <Link to={session ? "/chat" : "/auth"}>Ask Lumin AI</Link>
             </Button>
           </div>
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
-          <h2 className="mb-10 text-center text-2xl font-semibold">Everything in one place</h2>
+          <h2 className="mb-10 text-center text-2xl font-semibold sm:text-3xl">
+            Everything in one place
+          </h2>
           <div className="grid gap-4 md:grid-cols-3">
             {platform.map((item) => (
               <article
                 key={item.title}
-                className="flex flex-col rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel"
+                className={cn(
+                  "group flex flex-col rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel",
+                  "transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:shadow-glow",
+                )}
               >
-                <item.icon className="mb-4 h-6 w-6 text-accent" aria-hidden />
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 transition-colors duration-300 group-hover:bg-accent/20">
+                  <item.icon className="h-5 w-5 text-accent" aria-hidden />
+                </div>
                 <h3 className="text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
                   {item.body}
                 </p>
-                <Button asChild variant="ghost" size="sm" className="mt-4 self-start px-0">
-                  <Link to={session ? item.to : "/auth"}>{item.cta} →</Link>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="mt-4 self-start px-0 text-accent hover:bg-transparent hover:text-accent"
+                >
+                  <Link to={session ? item.to : "/auth"} className="inline-flex items-center gap-1">
+                    {item.cta}
+                    <span className="transition-transform duration-200 group-hover:translate-x-1">
+                      →
+                    </span>
+                  </Link>
                 </Button>
               </article>
             ))}
@@ -138,8 +176,11 @@ function Index() {
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
-          <div className="rounded-3xl border border-border/70 bg-card/60 p-10 shadow-panel">
-            <h2 className="text-center text-2xl font-semibold">Assignments made easy</h2>
+          <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/60 p-10 shadow-panel">
+            <div className="glow-orb pointer-events-none absolute -top-24 right-0 h-64 w-64 opacity-30" aria-hidden />
+            <h2 className="text-center text-2xl font-semibold sm:text-3xl">
+              Assignments made easy
+            </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
               ClearPath streamlines how work is tracked and handed in, so organisation stops
               competing with learning.
@@ -153,9 +194,12 @@ function Index() {
               ].map((cell) => (
                 <div
                   key={cell.title}
-                  className="rounded-xl border border-border/60 bg-background/40 p-5 text-center"
+                  className="group rounded-xl border border-border/60 bg-background/40 p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:bg-background/60"
                 >
-                  <cell.icon className="mx-auto mb-3 h-5 w-5 text-accent" aria-hidden />
+                  <cell.icon
+                    className="mx-auto mb-3 h-5 w-5 text-accent transition-transform duration-300 group-hover:scale-110"
+                    aria-hidden
+                  />
                   <p className="text-sm font-semibold tracking-wide uppercase">{cell.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{cell.body}</p>
                 </div>
@@ -165,16 +209,18 @@ function Index() {
         </section>
 
         <section id="principles" className="mx-auto max-w-5xl px-6 pb-24">
-          <h2 className="mb-10 text-center text-2xl font-semibold">
+          <h2 className="mb-10 text-center text-2xl font-semibold sm:text-3xl">
             How Lumin keeps you honest
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {principles.map((item) => (
               <article
                 key={item.title}
-                className="rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel"
+                className="group rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-glow"
               >
-                <item.icon className="mb-4 h-6 w-6 text-accent" aria-hidden />
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 transition-colors duration-300 group-hover:bg-accent/20">
+                  <item.icon className="h-5 w-5 text-accent" aria-hidden />
+                </div>
                 <h3 className="text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
               </article>
@@ -183,14 +229,22 @@ function Index() {
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
-          <div className="rounded-3xl border border-border/70 bg-card/60 p-10 text-center shadow-panel">
-            <h2 className="text-2xl font-semibold">Organise your learning</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/60 p-10 text-center shadow-panel">
+            <div
+              className="glow-orb pointer-events-none absolute top-1/2 left-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 opacity-25"
+              aria-hidden
+            />
+            <h2 className="relative text-2xl font-semibold sm:text-3xl">Organise your learning</h2>
+            <p className="relative mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Weekday classes keep you consistent, weekend sessions reinforce the hard parts,
               extracurriculars round you out and holiday sessions keep momentum. Build the whole
               week in your schedule and never miss a class or a deadline.
             </p>
-            <Button asChild variant="outline" className="mt-6">
+            <Button
+              asChild
+              variant="outline"
+              className="relative mt-6 border-border/70 bg-background/40 text-foreground backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-accent/60 hover:text-foreground"
+            >
               <Link to={session ? "/schedule" : "/auth"}>Explore schedule</Link>
             </Button>
           </div>
