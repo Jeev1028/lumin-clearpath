@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -102,16 +102,24 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
                   message.role === "user" ? "justify-end" : "justify-start",
                 )}
               >
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed",
-                    message.role === "user"
-                      ? "bg-primary/15 text-foreground"
-                      : "border border-border/60 bg-card/70 shadow-panel",
+                <div className={cn("max-w-[85%]", message.role === "user" ? "" : "w-full")}>
+                  {message.role === "assistant" && (
+                    <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-medium text-muted-foreground/80">
+                      <Sparkles className="h-3 w-3 text-accent" aria-hidden />
+                      Generative AI — double-check before you rely on it
+                    </div>
                   )}
-                >
-                  <div className="lumin-md">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+                  <div
+                    className={cn(
+                      "rounded-2xl px-5 py-3 text-sm leading-relaxed",
+                      message.role === "user"
+                        ? "bg-primary/15 text-foreground"
+                        : "border border-border/60 bg-card/70 shadow-panel",
+                    )}
+                  >
+                    <div className="lumin-md">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>

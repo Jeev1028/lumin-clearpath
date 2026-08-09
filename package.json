@@ -12,6 +12,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.39",
     "@ai-sdk/openai": "^4.0.36",
     "@ai-sdk/react": "^4.0.61",
     "@hookform/resolvers": "^5.2.2",

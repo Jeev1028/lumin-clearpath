@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createClient } from "@supabase/supabase-js";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 
@@ -25,11 +25,11 @@ export const Route = createFileRoute("/api/chat")({
 
         const supabaseUrl = process.env["SUPABASE_URL"];
         const supabaseKey = process.env["SUPABASE_PUBLISHABLE_KEY"];
-        const lovableApiKey = process.env["LOVABLE_API_KEY"];
+        const geminiApiKey = process.env["GEMINI_API_KEY"];
         if (!supabaseUrl || !supabaseKey) {
           return new Response("Backend not configured", { status: 500 });
         }
-        if (!lovableApiKey) {
+        if (!geminiApiKey) {
           return new Response("AI is not configured", { status: 500 });
         }
 
@@ -85,28 +85,14 @@ export const Route = createFileRoute("/api/chat")({
           if (threadUpdateError) console.error("[chat] failed to update thread", threadUpdateError);
         }
 
-        const lovable = createOpenAI({
-          baseURL: "https://ai.gateway.lovable.dev/v1",
-          apiKey: lovableApiKey,
-          headers: {
-            "Lovable-API-Key": lovableApiKey,
-            "X-Lovable-AIG-SDK": "vercel-ai-sdk",
-          },
+        const google = createGoogleGenerativeAI({
+          apiKey: geminiApiKey,
         });
 
         const result = streamText({
-          model: lovable.responses("openai/gpt-5.6-sol"),
+          model: google("gemini-3.6-flash"),
           system: LUMIN_SYSTEM_PROMPT,
           messages: await convertToModelMessages(messages),
-          providerOptions: {
-            openai: {
-              forceReasoning: true,
-              reasoningEffort: "low",
-              reasoningSummary: "auto",
-              store: false,
-              include: ["reasoning.encrypted_content"],
-            },
-          },
         });
 
         return result.toUIMessageStreamResponse({
