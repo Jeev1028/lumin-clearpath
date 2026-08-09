@@ -70,9 +70,9 @@ function Index() {
           <p className="mb-4 inline-flex items-center rounded-full border border-border/70 bg-card/60 px-4 py-1.5 text-xs tracking-widest text-muted-foreground uppercase">
             ClearPath · Study companion
           </p>
-          <h1 className="text-balance text-5xl font-bold sm:text-6xl">
-            il<span className="text-gradient-lumin">LUMIN</span>ate your
-            <br className="hidden sm:block" /> educational journey
+          <h1 className="text-balance text-5xl font-bold sm:text-6xl italic">
+            "il<span className="text-gradient-lumin">LUMIN</span>ate your
+            <br /> educational journey"
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
             Lumin AI is a tutor, a researcher and a reading partner — held to strict academic
