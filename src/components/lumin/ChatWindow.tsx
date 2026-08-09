@@ -110,7 +110,7 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
                       : "border border-border/60 bg-card/70 shadow-panel",
                   )}
                 >
-                  <div className="prose prose-sm prose-invert max-w-none prose-a:text-accent">
+                  <div className="lumin-md">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
                   </div>
                 </div>
