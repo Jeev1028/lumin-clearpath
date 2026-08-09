@@ -104,9 +104,9 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
               >
                 <div className={cn("max-w-[85%]", message.role === "user" ? "" : "w-full")}>
                   {message.role === "assistant" && (
-                    <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-medium text-muted-foreground/80">
-                      <Sparkles className="h-3 w-3 text-accent" aria-hidden />
-                      Generative AI — double-check before you rely on it
+                    <div className="animate-badge-glow mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
+                      <Sparkles className="h-3 w-3" aria-hidden />
+                      Generative AI · Verify before relying on this
                     </div>
                   )}
                   <div
