@@ -209,7 +209,7 @@ function AuthPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <div ref={googleButtonRef} className="flex justify-center [&>div]:!w-full" />
+          <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
           {!GOOGLE_CLIENT_ID && (
             <p className="text-center text-xs text-destructive">
               Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
