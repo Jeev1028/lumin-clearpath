@@ -1,0 +1,37 @@
+import { Link } from "@tanstack/react-router";
+
+import { LuminWordmark } from "@/components/lumin/LuminMark";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+
+const links = [
+  { to: "/tasks", label: "Tasks" },
+  { to: "/schedule", label: "Schedule" },
+  { to: "/chat", label: "Lumin AI" },
+] as const;
+
+export function SiteHeader() {
+  const { session } = useAuth();
+
+  return (
+    <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
+      <Link to="/">
+        <LuminWordmark />
+      </Link>
+      <nav className="flex items-center gap-1">
+        {links.map((link) => (
+          <Button key={link.to} asChild variant="ghost" size="sm">
+            <Link to={link.to} activeProps={{ className: "text-foreground" }}>
+              {link.label}
+            </Link>
+          </Button>
+        ))}
+        {!session && (
+          <Button asChild size="sm" className="bg-gradient-lumin text-primary-foreground">
+            <Link to="/auth">Sign in</Link>
+          </Button>
+        )}
+      </nav>
+    </header>
+  );
+}
