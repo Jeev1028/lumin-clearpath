@@ -52,6 +52,84 @@ export type Database = {
           },
         ]
       }
+      schedule_events: {
+        Row: {
+          category: Database["public"]["Enums"]["schedule_category"]
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          location: string | null
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["schedule_category"]
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          location?: string | null
+          start_time?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["schedule_category"]
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          location?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          course: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          kind: Database["public"]["Enums"]["task_kind"]
+          notes: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["task_kind"]
+          notes?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["task_kind"]
+          notes?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       threads: {
         Row: {
           created_at: string
@@ -84,7 +162,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      schedule_category: "weekday" | "weekend" | "extracurricular" | "holiday"
+      task_kind: "test" | "assignment" | "project" | "reading"
+      task_status: "todo" | "in_progress" | "submitted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -211,6 +291,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      schedule_category: ["weekday", "weekend", "extracurricular", "holiday"],
+      task_kind: ["test", "assignment", "project", "reading"],
+      task_status: ["todo", "in_progress", "submitted"],
+    },
   },
 } as const
