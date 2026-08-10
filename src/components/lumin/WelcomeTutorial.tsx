@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
+import { LuminMark } from "@/components/lumin/LuminMark";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,6 +66,7 @@ export function useTutorial(): TutorialContextValue {
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [showingIntro, setShowingIntro] = useState(true);
   const [step, setStep] = useState(0);
   const autoCheckedFor = useRef<string | null>(null);
 
@@ -75,6 +77,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     autoCheckedFor.current = user.id;
     if (meta["onboarding_completed"] !== true) {
       setStep(0);
+      setShowingIntro(true);
       setIsOpen(true);
     }
   }, [loading, user]);
@@ -94,6 +97,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   function openManually() {
     setStep(0);
+    setShowingIntro(true);
     setIsOpen(true);
   }
 
@@ -106,51 +110,80 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       {children}
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-md border-border/70 bg-card/95 backdrop-blur-sm">
-          <DialogHeader>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
-              <Icon className="h-5 w-5 text-accent" aria-hidden />
-            </div>
-            <DialogTitle className="mt-2">{current.title}</DialogTitle>
-            <DialogDescription>{current.body}</DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center justify-center gap-1.5">
-            {STEPS.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === step ? "w-5 bg-accent" : "w-1.5 bg-border"
-                }`}
-              />
-            ))}
-          </div>
-
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-            <Button type="button" variant="ghost" size="sm" onClick={() => handleOpenChange(false)}>
-              Skip
-            </Button>
-            <div className="flex gap-2">
-              {step > 0 && (
+          {showingIntro ? (
+            <div className="flex flex-col items-center px-2 py-4 text-center">
+              <LuminMark className="h-16 w-16 animate-glow-pulse" />
+              <h2 className="mt-4 text-2xl font-bold">Welcome to ClearPath</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your all-in-one home for tasks, schedule, Google Classroom, and Lumin AI. Let's take
+                a minute to show you around.
+              </p>
+              <div className="mt-6 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setStep((s) => s - 1)}
-                  className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                  onClick={() => handleOpenChange(false)}
                 >
-                  Back
+                  Skip for now
                 </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => (isLast ? handleOpenChange(false) : setStep((s) => s + 1))}
-                className="bg-gradient-lumin text-primary-foreground shadow-glow"
-              >
-                {isLast ? "Done" : "Next"}
-              </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setShowingIntro(false)}
+                  className="bg-gradient-lumin text-primary-foreground shadow-glow"
+                >
+                  Get started
+                </Button>
+              </div>
             </div>
-          </DialogFooter>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
+                  <Icon className="h-5 w-5 text-accent" aria-hidden />
+                </div>
+                <DialogTitle className="mt-2">{current.title}</DialogTitle>
+                <DialogDescription>{current.body}</DialogDescription>
+              </DialogHeader>
+
+              <div className="flex items-center justify-center gap-1.5">
+                {STEPS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === step ? "w-5 bg-accent" : "w-1.5 bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+                <Button type="button" variant="ghost" size="sm" onClick={() => handleOpenChange(false)}>
+                  Skip
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => (step === 0 ? setShowingIntro(true) : setStep((s) => s - 1))}
+                    className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => (isLast ? handleOpenChange(false) : setStep((s) => s + 1))}
+                    className="bg-gradient-lumin text-primary-foreground shadow-glow"
+                  >
+                    {isLast ? "Done" : "Next"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </TutorialContext.Provider>

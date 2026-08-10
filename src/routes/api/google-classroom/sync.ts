@@ -85,15 +85,18 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               console.error("[google-classroom] could not load teacher roster", err);
             }
 
-            await admin.from("classroom_courses").upsert({
-              id: course.id,
-              user_id: userId,
-              name: course.name,
-              section: course.section ?? null,
-              room: course.room ?? null,
-              teacher_email: teacherEmail,
-              updated_at: new Date().toISOString(),
-            });
+            await admin.from("classroom_courses").upsert(
+              {
+                id: course.id,
+                user_id: userId,
+                name: course.name,
+                section: course.section ?? null,
+                room: course.room ?? null,
+                teacher_email: teacherEmail,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id,user_id" },
+            );
             courseCount++;
 
             const [courseWork, submissions, announcements, courseMaterials] = await Promise.all([
@@ -111,6 +114,13 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               const materials = (work.materials ?? [])
                 .map(summarizeMaterial)
                 .filter((m): m is NonNullable<typeof m> => m !== null);
+              // "Make a copy for each student" attachments live on the
+              // student's own submission, not on the shared courseWork --
+              // these are the student's individually-owned file, distinct
+              // from the (often read-only) shared materials above.
+              const studentWork = (submission?.assignmentSubmission?.attachments ?? [])
+                .map(summarizeMaterial)
+                .filter((m): m is NonNullable<typeof m> => m !== null);
 
               let rubric: ClassroomRubric | null = null;
               try {
@@ -120,21 +130,25 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                 console.error("[google-classroom] could not load rubric", err);
               }
 
-              await admin.from("classroom_coursework").upsert({
-                id: work.id,
-                user_id: userId,
-                course_id: course.id,
-                title: work.title,
-                description: work.description ?? null,
-                due_at: dueDate,
-                max_points: work.maxPoints ?? null,
-                assigned_grade: submission?.assignedGrade ?? null,
-                submission_state: submission?.state ?? null,
-                work_type: work.workType ?? null,
-                materials,
-                rubric,
-                updated_at: new Date().toISOString(),
-              });
+              await admin.from("classroom_coursework").upsert(
+                {
+                  id: work.id,
+                  user_id: userId,
+                  course_id: course.id,
+                  title: work.title,
+                  description: work.description ?? null,
+                  due_at: dueDate,
+                  max_points: work.maxPoints ?? null,
+                  assigned_grade: submission?.assignedGrade ?? null,
+                  submission_state: submission?.state ?? null,
+                  work_type: work.workType ?? null,
+                  materials,
+                  student_work: studentWork,
+                  rubric,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "id,user_id" },
+              );
               courseworkCount++;
 
               const { error: taskError } = await admin.from("tasks").upsert(
@@ -147,24 +161,28 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                   due_date: dueDate,
                   description: work.description ?? null,
                   materials,
+                  student_work: studentWork,
                   rubric,
                   source: "classroom",
                   google_classroom_id: work.id,
                   classroom_course_id: course.id,
                 },
-                { onConflict: "google_classroom_id" },
+                { onConflict: "user_id,google_classroom_id" },
               );
               if (!taskError) taskCount++;
             }
 
             for (const announcement of announcements) {
-              await admin.from("classroom_announcements").upsert({
-                id: announcement.id,
-                user_id: userId,
-                course_id: course.id,
-                text: announcement.text,
-                created_at: announcement.creationTime,
-              });
+              await admin.from("classroom_announcements").upsert(
+                {
+                  id: announcement.id,
+                  user_id: userId,
+                  course_id: course.id,
+                  text: announcement.text,
+                  created_at: announcement.creationTime,
+                },
+                { onConflict: "id,user_id" },
+              );
               announcementCount++;
             }
 
@@ -172,15 +190,18 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               const items = (material.materials ?? [])
                 .map(summarizeMaterial)
                 .filter((m): m is NonNullable<typeof m> => m !== null);
-              await admin.from("classroom_materials").upsert({
-                id: material.id,
-                user_id: userId,
-                course_id: course.id,
-                title: material.title,
-                description: material.description ?? null,
-                items,
-                created_at: material.creationTime,
-              });
+              await admin.from("classroom_materials").upsert(
+                {
+                  id: material.id,
+                  user_id: userId,
+                  course_id: course.id,
+                  title: material.title,
+                  description: material.description ?? null,
+                  items,
+                  created_at: material.creationTime,
+                },
+                { onConflict: "id,user_id" },
+              );
               materialCount++;
             }
           }

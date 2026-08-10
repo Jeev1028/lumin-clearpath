@@ -20,10 +20,12 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
+import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
@@ -39,6 +41,7 @@ import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api/google-calendar/sync'
 import { Route as ApiGoogleClassroomCallbackRouteImport } from './routes/api/google-classroom/callback'
 import { Route as ApiGoogleClassroomDisconnectRouteImport } from './routes/api/google-classroom/disconnect'
+import { Route as ApiGoogleClassroomInviteTeacherRouteImport } from './routes/api/google-classroom/invite-teacher'
 import { Route as ApiGoogleClassroomMessageTeacherRouteImport } from './routes/api/google-classroom/message-teacher'
 import { Route as ApiGoogleClassroomStartRouteImport } from './routes/api/google-classroom/start'
 import { Route as ApiGoogleClassroomSyncRouteImport } from './routes/api/google-classroom/sync'
@@ -103,6 +106,11 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeacherPortalRoute = TeacherPortalRouteImport.update({
+  id: '/teacher-portal',
+  path: '/teacher-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -121,6 +129,11 @@ const ApiSiteChatRoute = ApiSiteChatRouteImport.update({
 const ApiStudyPlanRoute = ApiStudyPlanRouteImport.update({
   id: '/api/study-plan',
   path: '/api/study-plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTeacherPortalRoute = ApiTeacherPortalRouteImport.update({
+  id: '/api/teacher-portal',
+  path: '/api/teacher-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -202,6 +215,12 @@ const ApiGoogleClassroomDisconnectRoute =
     path: '/api/google-classroom/disconnect',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGoogleClassroomInviteTeacherRoute =
+  ApiGoogleClassroomInviteTeacherRouteImport.update({
+    id: '/api/google-classroom/invite-teacher',
+    path: '/api/google-classroom/invite-teacher',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGoogleClassroomMessageTeacherRoute =
   ApiGoogleClassroomMessageTeacherRouteImport.update({
     id: '/api/google-classroom/message-teacher',
@@ -258,10 +277,12 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
+  '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
+  '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -277,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -298,10 +320,12 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
+  '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
+  '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -317,6 +341,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -339,10 +364,12 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
+  '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
+  '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -358,6 +385,7 @@ export interface FileRoutesById {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -381,10 +409,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/schedule'
     | '/tasks'
+    | '/teacher-portal'
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
     | '/api/study-plan'
+    | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat/'
     | '/api/admin/admins'
@@ -400,6 +430,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
@@ -421,10 +452,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/schedule'
     | '/tasks'
+    | '/teacher-portal'
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
     | '/api/study-plan'
+    | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat'
     | '/api/admin/admins'
@@ -440,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
@@ -461,10 +495,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/schedule'
     | '/tasks'
+    | '/teacher-portal'
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
     | '/api/study-plan'
+    | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat/'
     | '/api/admin/admins'
@@ -480,6 +516,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
@@ -502,10 +539,12 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScheduleRoute: typeof ScheduleRoute
   TasksRoute: typeof TasksRoute
+  TeacherPortalRoute: typeof TeacherPortalRoute
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSiteChatRoute: typeof ApiSiteChatRoute
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
+  ApiTeacherPortalRoute: typeof ApiTeacherPortalRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiAdminAdminsRoute: typeof ApiAdminAdminsRoute
@@ -521,6 +560,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
   ApiGoogleClassroomCallbackRoute: typeof ApiGoogleClassroomCallbackRoute
   ApiGoogleClassroomDisconnectRoute: typeof ApiGoogleClassroomDisconnectRoute
+  ApiGoogleClassroomInviteTeacherRoute: typeof ApiGoogleClassroomInviteTeacherRoute
   ApiGoogleClassroomMessageTeacherRoute: typeof ApiGoogleClassroomMessageTeacherRoute
   ApiGoogleClassroomStartRoute: typeof ApiGoogleClassroomStartRoute
   ApiGoogleClassroomSyncRoute: typeof ApiGoogleClassroomSyncRoute
@@ -610,6 +650,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/teacher-portal': {
+      id: '/teacher-portal'
+      path: '/teacher-portal'
+      fullPath: '/teacher-portal'
+      preLoaderRoute: typeof TeacherPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -636,6 +683,13 @@ declare module '@tanstack/react-router' {
       path: '/api/study-plan'
       fullPath: '/api/study-plan'
       preLoaderRoute: typeof ApiStudyPlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/teacher-portal': {
+      id: '/api/teacher-portal'
+      path: '/api/teacher-portal'
+      fullPath: '/api/teacher-portal'
+      preLoaderRoute: typeof ApiTeacherPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -743,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleClassroomDisconnectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-classroom/invite-teacher': {
+      id: '/api/google-classroom/invite-teacher'
+      path: '/api/google-classroom/invite-teacher'
+      fullPath: '/api/google-classroom/invite-teacher'
+      preLoaderRoute: typeof ApiGoogleClassroomInviteTeacherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-classroom/message-teacher': {
       id: '/api/google-classroom/message-teacher'
       path: '/api/google-classroom/message-teacher'
@@ -814,10 +875,12 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ScheduleRoute: ScheduleRoute,
   TasksRoute: TasksRoute,
+  TeacherPortalRoute: TeacherPortalRoute,
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSiteChatRoute: ApiSiteChatRoute,
   ApiStudyPlanRoute: ApiStudyPlanRoute,
+  ApiTeacherPortalRoute: ApiTeacherPortalRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiAdminAdminsRoute: ApiAdminAdminsRoute,
@@ -833,6 +896,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
   ApiGoogleClassroomCallbackRoute: ApiGoogleClassroomCallbackRoute,
   ApiGoogleClassroomDisconnectRoute: ApiGoogleClassroomDisconnectRoute,
+  ApiGoogleClassroomInviteTeacherRoute: ApiGoogleClassroomInviteTeacherRoute,
   ApiGoogleClassroomMessageTeacherRoute: ApiGoogleClassroomMessageTeacherRoute,
   ApiGoogleClassroomStartRoute: ApiGoogleClassroomStartRoute,
   ApiGoogleClassroomSyncRoute: ApiGoogleClassroomSyncRoute,

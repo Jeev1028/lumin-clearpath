@@ -96,6 +96,11 @@ export type ClassroomSubmission = {
   courseWorkId: string;
   assignedGrade?: number;
   state: string;
+  // Present when the assignment used Classroom's "make a copy for each
+  // student" option -- these are the student's own individual file
+  // copies, distinct from the shared/master materials on the courseWork
+  // itself (which a student generally can't or shouldn't edit directly).
+  assignmentSubmission?: { attachments?: ClassroomMaterial[] };
 };
 
 export type ClassroomAnnouncement = {

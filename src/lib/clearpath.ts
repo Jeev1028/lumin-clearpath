@@ -21,13 +21,14 @@ export type Task = {
   source: string;
   description: string | null;
   materials: MaterialItem[];
+  student_work: MaterialItem[];
   rubric: Rubric | null;
   google_classroom_id: string | null;
   classroom_course_id: string | null;
 };
 
 const TASK_FIELDS =
-  "id, title, course, kind, status, due_date, notes, source, description, materials, rubric, google_classroom_id, classroom_course_id";
+  "id, title, course, kind, status, due_date, notes, source, description, materials, student_work, rubric, google_classroom_id, classroom_course_id";
 
 export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -43,7 +44,14 @@ export async function createTask(
   userId: string,
   input: Omit<
     Task,
-    "id" | "source" | "description" | "materials" | "rubric" | "google_classroom_id" | "classroom_course_id"
+    | "id"
+    | "source"
+    | "description"
+    | "materials"
+    | "student_work"
+    | "rubric"
+    | "google_classroom_id"
+    | "classroom_course_id"
   >,
 ): Promise<Task> {
   const { data, error } = await supabase
@@ -211,6 +219,7 @@ export type ClassroomCoursework = {
   assigned_grade: number | null;
   submission_state: string | null;
   materials: MaterialItem[];
+  student_work: MaterialItem[];
   rubric: Rubric | null;
 };
 
@@ -218,7 +227,7 @@ export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> 
   const { data, error } = await supabase
     .from("classroom_coursework")
     .select(
-      "id, course_id, title, description, due_at, max_points, assigned_grade, submission_state, materials, rubric",
+      "id, course_id, title, description, due_at, max_points, assigned_grade, submission_state, materials, student_work, rubric",
     )
     .order("due_at", { ascending: true, nullsFirst: false });
   if (error) throw error;
@@ -257,6 +266,33 @@ export async function listClassroomMaterials(): Promise<ClassroomMaterial[]> {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as ClassroomMaterial[];
+}
+
+export type TeacherComment = {
+  id: string;
+  course_id: string;
+  coursework_id: string | null;
+  teacher_email: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+};
+
+export async function listTeacherComments(): Promise<TeacherComment[]> {
+  const { data, error } = await supabase
+    .from("teacher_comments")
+    .select("id, course_id, coursework_id, teacher_email, message, created_at, read_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function markTeacherCommentRead(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("teacher_comments")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export const DAY_NAMES = [

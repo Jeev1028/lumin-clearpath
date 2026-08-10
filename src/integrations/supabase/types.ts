@@ -385,6 +385,7 @@ export type Database = {
           rubric: Json | null
           source: string
           status: Database["public"]["Enums"]["task_status"]
+          student_work: Json
           title: string
           updated_at: string
           user_id: string
@@ -403,6 +404,7 @@ export type Database = {
           rubric?: Json | null
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
+          student_work?: Json
           title: string
           updated_at?: string
           user_id: string
@@ -421,6 +423,7 @@ export type Database = {
           rubric?: Json | null
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
+          student_work?: Json
           title?: string
           updated_at?: string
           user_id?: string
@@ -494,6 +497,7 @@ export type Database = {
           materials: Json
           max_points: number | null
           rubric: Json | null
+          student_work: Json
           submission_state: string | null
           title: string
           updated_at: string
@@ -509,6 +513,7 @@ export type Database = {
           materials?: Json
           max_points?: number | null
           rubric?: Json | null
+          student_work?: Json
           submission_state?: string | null
           title: string
           updated_at?: string
@@ -524,11 +529,45 @@ export type Database = {
           materials?: Json
           max_points?: number | null
           rubric?: Json | null
+          student_work?: Json
           submission_state?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           work_type?: string | null
+        }
+        Relationships: []
+      }
+      teacher_comments: {
+        Row: {
+          course_id: string
+          coursework_id: string | null
+          created_at: string
+          id: string
+          message: string
+          read_at: string | null
+          teacher_email: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          coursework_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          read_at?: string | null
+          teacher_email: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          coursework_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          teacher_email?: string
+          user_id?: string
         }
         Relationships: []
       }

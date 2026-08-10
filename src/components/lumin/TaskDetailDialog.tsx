@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Paperclip, Send, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { FileEdit, MessageSquare, Paperclip, Send, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
-import type { MaterialItem, Rubric } from "@/lib/clearpath";
+import {
+  listTeacherComments,
+  markTeacherCommentRead,
+  type MaterialItem,
+  type Rubric,
+  type TeacherComment,
+} from "@/lib/clearpath";
 import { createThread } from "@/lib/threads";
 
 export type TaskDetailInfo = {
@@ -23,6 +29,7 @@ export type TaskDetailInfo = {
   due_date: string | null;
   description: string | null;
   materials: MaterialItem[];
+  student_work: MaterialItem[];
   rubric: Rubric | null;
   source: string;
   classroom_course_id: string | null;
@@ -43,6 +50,36 @@ export function TaskDetailDialog({
   const [teacherNote, setTeacherNote] = useState("");
   const [sendingNote, setSendingNote] = useState(false);
   const [askingLumin, setAskingLumin] = useState(false);
+  const [comments, setComments] = useState<TeacherComment[]>([]);
+
+  useEffect(() => {
+    if (!open || !task?.classroom_course_id) {
+      setComments([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const all = await listTeacherComments();
+        const relevant = all.filter(
+          (c) =>
+            c.course_id === task.classroom_course_id &&
+            (!c.coursework_id || c.coursework_id === task.google_classroom_id),
+        );
+        if (cancelled) return;
+        setComments(relevant);
+        for (const c of relevant) {
+          if (!c.read_at) void markTeacherCommentRead(c.id);
+        }
+      } catch {
+        // non-fatal — comments just won't show
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, task?.classroom_course_id, task?.google_classroom_id]);
 
   if (!task) return null;
   const isClassroom = task.source === "classroom";
@@ -133,6 +170,37 @@ export function TaskDetailDialog({
           </div>
         )}
 
+        {task.student_work.length > 0 && (
+          <div>
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <FileEdit className="h-3.5 w-3.5" aria-hidden />
+              Your work
+            </p>
+            <p className="mb-1.5 text-xs text-muted-foreground">
+              Your own copy of this assignment — this is what you actually edit and turn in.
+            </p>
+            <ul className="space-y-1">
+              {task.student_work.map((m, i) => (
+                <li key={i}>
+                  {m.url ? (
+                    <a
+                      href={m.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-sm font-medium text-accent hover:bg-accent/20"
+                    >
+                      <FileEdit className="h-3.5 w-3.5" aria-hidden />
+                      Open "{m.title}"
+                    </a>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{m.title}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {task.materials.length > 0 && (
           <div>
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -183,6 +251,25 @@ export function TaskDetailDialog({
                       ))}
                     </ul>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {comments.length > 0 && (
+          <div>
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+              Comments from your teacher
+            </p>
+            <div className="space-y-2">
+              {comments.map((c) => (
+                <div key={c.id} className="rounded-lg border border-border/60 bg-background/40 p-3 text-sm">
+                  <p className="whitespace-pre-wrap">{c.message}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {new Date(c.created_at).toLocaleString()}
+                  </p>
                 </div>
               ))}
             </div>

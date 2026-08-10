@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getAdminClient, requireUser } from "@/lib/api-auth";
+import { getAdminClient, getPublicOrigin, requireUser } from "@/lib/api-auth";
 import { escapeHtml, sendEmail } from "@/lib/email";
+import { createSignedState } from "@/lib/oauth-state";
 
 type Body = { courseId?: string; courseworkId?: string; message?: string };
 
@@ -52,6 +53,10 @@ export const Route = createFileRoute("/api/google-classroom/message-teacher")({
         const studentName = (meta["full_name"] as string) || (meta["name"] as string) || studentEmail || "A student";
         if (!studentEmail) return new Response("Could not identify sender", { status: 500 });
 
+        const portalToken = createSignedState({ courseId, teacherEmail: course.teacher_email });
+        const origin = getPublicOrigin(request);
+        const portalUrl = `${origin}/teacher-portal?token=${encodeURIComponent(portalToken)}`;
+
         const html = `
           <div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
             <p>Hi,</p>
@@ -63,6 +68,10 @@ export const Route = createFileRoute("/api/google-classroom/message-teacher")({
               Reply directly to this email to respond to ${escapeHtml(studentName)} at ${escapeHtml(studentEmail)}.
               This message was sent via ClearPath (a student study platform) because Google Classroom
               doesn't offer a way for third-party apps to post comments directly.
+            </p>
+            <p style="font-size: 13px;">
+              <a href="${portalUrl}" style="color:#2563eb;">Open your class comment page</a> to reply
+              (or start a new comment to any student in this class) without leaving a reply-all trail.
             </p>
           </div>`;
 

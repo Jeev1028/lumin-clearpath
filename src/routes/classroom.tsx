@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { BookOpenCheck, GraduationCap, Megaphone, Paperclip, RefreshCw } from "lucide-react";
+import { BookOpenCheck, GraduationCap, Mail, Megaphone, Paperclip, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -161,12 +161,32 @@ function ClassroomPage() {
       due_date: work.due_at ? work.due_at.slice(0, 10) : null,
       description: work.description,
       materials: work.materials,
+      student_work: work.student_work,
       rubric: work.rubric,
       source: "classroom",
       classroom_course_id: course.id,
       google_classroom_id: work.id,
     });
     setDetailOpen(true);
+  }
+
+  async function handleInviteTeacher(course: ClassroomCourse) {
+    if (!session) return;
+    try {
+      const res = await fetch("/api/google-classroom/invite-teacher", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ courseId: course.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; teacherEmail?: string };
+      if (!res.ok) throw new Error(data.error || "Could not send the invite.");
+      toast.success(`Invite sent to ${data.teacherEmail}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send the invite.");
+    }
   }
 
   const courseworkByCourseId = useMemo(() => {
@@ -288,11 +308,25 @@ function ClassroomPage() {
                   key={course.id}
                   className="rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel"
                 >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h2 className="text-lg font-semibold">{course.name}</h2>
-                    <span className="text-xs text-muted-foreground">
-                      {[course.section, course.room].filter(Boolean).join(" · ")}
-                    </span>
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold">{course.name}</h2>
+                      <span className="text-xs text-muted-foreground">
+                        {[course.section, course.room].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    {course.teacher_email && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void handleInviteTeacher(course)}
+                        className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                      >
+                        <Mail className="h-3.5 w-3.5" aria-hidden />
+                        Invite my teacher
+                      </Button>
+                    )}
                   </div>
 
                   {work.length > 0 && (
