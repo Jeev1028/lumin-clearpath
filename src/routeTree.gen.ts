@@ -30,6 +30,7 @@ import { Route as ApiMfaBackupCodesClearRouteImport } from './routes/api/mfa-bac
 import { Route as ApiMfaBackupCodesGenerateRouteImport } from './routes/api/mfa-backup-codes/generate'
 import { Route as ApiMfaBackupCodesStatusRouteImport } from './routes/api/mfa-backup-codes/status'
 import { Route as ApiMfaBackupCodesVerifyRouteImport } from './routes/api/mfa-backup-codes/verify'
+import { Route as ApiNotificationsDailyDigestRouteImport } from './routes/api/notifications/daily-digest'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -139,6 +140,12 @@ const ApiMfaBackupCodesVerifyRoute = ApiMfaBackupCodesVerifyRouteImport.update({
   path: '/api/mfa-backup-codes/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNotificationsDailyDigestRoute =
+  ApiNotificationsDailyDigestRouteImport.update({
+    id: '/api/notifications/daily-digest',
+    path: '/api/notifications/daily-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
   '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
+  '/api/notifications/daily-digest': typeof ApiNotificationsDailyDigestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -185,6 +193,7 @@ export interface FileRoutesByTo {
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
   '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
+  '/api/notifications/daily-digest': typeof ApiNotificationsDailyDigestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
   '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
+  '/api/notifications/daily-digest': typeof ApiNotificationsDailyDigestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
     | '/api/mfa-backup-codes/verify'
+    | '/api/notifications/daily-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
     | '/api/mfa-backup-codes/verify'
+    | '/api/notifications/daily-digest'
   id:
     | '__root__'
     | '/'
@@ -280,6 +292,7 @@ export interface FileRouteTypes {
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
     | '/api/mfa-backup-codes/verify'
+    | '/api/notifications/daily-digest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -304,6 +317,7 @@ export interface RootRouteChildren {
   ApiMfaBackupCodesGenerateRoute: typeof ApiMfaBackupCodesGenerateRoute
   ApiMfaBackupCodesStatusRoute: typeof ApiMfaBackupCodesStatusRoute
   ApiMfaBackupCodesVerifyRoute: typeof ApiMfaBackupCodesVerifyRoute
+  ApiNotificationsDailyDigestRoute: typeof ApiNotificationsDailyDigestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -455,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMfaBackupCodesVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/notifications/daily-digest': {
+      id: '/api/notifications/daily-digest'
+      path: '/api/notifications/daily-digest'
+      fullPath: '/api/notifications/daily-digest'
+      preLoaderRoute: typeof ApiNotificationsDailyDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -480,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMfaBackupCodesGenerateRoute: ApiMfaBackupCodesGenerateRoute,
   ApiMfaBackupCodesStatusRoute: ApiMfaBackupCodesStatusRoute,
   ApiMfaBackupCodesVerifyRoute: ApiMfaBackupCodesVerifyRoute,
+  ApiNotificationsDailyDigestRoute: ApiNotificationsDailyDigestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

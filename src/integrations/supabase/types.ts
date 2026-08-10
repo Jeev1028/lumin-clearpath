@@ -172,6 +172,24 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_digest_log: {
+        Row: {
+          sent_at: string
+          sent_for_date: string
+          user_id: string
+        }
+        Insert: {
+          sent_at?: string
+          sent_for_date: string
+          user_id: string
+        }
+        Update: {
+          sent_at?: string
+          sent_for_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mfa_backup_codes: {
         Row: {
           code_hash: string

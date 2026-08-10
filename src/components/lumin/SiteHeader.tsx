@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AccountMenu } from "@/components/lumin/AccountMenu";
 import { LuminWordmark } from "@/components/lumin/LuminMark";
+import { ReminderBell } from "@/components/lumin/ReminderBell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -46,6 +47,7 @@ export function SiteHeader({
               </Button>
             )}
           </nav>
+          {session && <ReminderBell />}
           {session && <AccountMenu />}
           {trailing}
         </div>

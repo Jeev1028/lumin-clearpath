@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,6 +32,8 @@ function AccountPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [emailDigestEnabled, setEmailDigestEnabled] = useState(true);
+  const [savingDigestPref, setSavingDigestPref] = useState(false);
 
   const [mfaFactors, setMfaFactors] = useState<Factor[]>([]);
   const [mfaBusy, setMfaBusy] = useState(false);
@@ -57,10 +60,11 @@ function AccountPage() {
       void navigate({ to: "/mfa-challenge" });
       return;
     }
-    const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
-    setFullName(meta["full_name"] || meta["name"] || "");
-    setPhone(meta["phone_number"] || "");
-    setAvatarUrl(meta["avatar_url"] || meta["picture"]);
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    setFullName((meta["full_name"] as string) || (meta["name"] as string) || "");
+    setPhone((meta["phone_number"] as string) || "");
+    setAvatarUrl((meta["avatar_url"] as string) || (meta["picture"] as string) || undefined);
+    setEmailDigestEnabled(meta["email_digest_enabled"] !== false);
     void loadFactors();
   }, [loading, user, needsMfa, navigate]);
 
@@ -107,6 +111,22 @@ function AccountPage() {
       toast.error(err instanceof Error ? err.message : "Could not generate backup codes.");
     } finally {
       setBackupBusy(false);
+    }
+  }
+
+  async function handleToggleEmailDigest(nextValue: boolean) {
+    setEmailDigestEnabled(nextValue);
+    setSavingDigestPref(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { email_digest_enabled: nextValue },
+      });
+      if (error) throw error;
+    } catch (err) {
+      setEmailDigestEnabled(!nextValue);
+      toast.error(err instanceof Error ? err.message : "Could not save that preference.");
+    } finally {
+      setSavingDigestPref(false);
     }
   }
 
@@ -332,6 +352,20 @@ function AccountPage() {
             {savingProfile ? "Saving…" : "Save changes"}
           </Button>
         </form>
+
+        <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+          <div>
+            <p className="text-sm font-semibold">Email reminders</p>
+            <p className="text-xs text-muted-foreground">
+              Get a daily email if you have tasks due today or overdue.
+            </p>
+          </div>
+          <Switch
+            checked={emailDigestEnabled}
+            disabled={savingDigestPref}
+            onCheckedChange={(checked) => void handleToggleEmailDigest(checked)}
+          />
+        </div>
 
         <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
           <div className="flex items-center gap-3">
