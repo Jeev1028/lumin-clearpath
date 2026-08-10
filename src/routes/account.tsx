@@ -4,6 +4,7 @@ import { ShieldCheck, ShieldOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { AvatarCropDialog } from "@/components/lumin/AvatarCropDialog";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ function AccountPage() {
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [emailDigestEnabled, setEmailDigestEnabled] = useState(true);
   const [savingDigestPref, setSavingDigestPref] = useState(false);
@@ -159,20 +162,27 @@ function AccountPage() {
   const initial = (fullName || user.email || "?").charAt(0).toUpperCase();
   const verifiedTotp = mfaFactors.find((f) => f.factor_type === "totp" && f.status === "verified");
 
-  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || !user) return;
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Please choose an image under 2MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+    if (pendingImageSrc) URL.revokeObjectURL(pendingImageSrc);
+    setPendingImageSrc(URL.createObjectURL(file));
+    setCropDialogOpen(true);
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    if (!user) return;
     setAvatarBusy(true);
     try {
-      const ext = file.name.split(".").pop() || "png";
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const path = `${user.id}/avatar-${Date.now()}.png`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
+        .upload(path, blob, { upsert: true, cacheControl: "3600", contentType: "image/png" });
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
@@ -183,10 +193,21 @@ function AccountPage() {
 
       setAvatarUrl(data.publicUrl);
       toast.success("Profile picture updated.");
+      setCropDialogOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update your picture.");
     } finally {
       setAvatarBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function handleCropDialogOpenChange(open: boolean) {
+    if (avatarBusy) return;
+    setCropDialogOpen(open);
+    if (!open) {
+      if (pendingImageSrc) URL.revokeObjectURL(pendingImageSrc);
+      setPendingImageSrc(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -299,7 +320,7 @@ function AccountPage() {
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
-              onChange={(e) => void handleAvatarChange(e)}
+              onChange={handleAvatarChange}
             />
             <Button
               type="button"
@@ -533,6 +554,14 @@ function AccountPage() {
           )}
         </div>
       </main>
+
+      <AvatarCropDialog
+        imageSrc={pendingImageSrc}
+        open={cropDialogOpen}
+        onOpenChange={handleCropDialogOpenChange}
+        onConfirm={(blob) => void handleCropConfirm(blob)}
+        busy={avatarBusy}
+      />
     </div>
   );
 }
