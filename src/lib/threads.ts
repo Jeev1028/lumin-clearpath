@@ -30,6 +30,51 @@ export async function deleteThread(id: string): Promise<void> {
   if (error) throw error;
 }
 
+function escapeLikePattern(value: string): string {
+  let out = "";
+  for (const char of value) {
+    if (char === "%" || char === "_" || char === "\\") {
+      out += "\\" + char;
+    } else {
+      out += char;
+    }
+  }
+  return out;
+}
+
+/** Matches on thread title OR any message body within the thread, since
+ * titles are just derived from the first message and often don't reflect
+ * what was actually discussed later in a conversation. */
+export async function searchThreads(query: string): Promise<Thread[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const pattern = `%${escapeLikePattern(trimmed)}%`;
+
+  const [titleMatches, messageMatches] = await Promise.all([
+    supabase.from("threads").select("id, title, updated_at").ilike("title", pattern),
+    supabase.from("messages").select("thread_id").ilike("content", pattern).limit(200),
+  ]);
+  if (titleMatches.error) throw titleMatches.error;
+  if (messageMatches.error) throw messageMatches.error;
+
+  const byId = new Map<string, Thread>();
+  for (const t of titleMatches.data ?? []) byId.set(t.id, t);
+
+  const missingIds = [...new Set((messageMatches.data ?? []).map((m) => m.thread_id))].filter(
+    (id) => !byId.has(id),
+  );
+  if (missingIds.length > 0) {
+    const { data: extraThreads, error } = await supabase
+      .from("threads")
+      .select("id, title, updated_at")
+      .in("id", missingIds);
+    if (error) throw error;
+    for (const t of extraThreads ?? []) byId.set(t.id, t);
+  }
+
+  return [...byId.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+}
+
 export type StoredMessage = {
   id: string;
   role: string;
