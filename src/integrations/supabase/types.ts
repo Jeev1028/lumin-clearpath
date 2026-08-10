@@ -94,6 +94,90 @@ export type Database = {
         }
         Relationships: []
       }
+      admins: {
+        Row: {
+          can_manage_notices: boolean
+          can_send_email: boolean
+          can_view_grades: boolean
+          can_view_users: boolean
+          email: string
+          granted_at: string
+          granted_by: string | null
+          is_root: boolean
+          user_id: string
+        }
+        Insert: {
+          can_manage_notices?: boolean
+          can_send_email?: boolean
+          can_view_grades?: boolean
+          can_view_users?: boolean
+          email: string
+          granted_at?: string
+          granted_by?: string | null
+          is_root?: boolean
+          user_id: string
+        }
+        Update: {
+          can_manage_notices?: boolean
+          can_send_email?: boolean
+          can_view_grades?: boolean
+          can_view_users?: boolean
+          email?: string
+          granted_at?: string
+          granted_by?: string | null
+          is_root?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_email_log: {
+        Row: {
+          id: string
+          recipient_count: number
+          sent_at: string
+          sent_by: string | null
+          subject: string
+        }
+        Insert: {
+          id?: string
+          recipient_count: number
+          sent_at?: string
+          sent_by?: string | null
+          subject: string
+        }
+        Update: {
+          id?: string
+          recipient_count?: number
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
+      notices: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean

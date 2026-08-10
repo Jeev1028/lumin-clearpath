@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, ClipboardList, LogOut, Settings, Sparkles } from "lucide-react";
+import { CalendarDays, ClipboardList, LogOut, Settings, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -10,12 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AccountMenu() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useAdminStatus();
   if (!user) return null;
 
   const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
@@ -66,6 +68,14 @@ export function AccountMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {isAdmin && (
+          <DropdownMenuItem asChild className="cursor-pointer gap-2">
+            <Link to="/admin">
+              <ShieldCheck className="h-4 w-4" aria-hidden />
+              Admin dashboard
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild className="cursor-pointer gap-2">
           <Link to="/account">
             <Settings className="h-4 w-4" aria-hidden />

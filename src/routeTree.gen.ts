@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -23,6 +24,11 @@ import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
+import { Route as ApiAdminMeRouteImport } from './routes/api/admin/me'
+import { Route as ApiAdminNoticesRouteImport } from './routes/api/admin/notices'
+import { Route as ApiAdminSendEmailRouteImport } from './routes/api/admin/send-email'
+import { Route as ApiAdminUsersRouteImport } from './routes/api/admin/users'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/google-calendar/callback'
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
 import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
@@ -41,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -103,6 +114,31 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAdminsRoute = ApiAdminAdminsRouteImport.update({
+  id: '/api/admin/admins',
+  path: '/api/admin/admins',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminMeRoute = ApiAdminMeRouteImport.update({
+  id: '/api/admin/me',
+  path: '/api/admin/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminNoticesRoute = ApiAdminNoticesRouteImport.update({
+  id: '/api/admin/notices',
+  path: '/api/admin/notices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSendEmailRoute = ApiAdminSendEmailRouteImport.update({
+  id: '/api/admin/send-email',
+  path: '/api/admin/send-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
+  id: '/api/admin/users',
+  path: '/api/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoogleCalendarCallbackRoute =
   ApiGoogleCalendarCallbackRouteImport.update({
     id: '/api/google-calendar/callback',
@@ -156,6 +192,7 @@ const ApiNotificationsDailyDigestRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
@@ -168,6 +205,11 @@ export interface FileRoutesByFullPath {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/me': typeof ApiAdminMeRoute
+  '/api/admin/notices': typeof ApiAdminNoticesRoute
+  '/api/admin/send-email': typeof ApiAdminSendEmailRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -181,6 +223,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
@@ -193,6 +236,11 @@ export interface FileRoutesByTo {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
+  '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/me': typeof ApiAdminMeRoute
+  '/api/admin/notices': typeof ApiAdminNoticesRoute
+  '/api/admin/send-email': typeof ApiAdminSendEmailRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -207,6 +255,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
@@ -219,6 +268,11 @@ export interface FileRoutesById {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/me': typeof ApiAdminMeRoute
+  '/api/admin/notices': typeof ApiAdminNoticesRoute
+  '/api/admin/send-email': typeof ApiAdminSendEmailRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -234,6 +288,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/admin'
     | '/auth'
     | '/mfa-challenge'
     | '/privacy'
@@ -246,6 +301,11 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/admin/admins'
+    | '/api/admin/me'
+    | '/api/admin/notices'
+    | '/api/admin/send-email'
+    | '/api/admin/users'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -259,6 +319,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/admin'
     | '/auth'
     | '/mfa-challenge'
     | '/privacy'
@@ -271,6 +332,11 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat'
+    | '/api/admin/admins'
+    | '/api/admin/me'
+    | '/api/admin/notices'
+    | '/api/admin/send-email'
+    | '/api/admin/users'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -284,6 +350,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/admin'
     | '/auth'
     | '/mfa-challenge'
     | '/privacy'
@@ -296,6 +363,11 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/admin/admins'
+    | '/api/admin/me'
+    | '/api/admin/notices'
+    | '/api/admin/send-email'
+    | '/api/admin/users'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -310,6 +382,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -322,6 +395,11 @@ export interface RootRouteChildren {
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ApiAdminAdminsRoute: typeof ApiAdminAdminsRoute
+  ApiAdminMeRoute: typeof ApiAdminMeRoute
+  ApiAdminNoticesRoute: typeof ApiAdminNoticesRoute
+  ApiAdminSendEmailRoute: typeof ApiAdminSendEmailRoute
+  ApiAdminUsersRoute: typeof ApiAdminUsersRoute
   ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStartRoute: typeof ApiGoogleCalendarStartRoute
@@ -347,6 +425,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -433,6 +518,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/admins': {
+      id: '/api/admin/admins'
+      path: '/api/admin/admins'
+      fullPath: '/api/admin/admins'
+      preLoaderRoute: typeof ApiAdminAdminsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/me': {
+      id: '/api/admin/me'
+      path: '/api/admin/me'
+      fullPath: '/api/admin/me'
+      preLoaderRoute: typeof ApiAdminMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/notices': {
+      id: '/api/admin/notices'
+      path: '/api/admin/notices'
+      fullPath: '/api/admin/notices'
+      preLoaderRoute: typeof ApiAdminNoticesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/send-email': {
+      id: '/api/admin/send-email'
+      path: '/api/admin/send-email'
+      fullPath: '/api/admin/send-email'
+      preLoaderRoute: typeof ApiAdminSendEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/users': {
+      id: '/api/admin/users'
+      path: '/api/admin/users'
+      fullPath: '/api/admin/users'
+      preLoaderRoute: typeof ApiAdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-calendar/callback': {
       id: '/api/google-calendar/callback'
       path: '/api/google-calendar/callback'
@@ -502,6 +622,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   MfaChallengeRoute: MfaChallengeRoute,
   PrivacyRoute: PrivacyRoute,
@@ -514,6 +635,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStudyPlanRoute: ApiStudyPlanRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ApiAdminAdminsRoute: ApiAdminAdminsRoute,
+  ApiAdminMeRoute: ApiAdminMeRoute,
+  ApiAdminNoticesRoute: ApiAdminNoticesRoute,
+  ApiAdminSendEmailRoute: ApiAdminSendEmailRoute,
+  ApiAdminUsersRoute: ApiAdminUsersRoute,
   ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStartRoute: ApiGoogleCalendarStartRoute,
