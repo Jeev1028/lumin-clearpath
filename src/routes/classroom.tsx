@@ -137,6 +137,15 @@ function ClassroomPage() {
     }
   }
 
+  async function reloadLocalData() {
+    const [courseData, courseworkData] = await Promise.all([
+      listClassroomCourses(),
+      listClassroomCoursework(),
+    ]);
+    setCourses(courseData);
+    setCoursework(courseworkData);
+  }
+
   async function handleDisconnect() {
     if (!session) return;
     setConnectBusy(true);
@@ -166,6 +175,7 @@ function ClassroomPage() {
       source: "classroom",
       classroom_course_id: course.id,
       google_classroom_id: work.id,
+      submission_state: work.submission_state,
     });
     setDetailOpen(true);
   }
@@ -425,7 +435,12 @@ function ClassroomPage() {
         )}
       </main>
 
-      <TaskDetailDialog task={detailTask} open={detailOpen} onOpenChange={setDetailOpen} />
+      <TaskDetailDialog
+        task={detailTask}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onSubmissionChanged={() => void reloadLocalData()}
+      />
     </div>
   );
 }

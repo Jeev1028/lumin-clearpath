@@ -25,10 +25,11 @@ export type Task = {
   rubric: Rubric | null;
   google_classroom_id: string | null;
   classroom_course_id: string | null;
+  submission_state: string | null;
 };
 
 const TASK_FIELDS =
-  "id, title, course, kind, status, due_date, notes, source, description, materials, student_work, rubric, google_classroom_id, classroom_course_id";
+  "id, title, course, kind, status, due_date, notes, source, description, materials, student_work, rubric, google_classroom_id, classroom_course_id, submission_state";
 
 export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -52,6 +53,7 @@ export async function createTask(
     | "rubric"
     | "google_classroom_id"
     | "classroom_course_id"
+    | "submission_state"
   >,
 ): Promise<Task> {
   const { data, error } = await supabase

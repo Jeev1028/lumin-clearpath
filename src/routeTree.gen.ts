@@ -44,6 +44,7 @@ import { Route as ApiGoogleClassroomDisconnectRouteImport } from './routes/api/g
 import { Route as ApiGoogleClassroomInviteTeacherRouteImport } from './routes/api/google-classroom/invite-teacher'
 import { Route as ApiGoogleClassroomMessageTeacherRouteImport } from './routes/api/google-classroom/message-teacher'
 import { Route as ApiGoogleClassroomStartRouteImport } from './routes/api/google-classroom/start'
+import { Route as ApiGoogleClassroomSubmissionRouteImport } from './routes/api/google-classroom/submission'
 import { Route as ApiGoogleClassroomSyncRouteImport } from './routes/api/google-classroom/sync'
 import { Route as ApiMfaBackupCodesClearRouteImport } from './routes/api/mfa-backup-codes/clear'
 import { Route as ApiMfaBackupCodesGenerateRouteImport } from './routes/api/mfa-backup-codes/generate'
@@ -232,6 +233,12 @@ const ApiGoogleClassroomStartRoute = ApiGoogleClassroomStartRouteImport.update({
   path: '/api/google-classroom/start',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoogleClassroomSubmissionRoute =
+  ApiGoogleClassroomSubmissionRouteImport.update({
+    id: '/api/google-classroom/submission',
+    path: '/api/google-classroom/submission',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGoogleClassroomSyncRoute = ApiGoogleClassroomSyncRouteImport.update({
   id: '/api/google-classroom/sync',
   path: '/api/google-classroom/sync',
@@ -301,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
@@ -344,6 +352,7 @@ export interface FileRoutesByTo {
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
@@ -388,6 +397,7 @@ export interface FileRoutesById {
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
+    | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
+    | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
@@ -519,6 +531,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
+    | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
@@ -563,6 +576,7 @@ export interface RootRouteChildren {
   ApiGoogleClassroomInviteTeacherRoute: typeof ApiGoogleClassroomInviteTeacherRoute
   ApiGoogleClassroomMessageTeacherRoute: typeof ApiGoogleClassroomMessageTeacherRoute
   ApiGoogleClassroomStartRoute: typeof ApiGoogleClassroomStartRoute
+  ApiGoogleClassroomSubmissionRoute: typeof ApiGoogleClassroomSubmissionRoute
   ApiGoogleClassroomSyncRoute: typeof ApiGoogleClassroomSyncRoute
   ApiMfaBackupCodesClearRoute: typeof ApiMfaBackupCodesClearRoute
   ApiMfaBackupCodesGenerateRoute: typeof ApiMfaBackupCodesGenerateRoute
@@ -818,6 +832,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleClassroomStartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-classroom/submission': {
+      id: '/api/google-classroom/submission'
+      path: '/api/google-classroom/submission'
+      fullPath: '/api/google-classroom/submission'
+      preLoaderRoute: typeof ApiGoogleClassroomSubmissionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-classroom/sync': {
       id: '/api/google-classroom/sync'
       path: '/api/google-classroom/sync'
@@ -899,6 +920,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleClassroomInviteTeacherRoute: ApiGoogleClassroomInviteTeacherRoute,
   ApiGoogleClassroomMessageTeacherRoute: ApiGoogleClassroomMessageTeacherRoute,
   ApiGoogleClassroomStartRoute: ApiGoogleClassroomStartRoute,
+  ApiGoogleClassroomSubmissionRoute: ApiGoogleClassroomSubmissionRoute,
   ApiGoogleClassroomSyncRoute: ApiGoogleClassroomSyncRoute,
   ApiMfaBackupCodesClearRoute: ApiMfaBackupCodesClearRoute,
   ApiMfaBackupCodesGenerateRoute: ApiMfaBackupCodesGenerateRoute,

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { FileEdit, MessageSquare, Paperclip, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, FileEdit, MessageSquare, Paperclip, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +23,8 @@ import {
 } from "@/lib/clearpath";
 import { createThread } from "@/lib/threads";
 
+const SUBMITTED_STATES = new Set(["TURNED_IN", "RETURNED"]);
+
 export type TaskDetailInfo = {
   title: string;
   course: string | null;
@@ -34,16 +36,19 @@ export type TaskDetailInfo = {
   source: string;
   classroom_course_id: string | null;
   google_classroom_id: string | null;
+  submission_state: string | null;
 };
 
 export function TaskDetailDialog({
   task,
   open,
   onOpenChange,
+  onSubmissionChanged,
 }: {
   task: TaskDetailInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmissionChanged?: () => void;
 }) {
   const navigate = useNavigate();
   const { session, user } = useAuth();
@@ -51,6 +56,12 @@ export function TaskDetailDialog({
   const [sendingNote, setSendingNote] = useState(false);
   const [askingLumin, setAskingLumin] = useState(false);
   const [comments, setComments] = useState<TeacherComment[]>([]);
+  const [submissionState, setSubmissionState] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setSubmissionState(task?.submission_state ?? null);
+  }, [task?.google_classroom_id, task?.submission_state]);
 
   useEffect(() => {
     if (!open || !task?.classroom_course_id) {
@@ -83,6 +94,39 @@ export function TaskDetailDialog({
 
   if (!task) return null;
   const isClassroom = task.source === "classroom";
+  const isSubmitted = submissionState ? SUBMITTED_STATES.has(submissionState) : false;
+  const isGraded = submissionState === "RETURNED";
+
+  async function handleSubmissionAction(action: "turnIn" | "reclaim") {
+    if (!session || !task?.classroom_course_id || !task.google_classroom_id) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/google-classroom/submission", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId: task.classroom_course_id,
+          courseworkId: task.google_classroom_id,
+          action,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        submissionState?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "Could not update your submission.");
+      setSubmissionState(data.submissionState ?? (action === "turnIn" ? "TURNED_IN" : "CREATED"));
+      toast.success(action === "turnIn" ? "Assignment turned in!" : "Turn-in undone — you can edit it again.");
+      onSubmissionChanged?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update your submission.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleSendNote(event: React.FormEvent) {
     event.preventDefault();
@@ -161,6 +205,43 @@ export function TaskDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {isClassroom && task.classroom_course_id && task.google_classroom_id && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
+            {isSubmitted ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden />
+                  {isGraded ? "Turned in · graded" : "Turned in"}
+                </span>
+                {!isGraded && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={submitting}
+                    onClick={() => void handleSubmissionAction("reclaim")}
+                    className="gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                    Undo turn-in
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={submitting}
+                onClick={() => void handleSubmissionAction("turnIn")}
+                className="gap-1.5 bg-gradient-lumin text-primary-foreground shadow-glow"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                {submitting ? "Turning in…" : "Turn in"}
+              </Button>
+            )}
+          </div>
+        )}
+
         {task.description && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -177,7 +258,7 @@ export function TaskDetailDialog({
               Your work
             </p>
             <p className="mb-1.5 text-xs text-muted-foreground">
-              Your own copy of this assignment — this is what you actually edit and turn in.
+              Your own copy of this assignment — edit it, then use Turn in above when you're done.
             </p>
             <ul className="space-y-1">
               {task.student_work.map((m, i) => (

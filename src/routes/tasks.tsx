@@ -119,8 +119,16 @@ function TasksPage() {
       void navigate({ to: "/mfa-challenge" });
       return;
     }
-    listTasks().then(setTasks).catch(() => toast.error("Could not load your tasks."));
+    void reloadTasks();
   }, [loading, user, needsMfa, navigate]);
+
+  async function reloadTasks() {
+    try {
+      setTasks(await listTasks());
+    } catch {
+      toast.error("Could not load your tasks.");
+    }
+  }
 
   const submitted = tasks.filter((t) => t.status === "submitted").length;
   const overdueCount = tasks.filter(isOverdue).length;
@@ -381,7 +389,12 @@ function TasksPage() {
         </ul>
       </main>
 
-      <TaskDetailDialog task={detailTask} open={detailOpen} onOpenChange={setDetailOpen} />
+      <TaskDetailDialog
+        task={detailTask}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onSubmissionChanged={() => void reloadTasks()}
+      />
     </div>
   );
 }

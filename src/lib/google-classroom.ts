@@ -93,6 +93,7 @@ export type ClassroomCourseWork = {
 };
 
 export type ClassroomSubmission = {
+  id: string;
   courseWorkId: string;
   assignedGrade?: number;
   state: string;
@@ -275,6 +276,64 @@ export async function listCourseWorkMaterials(
     accessToken,
     `/courses/${courseId}/courseWorkMaterials?courseWorkMaterialStates=PUBLISHED`,
     "courseWorkMaterial",
+  );
+}
+
+/** The current student's single submission for one specific coursework
+ * item (needed to get its unique submission id, which is required by the
+ * turnIn/reclaim actions and is different from the courseWork's own id). */
+export async function getMySubmission(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+): Promise<ClassroomSubmission | null> {
+  const results = await classroomFetchAllPages<ClassroomSubmission>(
+    accessToken,
+    `/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?userId=me`,
+    "studentSubmissions",
+  );
+  return results[0] ?? null;
+}
+
+async function classroomPost(
+  accessToken: string,
+  path: string,
+): Promise<void> {
+  const res = await fetch(`${CLASSROOM_API}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok) throw new Error(`Classroom API error (${res.status}): ${await res.text()}`);
+}
+
+/** Turns in the student's own submission -- equivalent to clicking "Turn
+ * in" inside Google Classroom. Whatever is already attached (including a
+ * "make a copy for each student" file already linked to the submission)
+ * is what gets submitted; ClearPath does not add new attachments. */
+export async function turnInSubmission(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+): Promise<void> {
+  await classroomPost(
+    accessToken,
+    `/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:turnIn`,
+  );
+}
+
+/** Undoes a turn-in ("reclaim" in Classroom's own terminology), putting the
+ * submission back into a state the student can edit again. */
+export async function reclaimSubmission(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+): Promise<void> {
+  await classroomPost(
+    accessToken,
+    `/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:reclaim`,
   );
 }
 

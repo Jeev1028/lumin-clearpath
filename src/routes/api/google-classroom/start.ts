@@ -5,7 +5,12 @@ import { createSignedState } from "@/lib/oauth-state";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
-  "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+  // Full (not read-only) coursework scope -- covers both viewing and
+  // turning in / reclaiming a student's own submissions. There is no
+  // separate "write" scope for student-submissions; turn-in actions are
+  // gated by this scope instead, so the readonly submissions scope below
+  // is kept only for reading grades/state.
+  "https://www.googleapis.com/auth/classroom.coursework.me",
   "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
   "https://www.googleapis.com/auth/classroom.announcements.readonly",
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",

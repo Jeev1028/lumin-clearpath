@@ -166,6 +166,7 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                   source: "classroom",
                   google_classroom_id: work.id,
                   classroom_course_id: course.id,
+                  submission_state: submission?.state ?? null,
                 },
                 { onConflict: "user_id,google_classroom_id" },
               );

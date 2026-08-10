@@ -386,6 +386,7 @@ export type Database = {
           source: string
           status: Database["public"]["Enums"]["task_status"]
           student_work: Json
+          submission_state: string | null
           title: string
           updated_at: string
           user_id: string
@@ -405,6 +406,7 @@ export type Database = {
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
           student_work?: Json
+          submission_state?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -424,6 +426,7 @@ export type Database = {
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
           student_work?: Json
+          submission_state?: string | null
           title?: string
           updated_at?: string
           user_id?: string
