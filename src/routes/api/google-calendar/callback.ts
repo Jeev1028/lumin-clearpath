@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getAdminClient } from "@/lib/api-auth";
+import { getAdminClient, getPublicOrigin } from "@/lib/api-auth";
 import { exchangeCodeForTokens } from "@/lib/google-calendar";
 import { verifySignedState } from "@/lib/oauth-state";
 import { encryptToken } from "@/lib/token-crypto";
@@ -17,8 +17,9 @@ export const Route = createFileRoute("/api/google-calendar/callback")({
         const state = url.searchParams.get("state");
         const errorParam = url.searchParams.get("error");
 
+        const publicOrigin = getPublicOrigin(request);
         const payload = state ? verifySignedState(state) : null;
-        const redirectOrigin = payload?.["redirectOrigin"] ?? url.origin;
+        const redirectOrigin = payload?.["redirectOrigin"] ?? publicOrigin;
         const scheduleUrl = (status: string) => `${redirectOrigin}/schedule?calendar=${status}`;
 
         if (errorParam) {
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/api/google-calendar/callback")({
         }
 
         try {
-          const redirectUri = `${url.origin}/api/google-calendar/callback`;
+          const redirectUri = `${publicOrigin}/api/google-calendar/callback`;
           const tokens = await exchangeCodeForTokens(code, redirectUri);
           if (!tokens.refresh_token) {
             // Google only issues a refresh token on first consent (or when

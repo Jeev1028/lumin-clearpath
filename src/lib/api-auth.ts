@@ -31,6 +31,22 @@ export async function requireUser(
 }
 
 /**
+ * Behind a reverse proxy (Vercel, Cloudflare, etc.) the raw request URL
+ * seen by the server function can reflect an internal address rather than
+ * the domain the visitor actually used. Standard forwarded headers carry
+ * the real public host/protocol — prefer those, falling back to the raw
+ * request URL for local dev where there's no proxy in front.
+ */
+export function getPublicOrigin(request: Request): string {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedHost) {
+    return `${forwardedProto || "https"}://${forwardedHost}`;
+  }
+  return new URL(request.url).origin;
+}
+
+/**
  * Service-role client for server-only writes that must bypass RLS (e.g.
  * writing encrypted OAuth tokens, which the client is never allowed to
  * write directly). Never expose this client or its key to the browser.

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { requireUser } from "@/lib/api-auth";
+import { getPublicOrigin, requireUser } from "@/lib/api-auth";
 import { createSignedState } from "@/lib/oauth-state";
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.events";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/google-calendar/start")({
         const clientId = process.env["VITE_GOOGLE_CLIENT_ID"];
         if (!clientId) return new Response("Google Calendar is not configured", { status: 500 });
 
-        const origin = new URL(request.url).origin;
+        const origin = getPublicOrigin(request);
         const redirectUri = `${origin}/api/google-calendar/callback`;
         const state = createSignedState({ userId: auth.userId, redirectOrigin: origin });
 
