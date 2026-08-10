@@ -145,6 +145,7 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                   materials,
                   student_work: studentWork,
                   rubric,
+                  alternate_link: work.alternateLink ?? null,
                   updated_at: new Date().toISOString(),
                 },
                 { onConflict: "id,user_id" },
@@ -167,6 +168,9 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                   google_classroom_id: work.id,
                   classroom_course_id: course.id,
                   submission_state: submission?.state ?? null,
+                  alternate_link: work.alternateLink ?? null,
+                  assigned_grade: submission?.assignedGrade ?? null,
+                  max_points: work.maxPoints ?? null,
                 },
                 { onConflict: "user_id,google_classroom_id" },
               );

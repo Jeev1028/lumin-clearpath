@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { BookOpenCheck, GraduationCap, Mail, Megaphone, Paperclip, RefreshCw } from "lucide-react";
+import { BookOpenCheck, CheckCircle2, GraduationCap, Mail, Megaphone, Paperclip, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,8 @@ import {
   type ClassroomCoursework,
   type ClassroomMaterial,
 } from "@/lib/clearpath";
+
+const COMPLETED_STATES = new Set(["TURNED_IN", "RETURNED"]);
 
 export const Route = createFileRoute("/classroom")({
   head: () => ({
@@ -176,6 +178,9 @@ function ClassroomPage() {
       classroom_course_id: course.id,
       google_classroom_id: work.id,
       submission_state: work.submission_state,
+      alternate_link: work.alternate_link,
+      assigned_grade: work.assigned_grade,
+      max_points: work.max_points,
     });
     setDetailOpen(true);
   }
@@ -311,8 +316,26 @@ function ClassroomPage() {
           <div className="mt-6 space-y-6">
             {courses.map((course) => {
               const work = courseworkByCourseId.get(course.id) ?? [];
+              const pendingWork = work.filter((w) => !COMPLETED_STATES.has(w.submission_state ?? ""));
+              const completedWork = work.filter((w) => COMPLETED_STATES.has(w.submission_state ?? ""));
               const courseAnnouncements = announcementsByCourseId.get(course.id) ?? [];
               const courseMaterials = materialsByCourseId.get(course.id) ?? [];
+              const renderWorkItem = (item: ClassroomCoursework) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openCourseworkDetail(course, item)}
+                  className="w-full rounded-xl border border-border/60 bg-background/40 p-3 text-left text-sm transition-colors hover:border-accent/40"
+                >
+                  <p className="font-medium">{item.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {item.due_at ? `Due ${item.due_at.slice(0, 10)}` : "No due date"}
+                    {typeof item.assigned_grade === "number" && item.max_points
+                      ? ` · ${item.assigned_grade}/${item.max_points}`
+                      : ""}
+                  </p>
+                </button>
+              );
               return (
                 <div
                   key={course.id}
@@ -339,30 +362,23 @@ function ClassroomPage() {
                     )}
                   </div>
 
-                  {work.length > 0 && (
+                  {pendingWork.length > 0 && (
                     <div className="mt-4 border-t border-border/60 pt-4">
                       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <BookOpenCheck className="h-3.5 w-3.5" aria-hidden />
                         Coursework
                       </p>
-                      <div className="space-y-2">
-                        {work.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => openCourseworkDetail(course, item)}
-                            className="w-full rounded-xl border border-border/60 bg-background/40 p-3 text-left text-sm transition-colors hover:border-accent/40"
-                          >
-                            <p className="font-medium">{item.title}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {item.due_at ? `Due ${item.due_at.slice(0, 10)}` : "No due date"}
-                              {typeof item.assigned_grade === "number" && item.max_points
-                                ? ` · ${item.assigned_grade}/${item.max_points}`
-                                : ""}
-                            </p>
-                          </button>
-                        ))}
-                      </div>
+                      <div className="space-y-2">{pendingWork.map(renderWorkItem)}</div>
+                    </div>
+                  )}
+
+                  {completedWork.length > 0 && (
+                    <div className="mt-4 border-t border-border/60 pt-4">
+                      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                        Completed
+                      </p>
+                      <div className="space-y-2">{completedWork.map(renderWorkItem)}</div>
                     </div>
                   )}
 

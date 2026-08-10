@@ -1,5 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FileEdit, MessageSquare, Paperclip, RotateCcw, Send, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileEdit,
+  GraduationCap,
+  MessageSquare,
+  Paperclip,
+  RotateCcw,
+  Send,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -37,6 +47,9 @@ export type TaskDetailInfo = {
   classroom_course_id: string | null;
   google_classroom_id: string | null;
   submission_state: string | null;
+  alternate_link: string | null;
+  assigned_grade: number | null;
+  max_points: number | null;
 };
 
 export function TaskDetailDialog({
@@ -122,7 +135,17 @@ export function TaskDetailDialog({
       toast.success(action === "turnIn" ? "Assignment turned in!" : "Turn-in undone — you can edit it again.");
       onSubmissionChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not update your submission.");
+      const message = err instanceof Error ? err.message : "Could not update your submission.";
+      if (task.alternate_link) {
+        toast.error(message, {
+          action: {
+            label: "Open in Classroom",
+            onClick: () => window.open(task.alternate_link!, "_blank", "noreferrer"),
+          },
+        });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -239,6 +262,27 @@ export function TaskDetailDialog({
                 {submitting ? "Turning in…" : "Turn in"}
               </Button>
             )}
+            {task.alternate_link && (
+              <a
+                href={task.alternate_link}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                Open in Google Classroom
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            )}
+          </div>
+        )}
+
+        {typeof task.assigned_grade === "number" && (
+          <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3">
+            <GraduationCap className="h-4 w-4 text-accent" aria-hidden />
+            <span className="text-sm font-medium">
+              Grade: {task.assigned_grade}
+              {typeof task.max_points === "number" ? ` / ${task.max_points}` : ""}
+            </span>
           </div>
         )}
 

@@ -99,10 +99,21 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
         } catch (err) {
           console.error("[google-classroom] submission action failed", err);
           const detail = err instanceof Error ? err.message : String(err);
-          return Response.json(
-            { error: `Could not update your submission: ${detail}` },
-            { status: 502 },
-          );
+          // Some school Google Workspace domains block third-party apps from
+          // calling Classroom's write endpoints (turnIn/reclaim) even with
+          // the correct OAuth scope granted -- that's an admin-level
+          // restriction, not something ClearPath can work around. Surface a
+          // clear message pointing at the guaranteed-working fallback
+          // (opening the assignment directly in Google Classroom) rather
+          // than a raw API error.
+          const isPermissionIssue =
+            /PERMISSION_DENIED|ProjectPermissionDenied|insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(
+              detail,
+            );
+          const message = isPermissionIssue
+            ? "Your school's Google Workspace settings don't allow ClearPath to do this directly — please use Open in Google Classroom below instead."
+            : `Could not update your submission: ${detail}`;
+          return Response.json({ error: message }, { status: 502 });
         }
       },
     },

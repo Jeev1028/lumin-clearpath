@@ -26,10 +26,13 @@ export type Task = {
   google_classroom_id: string | null;
   classroom_course_id: string | null;
   submission_state: string | null;
+  alternate_link: string | null;
+  assigned_grade: number | null;
+  max_points: number | null;
 };
 
 const TASK_FIELDS =
-  "id, title, course, kind, status, due_date, notes, source, description, materials, student_work, rubric, google_classroom_id, classroom_course_id, submission_state";
+  "id, title, course, kind, status, due_date, notes, source, description, materials, student_work, rubric, google_classroom_id, classroom_course_id, submission_state, alternate_link, assigned_grade, max_points";
 
 export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -54,6 +57,9 @@ export async function createTask(
     | "google_classroom_id"
     | "classroom_course_id"
     | "submission_state"
+    | "alternate_link"
+    | "assigned_grade"
+    | "max_points"
   >,
 ): Promise<Task> {
   const { data, error } = await supabase
@@ -223,13 +229,14 @@ export type ClassroomCoursework = {
   materials: MaterialItem[];
   student_work: MaterialItem[];
   rubric: Rubric | null;
+  alternate_link: string | null;
 };
 
 export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> {
   const { data, error } = await supabase
     .from("classroom_coursework")
     .select(
-      "id, course_id, title, description, due_at, max_points, assigned_grade, submission_state, materials, student_work, rubric",
+      "id, course_id, title, description, due_at, max_points, assigned_grade, submission_state, materials, student_work, rubric, alternate_link",
     )
     .order("due_at", { ascending: true, nullsFirst: false });
   if (error) throw error;

@@ -372,6 +372,8 @@ export type Database = {
       }
       tasks: {
         Row: {
+          alternate_link: string | null
+          assigned_grade: number | null
           classroom_course_id: string | null
           course: string | null
           created_at: string
@@ -381,6 +383,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["task_kind"]
           materials: Json
+          max_points: number | null
           notes: string | null
           rubric: Json | null
           source: string
@@ -392,6 +395,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alternate_link?: string | null
+          assigned_grade?: number | null
           classroom_course_id?: string | null
           course?: string | null
           created_at?: string
@@ -401,6 +406,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
           materials?: Json
+          max_points?: number | null
           notes?: string | null
           rubric?: Json | null
           source?: string
@@ -412,6 +418,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alternate_link?: string | null
+          assigned_grade?: number | null
           classroom_course_id?: string | null
           course?: string | null
           created_at?: string
@@ -421,6 +429,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
           materials?: Json
+          max_points?: number | null
           notes?: string | null
           rubric?: Json | null
           source?: string
@@ -492,6 +501,7 @@ export type Database = {
       }
       classroom_coursework: {
         Row: {
+          alternate_link: string | null
           assigned_grade: number | null
           course_id: string
           description: string | null
@@ -508,6 +518,7 @@ export type Database = {
           work_type: string | null
         }
         Insert: {
+          alternate_link?: string | null
           assigned_grade?: number | null
           course_id: string
           description?: string | null
@@ -524,6 +535,7 @@ export type Database = {
           work_type?: string | null
         }
         Update: {
+          alternate_link?: string | null
           assigned_grade?: number | null
           course_id?: string
           description?: string | null

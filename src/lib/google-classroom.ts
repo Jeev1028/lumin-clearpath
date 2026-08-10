@@ -90,6 +90,13 @@ export type ClassroomCourseWork = {
   dueTime?: { hours?: number; minutes?: number };
   state: string;
   materials?: ClassroomMaterial[];
+  // Direct link to this assignment inside real Google Classroom -- kept as
+  // a guaranteed-working fallback for turning work in, since some school
+  // Google Workspace domains block third-party apps from calling the
+  // Classroom API's write endpoints even with the right OAuth scope
+  // granted (a domain-level admin restriction, not something this app can
+  // work around).
+  alternateLink?: string;
 };
 
 export type ClassroomSubmission = {
