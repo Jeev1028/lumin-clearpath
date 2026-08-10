@@ -18,7 +18,7 @@ const suggestions = [
 
 export function SiteChatWidget() {
   const [input, setInput] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: "/api/site-chat" }),
@@ -27,8 +27,14 @@ export function SiteChatWidget() {
 
   const isBusy = status === "submitted" || status === "streaming";
 
+  // Scroll only the widget's own internal message list — never the page.
+  // Skipped on first mount (no messages yet) so the homepage never jumps
+  // down to this section on load; it only activates once a conversation
+  // actually starts.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const el = scrollContainerRef.current;
+    el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
   function submit(text?: string) {
@@ -40,7 +46,7 @@ export function SiteChatWidget() {
 
   return (
     <div className="mx-auto max-w-2xl rounded-3xl border border-border/70 bg-card/70 p-6 shadow-panel backdrop-blur-sm sm:p-8">
-      <div className="flex h-80 flex-col gap-4 overflow-y-auto pr-1">
+      <div ref={scrollContainerRef} className="flex h-80 flex-col gap-4 overflow-y-auto pr-1">
         {messages.length === 0 && (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <Sparkles className="mb-3 h-6 w-6 text-accent" aria-hidden />
@@ -94,7 +100,6 @@ export function SiteChatWidget() {
             Thinking…
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/70 bg-background/40 p-2">

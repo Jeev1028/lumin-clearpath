@@ -27,7 +27,7 @@ const suggestions = [
 export function ChatWindow({ threadId, initialMessages, accessToken, onActivity }: Props) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
     id: threadId,
@@ -52,7 +52,8 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
   }, [isBusy]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
   function submit() {
@@ -65,7 +66,7 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
 
   return (
     <div className="flex h-full flex-1 flex-col bg-deep">
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
           {messages.length === 0 && (
             <div className="pt-16 text-center">
@@ -132,7 +133,6 @@ export function ChatWindow({ threadId, initialMessages, accessToken, onActivity 
               Lumin is thinking…
             </div>
           )}
-          <div ref={bottomRef} />
         </div>
       </div>
 

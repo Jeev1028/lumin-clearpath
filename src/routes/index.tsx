@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { LuminMark } from "@/components/lumin/LuminMark";
+import { FloatingChatButton } from "@/components/lumin/FloatingChatButton";
 import { SiteChatWidget } from "@/components/lumin/SiteChatWidget";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -251,7 +252,7 @@ function Index() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-6 pb-24">
+        <section id="site-chat" className="mx-auto max-w-5xl px-6 pb-24">
           <h2 className="text-center text-2xl font-semibold sm:text-3xl">
             How can this site help me?
           </h2>
@@ -263,6 +264,8 @@ function Index() {
           </div>
         </section>
       </main>
+
+      <FloatingChatButton targetId="site-chat" />
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
         <p>ClearPath · Lumin AI · To illuminate your educational journey</p>
