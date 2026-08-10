@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarClock, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, Download, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { buildIcs, downloadIcs } from "@/lib/ics";
 import {
   CATEGORY_LABELS,
   DAY_NAMES,
@@ -242,6 +243,12 @@ function SchedulePage() {
     }
   }
 
+  function handleExportIcs() {
+    const contents = buildIcs(events, oneOffEvents);
+    downloadIcs("clearpath-schedule.ics", contents);
+    toast.success("Calendar exported.");
+  }
+
   async function handleDisconnect() {
     if (!session) return;
     setCalendarBusy(true);
@@ -318,6 +325,30 @@ function SchedulePage() {
               </Button>
             )}
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
+              <Download className="h-5 w-5 text-accent" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Export calendar</p>
+              <p className="text-xs text-muted-foreground">
+                Download a .ics file to import into Apple Calendar, Outlook, or any other calendar
+                app — no Google account needed.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportIcs}
+            className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Export .ics
+          </Button>
         </div>
 
         <form
