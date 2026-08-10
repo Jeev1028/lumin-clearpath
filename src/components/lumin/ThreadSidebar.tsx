@@ -12,6 +12,10 @@ type Props = {
   onNewThread: () => void;
   onDeleteThread: (id: string) => void;
   onSignOut: () => void;
+  /** Called after any navigation-triggering action — used to close the
+   * mobile drawer this sidebar may be rendered inside of. No-op on the
+   * persistent desktop sidebar. */
+  onNavigate?: () => void;
 };
 
 export function ThreadSidebar({
@@ -20,15 +24,19 @@ export function ThreadSidebar({
   onNewThread,
   onDeleteThread,
   onSignOut,
+  onNavigate,
 }: Props) {
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="border-b border-sidebar-border p-4">
-        <Link to="/">
+        <Link to="/" onClick={onNavigate}>
           <LuminWordmark />
         </Link>
         <Button
-          onClick={onNewThread}
+          onClick={() => {
+            onNewThread();
+            onNavigate?.();
+          }}
           className="mt-4 w-full bg-gradient-lumin text-primary-foreground"
           size="sm"
         >
@@ -49,6 +57,7 @@ export function ThreadSidebar({
             <Link
               to="/chat/$threadId"
               params={{ threadId: thread.id }}
+              onClick={onNavigate}
               className="flex-1 truncate px-2 py-2 text-sm text-sidebar-foreground"
             >
               {thread.title}
@@ -57,7 +66,7 @@ export function ThreadSidebar({
               type="button"
               aria-label="Delete conversation"
               onClick={() => onDeleteThread(thread.id)}
-              className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+              className="rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
             </button>

@@ -87,6 +87,22 @@ function AuthPage() {
       void navigate({ to: "/chat" });
     }
 
+    // Google's button needs a fixed pixel width — measure the actual
+    // container so it never overflows narrower phone screens, and
+    // re-measure on resize/orientation change.
+    function renderGoogleButton() {
+      if (!window.google || !googleButtonRef.current) return;
+      const available = googleButtonRef.current.offsetWidth || 360;
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "filled_black",
+        size: "large",
+        shape: "pill",
+        text: "continue_with",
+        logo_alignment: "left",
+        width: Math.min(360, available),
+      });
+    }
+
     function init() {
       if (!window.google || !googleButtonRef.current) return;
       window.google.accounts.id.initialize({
@@ -94,25 +110,23 @@ function AuthPage() {
         callback: (response) => void handleCredentialResponse(response),
         use_fedcm_for_prompt: true,
       });
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "filled_black",
-        size: "large",
-        shape: "pill",
-        text: "continue_with",
-        logo_alignment: "left",
-        width: 360,
-      });
+      renderGoogleButton();
     }
+
+    window.addEventListener("resize", renderGoogleButton);
 
     if (window.google) {
       init();
-      return;
+      return () => window.removeEventListener("resize", renderGoogleButton);
     }
 
     const existing = document.getElementById("google-identity-script");
     if (existing) {
       existing.addEventListener("load", init);
-      return () => existing.removeEventListener("load", init);
+      return () => {
+        existing.removeEventListener("load", init);
+        window.removeEventListener("resize", renderGoogleButton);
+      };
     }
 
     const script = document.createElement("script");
@@ -122,7 +136,7 @@ function AuthPage() {
     script.defer = true;
     script.onload = init;
     document.head.appendChild(script);
-    return undefined;
+    return () => window.removeEventListener("resize", renderGoogleButton);
   }, [navigate]);
 
   async function handleSubmit(event: React.FormEvent) {

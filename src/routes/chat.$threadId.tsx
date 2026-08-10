@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { Menu, MessageSquarePlus } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { UIMessage } from "ai";
 import { toast } from "sonner";
 
 import { ChatWindow } from "@/components/lumin/ChatWindow";
-import { LuminMark } from "@/components/lumin/LuminMark";
+import { LuminMark, LuminWordmark } from "@/components/lumin/LuminMark";
 import { ThreadSidebar } from "@/components/lumin/ThreadSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,10 +32,17 @@ function ChatThreadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { session, user, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
   }, [loading, user, navigate]);
+
+  // Close the mobile drawer automatically if the thread changes (e.g. from
+  // a link click, which already closes it, but also covers any other nav).
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [threadId]);
 
   const threadsQuery = useQuery({
     queryKey: ["threads"],
@@ -95,25 +103,71 @@ function ChatThreadPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="hidden md:flex">
-        <ThreadSidebar
-          threads={threadsQuery.data ?? []}
-          activeId={threadId}
-          onNewThread={handleNewThread}
-          onDeleteThread={handleDeleteThread}
-          onSignOut={handleSignOut}
+    <div className="flex h-screen flex-col overflow-hidden">
+      {/* Mobile-only top bar — the persistent sidebar is hidden below md,
+          so this is the only way to reach thread switching / new chat /
+          sign out on a phone. */}
+      <div className="flex items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 md:hidden">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open conversation menu"
+          className="rounded-lg p-2 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <LuminWordmark className="scale-90" />
+        <button
+          type="button"
+          onClick={handleNewThread}
+          aria-label="New conversation"
+          className="rounded-lg p-2 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <MessageSquarePlus className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className="hidden md:flex">
+          <ThreadSidebar
+            threads={threadsQuery.data ?? []}
+            activeId={threadId}
+            onNewThread={handleNewThread}
+            onDeleteThread={handleDeleteThread}
+            onSignOut={handleSignOut}
+          />
+        </div>
+        <ChatWindow
+          key={threadId}
+          threadId={threadId}
+          initialMessages={initialMessages}
+          accessToken={session.access_token}
+          onActivity={() => {
+            void queryClient.invalidateQueries({ queryKey: ["threads"] });
+          }}
         />
       </div>
-      <ChatWindow
-        key={threadId}
-        threadId={threadId}
-        initialMessages={initialMessages}
-        accessToken={session.access_token}
-        onActivity={() => {
-          void queryClient.invalidateQueries({ queryKey: ["threads"] });
-        }}
-      />
+
+      {/* Mobile drawer */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] shadow-2xl">
+            <ThreadSidebar
+              threads={threadsQuery.data ?? []}
+              activeId={threadId}
+              onNewThread={handleNewThread}
+              onDeleteThread={handleDeleteThread}
+              onSignOut={handleSignOut}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
