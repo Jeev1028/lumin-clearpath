@@ -41,6 +41,12 @@ function AccountPage() {
   } | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
 
+  const [backupStatus, setBackupStatus] = useState<{ total: number; remaining: number } | null>(
+    null,
+  );
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -62,6 +68,64 @@ function AccountPage() {
     const { data, error } = await supabase.auth.mfa.listFactors();
     if (error) return;
     setMfaFactors(data.all);
+    const hasVerifiedTotp = data.all.some((f) => f.factor_type === "totp" && f.status === "verified");
+    if (hasVerifiedTotp) await loadBackupStatus();
+  }
+
+  async function authHeader() {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new Error("Not signed in");
+    return { Authorization: `Bearer ${data.session.access_token}` };
+  }
+
+  async function loadBackupStatus() {
+    try {
+      const headers = await authHeader();
+      const res = await fetch("/api/mfa-backup-codes/status", { headers });
+      if (!res.ok) return;
+      const data = (await res.json()) as { total: number; remaining: number };
+      setBackupStatus(data);
+    } catch {
+      // non-fatal — the "Generate codes" button still works without this
+    }
+  }
+
+  async function handleGenerateBackupCodes() {
+    setBackupBusy(true);
+    try {
+      const headers = await authHeader();
+      const res = await fetch("/api/mfa-backup-codes/generate", {
+        method: "POST",
+        headers,
+      });
+      const data = (await res.json().catch(() => ({}))) as { codes?: string[]; error?: string };
+      if (!res.ok || !data.codes) throw new Error(data.error || "Could not generate backup codes.");
+      setBackupCodes(data.codes);
+      setBackupStatus({ total: data.codes.length, remaining: data.codes.length });
+      toast.success("Backup codes generated — save them somewhere safe.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not generate backup codes.");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  function handleDownloadBackupCodes() {
+    if (!backupCodes) return;
+    const contents = [
+      `ClearPath backup codes`,
+      `Each code works once. Keep this somewhere safe.`,
+      ``,
+      ...backupCodes,
+      ``,
+    ].join("\n");
+    const blob = new Blob([contents], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "clearpath-backup-codes.txt";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   if (loading || !user) {
@@ -157,6 +221,7 @@ function AccountPage() {
       setEnrollData(null);
       setVerifyCode("");
       await loadFactors();
+      await handleGenerateBackupCodes();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "That code didn't work. Try again.");
     } finally {
@@ -175,6 +240,14 @@ function AccountPage() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId: verifiedTotp.id });
       if (error) throw error;
+      try {
+        const headers = await authHeader();
+        await fetch("/api/mfa-backup-codes/clear", { method: "POST", headers });
+      } catch {
+        // non-fatal — codes are already useless without an enrolled factor
+      }
+      setBackupStatus(null);
+      setBackupCodes(null);
       toast.success("Two-factor authentication disabled.");
       await loadFactors();
     } catch (err) {
@@ -357,6 +430,72 @@ function AccountPage() {
                 to regain access.
               </p>
             </form>
+          )}
+
+          {verifiedTotp && !enrollData && (
+            <div className="mt-6 border-t border-border/60 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Backup codes</p>
+                  <p className="text-xs text-muted-foreground">
+                    {backupStatus
+                      ? `${backupStatus.remaining} of ${backupStatus.total} unused codes remaining.`
+                      : "One-time codes you can use to sign in if you lose your authenticator app."}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={backupBusy}
+                  onClick={() => void handleGenerateBackupCodes()}
+                  className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                >
+                  {backupBusy
+                    ? "Generating…"
+                    : backupStatus && backupStatus.total > 0
+                      ? "Regenerate codes"
+                      : "Generate codes"}
+                </Button>
+              </div>
+
+              {backupCodes && (
+                <div className="mt-4 rounded-xl border border-border/60 bg-background/40 p-4">
+                  <p className="text-xs text-muted-foreground">
+                    Save these somewhere safe — each code works once, and you won&apos;t be able to
+                    see them again.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm">
+                    {backupCodes.map((code) => (
+                      <span
+                        key={code}
+                        className="rounded-lg border border-border/50 bg-card/60 px-3 py-1.5 text-center"
+                      >
+                        {code}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadBackupCodes}
+                      className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                    >
+                      Download .txt
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setBackupCodes(null)}
+                    >
+                      Done, I saved them
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </main>

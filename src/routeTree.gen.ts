@@ -26,6 +26,10 @@ import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/goog
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
 import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api/google-calendar/sync'
+import { Route as ApiMfaBackupCodesClearRouteImport } from './routes/api/mfa-backup-codes/clear'
+import { Route as ApiMfaBackupCodesGenerateRouteImport } from './routes/api/mfa-backup-codes/generate'
+import { Route as ApiMfaBackupCodesStatusRouteImport } from './routes/api/mfa-backup-codes/status'
+import { Route as ApiMfaBackupCodesVerifyRouteImport } from './routes/api/mfa-backup-codes/verify'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -114,6 +118,27 @@ const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
   path: '/api/google-calendar/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMfaBackupCodesClearRoute = ApiMfaBackupCodesClearRouteImport.update({
+  id: '/api/mfa-backup-codes/clear',
+  path: '/api/mfa-backup-codes/clear',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMfaBackupCodesGenerateRoute =
+  ApiMfaBackupCodesGenerateRouteImport.update({
+    id: '/api/mfa-backup-codes/generate',
+    path: '/api/mfa-backup-codes/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMfaBackupCodesStatusRoute = ApiMfaBackupCodesStatusRouteImport.update({
+  id: '/api/mfa-backup-codes/status',
+  path: '/api/mfa-backup-codes/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMfaBackupCodesVerifyRoute = ApiMfaBackupCodesVerifyRouteImport.update({
+  id: '/api/mfa-backup-codes/verify',
+  path: '/api/mfa-backup-codes/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -133,6 +158,10 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
+  '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
+  '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
+  '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,6 +181,10 @@ export interface FileRoutesByTo {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
+  '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
+  '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
+  '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,6 +205,10 @@ export interface FileRoutesById {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
+  '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
+  '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
+  '/api/mfa-backup-codes/verify': typeof ApiMfaBackupCodesVerifyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,6 +230,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/mfa-backup-codes/clear'
+    | '/api/mfa-backup-codes/generate'
+    | '/api/mfa-backup-codes/status'
+    | '/api/mfa-backup-codes/verify'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -212,6 +253,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/mfa-backup-codes/clear'
+    | '/api/mfa-backup-codes/generate'
+    | '/api/mfa-backup-codes/status'
+    | '/api/mfa-backup-codes/verify'
   id:
     | '__root__'
     | '/'
@@ -231,6 +276,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/mfa-backup-codes/clear'
+    | '/api/mfa-backup-codes/generate'
+    | '/api/mfa-backup-codes/status'
+    | '/api/mfa-backup-codes/verify'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -251,6 +300,10 @@ export interface RootRouteChildren {
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStartRoute: typeof ApiGoogleCalendarStartRoute
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
+  ApiMfaBackupCodesClearRoute: typeof ApiMfaBackupCodesClearRoute
+  ApiMfaBackupCodesGenerateRoute: typeof ApiMfaBackupCodesGenerateRoute
+  ApiMfaBackupCodesStatusRoute: typeof ApiMfaBackupCodesStatusRoute
+  ApiMfaBackupCodesVerifyRoute: typeof ApiMfaBackupCodesVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -374,6 +427,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mfa-backup-codes/clear': {
+      id: '/api/mfa-backup-codes/clear'
+      path: '/api/mfa-backup-codes/clear'
+      fullPath: '/api/mfa-backup-codes/clear'
+      preLoaderRoute: typeof ApiMfaBackupCodesClearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mfa-backup-codes/generate': {
+      id: '/api/mfa-backup-codes/generate'
+      path: '/api/mfa-backup-codes/generate'
+      fullPath: '/api/mfa-backup-codes/generate'
+      preLoaderRoute: typeof ApiMfaBackupCodesGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mfa-backup-codes/status': {
+      id: '/api/mfa-backup-codes/status'
+      path: '/api/mfa-backup-codes/status'
+      fullPath: '/api/mfa-backup-codes/status'
+      preLoaderRoute: typeof ApiMfaBackupCodesStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mfa-backup-codes/verify': {
+      id: '/api/mfa-backup-codes/verify'
+      path: '/api/mfa-backup-codes/verify'
+      fullPath: '/api/mfa-backup-codes/verify'
+      preLoaderRoute: typeof ApiMfaBackupCodesVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -395,6 +476,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStartRoute: ApiGoogleCalendarStartRoute,
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
+  ApiMfaBackupCodesClearRoute: ApiMfaBackupCodesClearRoute,
+  ApiMfaBackupCodesGenerateRoute: ApiMfaBackupCodesGenerateRoute,
+  ApiMfaBackupCodesStatusRoute: ApiMfaBackupCodesStatusRoute,
+  ApiMfaBackupCodesVerifyRoute: ApiMfaBackupCodesVerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

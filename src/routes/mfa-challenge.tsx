@@ -6,7 +6,7 @@ import { LuminWordmark } from "@/components/lumin/LuminMark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { markMfaSatisfiedWithBackupCode, useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/mfa-challenge")({
@@ -21,6 +21,8 @@ function MfaChallengePage() {
   const { session, loading, needsMfa } = useAuth();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState("");
 
   useEffect(() => {
     if (loading) return;
@@ -56,6 +58,36 @@ function MfaChallengePage() {
     }
   }
 
+  async function handleBackupCodeSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!session) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/mfa-backup-codes/verify", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: backupCode }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; remaining?: number };
+      if (!res.ok || !data.ok) throw new Error(data.error || "That backup code didn't work.");
+
+      markMfaSatisfiedWithBackupCode(session.user.id);
+      toast.success(
+        typeof data.remaining === "number"
+          ? `Backup code accepted — ${data.remaining} left.`
+          : "Backup code accepted.",
+      );
+      void navigate({ to: "/chat" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "That backup code didn't work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSignOutInstead() {
     await supabase.auth.signOut();
     await navigate({ to: "/auth" });
@@ -77,37 +109,74 @@ function MfaChallengePage() {
         <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card/80 p-8 shadow-panel backdrop-blur-sm">
           <h1 className="text-2xl font-semibold">Verify it&apos;s you</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter the 6-digit code from your authenticator app to finish signing in.
+            {useBackupCode
+              ? "Enter one of your unused backup codes to finish signing in."
+              : "Enter the 6-digit code from your authenticator app to finish signing in."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="mfa-code">Authentication code</Label>
-              <Input
-                id="mfa-code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="123456"
-                maxLength={6}
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                className="text-center text-lg tracking-[0.5em]"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={busy || code.length !== 6}
-              className="w-full bg-gradient-lumin text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-[1.02]"
-            >
-              {busy ? "Verifying…" : "Verify"}
-            </Button>
-          </form>
+          {useBackupCode ? (
+            <form onSubmit={handleBackupCodeSubmit} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="backup-code">Backup code</Label>
+                <Input
+                  id="backup-code"
+                  autoComplete="one-time-code"
+                  placeholder="XXXXX-XXXXX"
+                  required
+                  value={backupCode}
+                  onChange={(e) => setBackupCode(e.target.value)}
+                  className="text-center text-lg tracking-widest uppercase"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={busy || backupCode.trim().length === 0}
+                className="w-full bg-gradient-lumin text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-[1.02]"
+              >
+                {busy ? "Verifying…" : "Verify"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mfa-code">Authentication code</Label>
+                <Input
+                  id="mfa-code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  maxLength={6}
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  className="text-center text-lg tracking-[0.5em]"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={busy || code.length !== 6}
+                className="w-full bg-gradient-lumin text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-[1.02]"
+              >
+                {busy ? "Verifying…" : "Verify"}
+              </Button>
+            </form>
+          )}
 
           <button
             type="button"
-            onClick={() => void handleSignOutInstead()}
+            onClick={() => {
+              setUseBackupCode((v) => !v);
+              setCode("");
+              setBackupCode("");
+            }}
             className="mt-6 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            {useBackupCode ? "Use my authenticator app instead" : "Use a backup code instead"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSignOutInstead()}
+            className="mt-2 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Sign out instead
           </button>

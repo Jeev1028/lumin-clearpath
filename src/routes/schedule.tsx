@@ -79,6 +79,7 @@ function SchedulePage() {
   const [oneOffDraft, setOneOffDraft] = useState(emptyOneOffDraft);
   const [busy, setBusy] = useState(false);
   const [calendarBusy, setCalendarBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -205,6 +206,7 @@ function SchedulePage() {
   async function handleSync(options?: { silent?: boolean }) {
     if (!session) return;
     setCalendarBusy(true);
+    setSyncing(true);
     try {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await fetch("/api/google-calendar/sync", {
@@ -236,6 +238,7 @@ function SchedulePage() {
       );
     } finally {
       setCalendarBusy(false);
+      setSyncing(false);
     }
   }
 
@@ -290,10 +293,10 @@ function SchedulePage() {
                   variant="outline"
                   disabled={calendarBusy}
                   onClick={() => void handleSync()}
-                  className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                  className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground disabled:opacity-60"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                  Sync now
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} aria-hidden />
+                  {syncing ? "Syncing…" : "Sync now"}
                 </Button>
                 <Button
                   size="sm"
