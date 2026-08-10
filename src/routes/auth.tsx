@@ -57,10 +57,11 @@ const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | un
 function AuthPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,7 +144,13 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
+      if (mode === "reset") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setResetSent(true);
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -162,6 +169,11 @@ function AuthPage() {
     }
   }
 
+  function switchMode(next: "signin" | "signup" | "reset") {
+    setMode(next);
+    setResetSent(false);
+  }
+
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-deep">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
@@ -176,81 +188,123 @@ function AuthPage() {
       <main className="flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card/80 p-8 shadow-panel backdrop-blur-sm">
           <h1 className="text-2xl font-semibold">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin" && "Welcome back"}
+            {mode === "signup" && "Create your account"}
+            {mode === "reset" && "Reset your password"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Your conversations stay saved to your ClearPath account.
+            {mode === "reset"
+              ? "We'll email you a link to set a new password."
+              : "Your conversations stay saved to your ClearPath account."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+          {mode === "reset" && resetSent ? (
+            <div className="mt-6 space-y-4">
+              <p className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm text-muted-foreground">
+                Check your inbox — we sent a password reset link to{" "}
+                <span className="text-foreground">{email}</span>.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                onClick={() => switchMode("signin")}
+              >
+                Back to sign in
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full bg-gradient-lumin text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-[1.02]"
-            >
-              {mode === "signin" ? "Sign in" : "Sign up"}
-            </Button>
-          </form>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                {mode !== "reset" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      {mode === "signin" && (
+                        <button
+                          type="button"
+                          onClick={() => switchMode("reset")}
+                          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full bg-gradient-lumin text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-[1.02]"
+                >
+                  {mode === "signin" && "Sign in"}
+                  {mode === "signup" && "Sign up"}
+                  {mode === "reset" && "Send reset link"}
+                </Button>
+              </form>
 
-          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
+              {mode !== "reset" && (
+                <>
+                  <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
 
-          <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
-          {!GOOGLE_CLIENT_ID && (
-            <p className="text-center text-xs text-destructive">
-              Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
-            </p>
+                  <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
+                  {!GOOGLE_CLIENT_ID && (
+                    <p className="text-center text-xs text-destructive">
+                      Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
+                    </p>
+                  )}
+                </>
+              )}
+
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                By continuing, you agree to ClearPath&apos;s{" "}
+                <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+
+              <button
+                type="button"
+                className="mt-6 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
+                onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
+              >
+                {mode === "signin" && "New to ClearPath? Create an account"}
+                {mode === "signup" && "Already have an account? Sign in"}
+                {mode === "reset" && "Back to sign in"}
+              </button>
+            </>
           )}
-
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            By continuing, you agree to ClearPath's{" "}
-            <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-
-          <button
-            type="button"
-            className="mt-6 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          >
-            {mode === "signin"
-              ? "New to ClearPath? Create an account"
-              : "Already have an account? Sign in"}
-          </button>
         </div>
       </main>
     </div>

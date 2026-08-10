@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -43,6 +44,11 @@ const AuthRoute = AuthRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScheduleRoute = ScheduleRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/privacy'
+    | '/reset-password'
     | '/schedule'
     | '/tasks'
     | '/terms'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/privacy'
+    | '/reset-password'
     | '/schedule'
     | '/tasks'
     | '/terms'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/auth'
     | '/privacy'
+    | '/reset-password'
     | '/schedule'
     | '/tasks'
     | '/terms'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ScheduleRoute: typeof ScheduleRoute
   TasksRoute: typeof TasksRoute
   TermsRoute: typeof TermsRoute
@@ -255,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schedule': {
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ScheduleRoute: ScheduleRoute,
   TasksRoute: TasksRoute,
   TermsRoute: TermsRoute,
