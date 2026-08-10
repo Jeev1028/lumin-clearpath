@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, Megaphone, Paperclip, RefreshCw } from "lucide-react";
+import { BookOpenCheck, GraduationCap, Megaphone, Paperclip, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { TaskDetailDialog, type TaskDetailInfo } from "@/components/lumin/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -42,6 +43,8 @@ function ClassroomPage() {
   const [materials, setMaterials] = useState<ClassroomMaterial[]>([]);
   const [connectBusy, setConnectBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [detailTask, setDetailTask] = useState<TaskDetailInfo | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -151,6 +154,21 @@ function ClassroomPage() {
     }
   }
 
+  function openCourseworkDetail(course: ClassroomCourse, work: ClassroomCoursework) {
+    setDetailTask({
+      title: work.title,
+      course: course.name,
+      due_date: work.due_at ? work.due_at.slice(0, 10) : null,
+      description: work.description,
+      materials: work.materials,
+      rubric: work.rubric,
+      source: "classroom",
+      classroom_course_id: course.id,
+      google_classroom_id: work.id,
+    });
+    setDetailOpen(true);
+  }
+
   const courseworkByCourseId = useMemo(() => {
     const map = new Map<string, ClassroomCoursework[]>();
     for (const cw of coursework) {
@@ -187,8 +205,8 @@ function ClassroomPage() {
       <main className="mx-auto max-w-5xl px-6 pb-24">
         <h1 className="text-3xl font-bold">Classroom</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your Google Classroom courses, announcements and materials — assignments are
-          automatically added to{" "}
+          Your Google Classroom courses, coursework, announcements and materials — assignments
+          are also added to{" "}
           <Link to="/tasks" className="underline underline-offset-4">
             Tasks
           </Link>
@@ -276,12 +294,33 @@ function ClassroomPage() {
                       {[course.section, course.room].filter(Boolean).join(" · ")}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {work.length} coursework item{work.length === 1 ? "" : "s"} — see them in{" "}
-                    <Link to="/tasks" className="underline underline-offset-4">
-                      Tasks
-                    </Link>
-                  </p>
+
+                  {work.length > 0 && (
+                    <div className="mt-4 border-t border-border/60 pt-4">
+                      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <BookOpenCheck className="h-3.5 w-3.5" aria-hidden />
+                        Coursework
+                      </p>
+                      <div className="space-y-2">
+                        {work.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => openCourseworkDetail(course, item)}
+                            className="w-full rounded-xl border border-border/60 bg-background/40 p-3 text-left text-sm transition-colors hover:border-accent/40"
+                          >
+                            <p className="font-medium">{item.title}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {item.due_at ? `Due ${item.due_at.slice(0, 10)}` : "No due date"}
+                              {typeof item.assigned_grade === "number" && item.max_points
+                                ? ` · ${item.assigned_grade}/${item.max_points}`
+                                : ""}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {courseAnnouncements.length > 0 && (
                     <div className="mt-4 border-t border-border/60 pt-4">
@@ -351,6 +390,8 @@ function ClassroomPage() {
           </div>
         )}
       </main>
+
+      <TaskDetailDialog task={detailTask} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 }

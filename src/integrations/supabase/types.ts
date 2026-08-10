@@ -372,13 +372,17 @@ export type Database = {
       }
       tasks: {
         Row: {
+          classroom_course_id: string | null
           course: string | null
           created_at: string
+          description: string | null
           due_date: string | null
           google_classroom_id: string | null
           id: string
           kind: Database["public"]["Enums"]["task_kind"]
+          materials: Json
           notes: string | null
+          rubric: Json | null
           source: string
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -386,13 +390,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          classroom_course_id?: string | null
           course?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           google_classroom_id?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
+          materials?: Json
           notes?: string | null
+          rubric?: Json | null
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -400,13 +408,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          classroom_course_id?: string | null
           course?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           google_classroom_id?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
+          materials?: Json
           notes?: string | null
+          rubric?: Json | null
           source?: string
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -448,6 +460,7 @@ export type Database = {
           name: string
           room: string | null
           section: string | null
+          teacher_email: string | null
           updated_at: string
           user_id: string
         }
@@ -456,6 +469,7 @@ export type Database = {
           name: string
           room?: string | null
           section?: string | null
+          teacher_email?: string | null
           updated_at?: string
           user_id: string
         }
@@ -464,6 +478,7 @@ export type Database = {
           name?: string
           room?: string | null
           section?: string | null
+          teacher_email?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -476,7 +491,9 @@ export type Database = {
           description: string | null
           due_at: string | null
           id: string
+          materials: Json
           max_points: number | null
+          rubric: Json | null
           submission_state: string | null
           title: string
           updated_at: string
@@ -489,7 +506,9 @@ export type Database = {
           description?: string | null
           due_at?: string | null
           id: string
+          materials?: Json
           max_points?: number | null
+          rubric?: Json | null
           submission_state?: string | null
           title: string
           updated_at?: string
@@ -502,12 +521,44 @@ export type Database = {
           description?: string | null
           due_at?: string | null
           id?: string
+          materials?: Json
           max_points?: number | null
+          rubric?: Json | null
           submission_state?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           work_type?: string | null
+        }
+        Relationships: []
+      }
+      teacher_messages: {
+        Row: {
+          course_id: string
+          coursework_id: string | null
+          id: string
+          message: string
+          sent_at: string
+          teacher_email: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          coursework_id?: string | null
+          id?: string
+          message: string
+          sent_at?: string
+          teacher_email: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          coursework_id?: string | null
+          id?: string
+          message?: string
+          sent_at?: string
+          teacher_email?: string
+          user_id?: string
         }
         Relationships: []
       }

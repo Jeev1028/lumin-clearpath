@@ -89,6 +89,7 @@ export type ClassroomCourseWork = {
   dueDate?: { year: number; month: number; day: number };
   dueTime?: { hours?: number; minutes?: number };
   state: string;
+  materials?: ClassroomMaterial[];
 };
 
 export type ClassroomSubmission = {
@@ -109,6 +110,47 @@ export type ClassroomMaterial = {
   link?: { url?: string; title?: string };
   youTubeVideo?: { title?: string; alternateLink?: string };
   form?: { title?: string; formUrl?: string };
+};
+
+export type MaterialSummary = { title: string; url: string | null };
+
+/** Flattens Classroom's discriminated-union material shape into a simple
+ * {title, url} the UI can render without caring which attachment type it is. */
+export function summarizeMaterial(material: ClassroomMaterial): MaterialSummary | null {
+  if (material.driveFile?.driveFile) {
+    return {
+      title: material.driveFile.driveFile.title ?? "Drive file",
+      url: material.driveFile.driveFile.alternateLink ?? null,
+    };
+  }
+  if (material.link) {
+    return { title: material.link.title ?? material.link.url ?? "Link", url: material.link.url ?? null };
+  }
+  if (material.youTubeVideo) {
+    return {
+      title: material.youTubeVideo.title ?? "YouTube video",
+      url: material.youTubeVideo.alternateLink ?? null,
+    };
+  }
+  if (material.form) {
+    return { title: material.form.title ?? "Form", url: material.form.formUrl ?? null };
+  }
+  return null;
+}
+
+export type ClassroomTeacher = {
+  userId: string;
+  profile?: { name?: { fullName?: string }; emailAddress?: string };
+};
+
+export type ClassroomRubricCriterion = {
+  title?: string;
+  levels?: { title?: string; points?: number; description?: string }[];
+};
+
+export type ClassroomRubric = {
+  id: string;
+  criteria?: ClassroomRubricCriterion[];
 };
 
 export type ClassroomCourseWorkMaterial = {
@@ -164,6 +206,36 @@ export async function listCourseWork(
     `/courses/${courseId}/courseWork?courseWorkStates=PUBLISHED`,
     "courseWork",
   );
+}
+
+/** The teachers of a course, with their profile (including email if the
+ * classroom.profile.emails scope was granted). Used only to relay a
+ * student's private note to the teacher by real email -- the Classroom API
+ * has no comment/messaging endpoint of its own. */
+export async function listTeachers(
+  accessToken: string,
+  courseId: string,
+): Promise<ClassroomTeacher[]> {
+  return classroomFetchAllPages<ClassroomTeacher>(accessToken, `/courses/${courseId}/teachers`, "teachers");
+}
+
+/** Rubrics are a newer, not-universally-enabled Classroom feature -- returns
+ * an empty array rather than throwing if the endpoint 404s for a course
+ * that doesn't have rubrics turned on for this item. */
+export async function listRubrics(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+): Promise<ClassroomRubric[]> {
+  try {
+    return await classroomFetchAllPages<ClassroomRubric>(
+      accessToken,
+      `/courses/${courseId}/courseWork/${courseWorkId}/rubrics`,
+      "rubrics",
+    );
+  } catch {
+    return [];
+  }
 }
 
 /** All of "my" submissions across every coursework item in a course, in one

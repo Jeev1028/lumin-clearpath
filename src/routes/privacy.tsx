@@ -17,7 +17,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" effectiveDate="August 10, 2026">
+    <LegalLayout title="Privacy Policy" effectiveDate="August 13, 2026">
       <p>
         ClearPath ("ClearPath," "we," "us," or "our") provides Lumin AI, a study platform that
         helps students track tasks, manage a class schedule, and work with an academically honest
@@ -42,9 +42,11 @@ function PrivacyPage() {
         <li>
           <strong>Connected Google services (optional)</strong> — if you choose to connect Google
           Classroom or Google Calendar, we access only the specific data needed to display your
-          courses, coursework, and calendar events inside ClearPath (for example, course names,
-          assignment titles and due dates, and calendar event details). We request the minimum
-          scopes necessary and never request access you have not explicitly approved.
+          courses, coursework, grades, rubrics, announcements, attached materials, and calendar
+          events inside ClearPath. If you send a private note to a teacher (see Section 5), we
+          also read the read-only teacher roster for that course (name and email address) solely
+          to deliver your message. We request the minimum scopes necessary and never request
+          access you have not explicitly approved.
         </li>
         <li>
           <strong>Usage information</strong> — basic technical data such as browser type,
@@ -62,7 +64,8 @@ function PrivacyPage() {
           plan when you use the study planner on the Tasks or Schedule page. See Section 4 below
           for more detail.
         </li>
-        <li>To sync coursework, assignments, and events from Google Classroom and Google Calendar, if you connect them.</li>
+        <li>To sync coursework, grades, rubrics, announcements, materials, and events from Google Classroom and Google Calendar, if you connect them.</li>
+        <li>To relay a private note you write to a teacher, by email, if you use that feature. See Section 5.</li>
         <li>To maintain the security and integrity of the platform, including detecting abuse.</li>
         <li>To communicate with you about your account or important changes to the service.</li>
       </ul>
@@ -82,8 +85,9 @@ function PrivacyPage() {
         , including the Limited Use requirements. Data obtained through Google APIs is used only
         to provide and improve the ClearPath features you directly interact with, is never used
         for advertising, and is never sold or shared with third parties except as necessary to
-        operate the service (for example, our database provider) or as required by law. You can
-        revoke ClearPath's access to your Google data at any time from your{" "}
+        operate the service (for example, our database provider), to relay a message you
+        specifically ask us to send (Section 5), or as required by law. You can revoke ClearPath's
+        access to your Google data at any time from your{" "}
         <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">
           Google Account permissions page
         </a>
@@ -107,8 +111,27 @@ function PrivacyPage() {
         regenerate it. This data is used only to build the plan shown to you — it is never used
         to train third-party models, shared with your school, or shared with anyone else.
       </p>
+      <p>
+        When you click "Ask Lumin about this" on a task or assignment, its title, course,
+        description, and rubric (if any) are used to start a new conversation with Lumin AI, the
+        same as if you had typed that information yourself.
+      </p>
 
-      <h2 className="text-xl font-semibold">5. Where your data is stored</h2>
+      <h2 className="text-xl font-semibold">5. Messaging a teacher</h2>
+      <p>
+        Google's Classroom API does not let third-party apps read or post the comments you'd
+        normally see inside Classroom, so ClearPath cannot access or display real Classroom
+        comments. As a practical substitute, if you write a private note to a teacher from an
+        assignment's detail view, ClearPath sends that note directly to the teacher's real school
+        email address (obtained from the course's read-only teacher roster), with your own email
+        set as the reply-to address so the teacher can respond to you directly. This message is
+        <em> not</em> posted inside Google Classroom itself, and the teacher does not need a
+        ClearPath account to receive or reply to it. A record of what was sent, when, and to whom
+        is kept in your account so you can see your own message history; teachers do not get
+        access to a ClearPath account or dashboard through this feature.
+      </p>
+
+      <h2 className="text-xl font-semibold">6. Where your data is stored</h2>
       <p>
         Your account data, tasks, schedule, chat history, and generated study plans are stored
         using Supabase, a hosted database and authentication provider. Data is encrypted in
@@ -116,7 +139,7 @@ function PrivacyPage() {
         authentication rules that ensure you can only access your own data.
       </p>
 
-      <h2 className="text-xl font-semibold">6. Students and school use</h2>
+      <h2 className="text-xl font-semibold">7. Students and school use</h2>
       <p>
         ClearPath is designed for use by students, including students under the age of majority,
         in an educational context. We only collect the information described in this policy and
@@ -125,27 +148,27 @@ function PrivacyPage() {
         please contact us using the details below.
       </p>
 
-      <h2 className="text-xl font-semibold">7. Your rights and choices</h2>
+      <h2 className="text-xl font-semibold">8. Your rights and choices</h2>
       <ul>
         <li>You can access, update, or delete your task, schedule, chat, and study-plan data at any time from within the app.</li>
         <li>You can disconnect Google Classroom or Google Calendar at any time, which stops future data access immediately.</li>
         <li>You can request a full copy of your data, or full deletion of your account and associated data, by contacting us.</li>
       </ul>
 
-      <h2 className="text-xl font-semibold">8. Data retention</h2>
+      <h2 className="text-xl font-semibold">9. Data retention</h2>
       <p>
         We retain your information for as long as your account is active. If you delete your
         account, we delete your personal data within a reasonable time, except where we are
         required to retain limited records for legal or security purposes.
       </p>
 
-      <h2 className="text-xl font-semibold">9. Changes to this policy</h2>
+      <h2 className="text-xl font-semibold">10. Changes to this policy</h2>
       <p>
         We may update this Privacy Policy from time to time. If we make material changes, we will
         update the effective date above and, where appropriate, notify you directly.
       </p>
 
-      <h2 className="text-xl font-semibold">10. Contact us</h2>
+      <h2 className="text-xl font-semibold">11. Contact us</h2>
       <p>
         If you have questions about this Privacy Policy or how your information is handled,
         contact us at{" "}

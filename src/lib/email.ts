@@ -3,7 +3,12 @@
 // verification only needs CNAME/TXT records — Wix's DNS panel can't add
 // the subdomain MX record Resend's setup requires.
 
-export async function sendEmail(options: { to: string; subject: string; html: string }) {
+export async function sendEmail(options: {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: { email: string; name?: string };
+}) {
   const apiKey = process.env["SENDGRID_API_KEY"];
   if (!apiKey) throw new Error("SENDGRID_API_KEY is not configured");
   const fromEmail = process.env["SENDGRID_FROM_EMAIL"] || "notifications@luminclearpath.ca";
@@ -18,6 +23,7 @@ export async function sendEmail(options: { to: string; subject: string; html: st
     body: JSON.stringify({
       personalizations: [{ to: [{ email: options.to }] }],
       from: { email: fromEmail, name: fromName },
+      ...(options.replyTo ? { reply_to: options.replyTo } : {}),
       subject: options.subject,
       content: [{ type: "text/html", value: options.html }],
     }),

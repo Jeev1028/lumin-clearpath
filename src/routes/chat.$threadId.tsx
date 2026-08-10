@@ -61,6 +61,20 @@ function ChatThreadPage() {
     enabled: Boolean(user),
   });
 
+  // A task/coursework detail view may hand off a suggested first message
+  // (e.g. "Ask Lumin about this") via sessionStorage, keyed per-thread so it
+  // only ever applies to the exact new thread it was created for.
+  const [prefillInput] = useState<string | undefined>(() => {
+    try {
+      const key = `clearpath:chat-prefill:${threadId}`;
+      const value = sessionStorage.getItem(key);
+      if (value) sessionStorage.removeItem(key);
+      return value ?? undefined;
+    } catch {
+      return undefined;
+    }
+  });
+
   if (loading || !user || !session || messagesQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-deep">
@@ -133,6 +147,7 @@ function ChatThreadPage() {
           threadId={threadId}
           initialMessages={initialMessages}
           accessToken={session.access_token}
+          initialInput={prefillInput}
           onActivity={() => {
             void queryClient.invalidateQueries({ queryKey: ["threads"] });
           }}

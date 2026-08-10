@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 export type TaskKind = "test" | "assignment" | "project" | "reading";
 export type TaskStatus = "todo" | "in_progress" | "submitted";
 
+export type MaterialItem = { title: string; url: string | null };
+export type RubricCriterion = {
+  title?: string;
+  levels?: { title?: string; points?: number; description?: string }[];
+};
+export type Rubric = { id: string; criteria?: RubricCriterion[] };
+
 export type Task = {
   id: string;
   title: string;
@@ -12,9 +19,15 @@ export type Task = {
   due_date: string | null;
   notes: string | null;
   source: string;
+  description: string | null;
+  materials: MaterialItem[];
+  rubric: Rubric | null;
+  google_classroom_id: string | null;
+  classroom_course_id: string | null;
 };
 
-const TASK_FIELDS = "id, title, course, kind, status, due_date, notes, source";
+const TASK_FIELDS =
+  "id, title, course, kind, status, due_date, notes, source, description, materials, rubric, google_classroom_id, classroom_course_id";
 
 export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -28,7 +41,10 @@ export async function listTasks(): Promise<Task[]> {
 
 export async function createTask(
   userId: string,
-  input: Omit<Task, "id" | "source">,
+  input: Omit<
+    Task,
+    "id" | "source" | "description" | "materials" | "rubric" | "google_classroom_id" | "classroom_course_id"
+  >,
 ): Promise<Task> {
   const { data, error } = await supabase
     .from("tasks")
@@ -173,12 +189,13 @@ export type ClassroomCourse = {
   name: string;
   section: string | null;
   room: string | null;
+  teacher_email: string | null;
 };
 
 export async function listClassroomCourses(): Promise<ClassroomCourse[]> {
   const { data, error } = await supabase
     .from("classroom_courses")
-    .select("id, name, section, room")
+    .select("id, name, section, room, teacher_email")
     .order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -193,15 +210,19 @@ export type ClassroomCoursework = {
   max_points: number | null;
   assigned_grade: number | null;
   submission_state: string | null;
+  materials: MaterialItem[];
+  rubric: Rubric | null;
 };
 
 export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> {
   const { data, error } = await supabase
     .from("classroom_coursework")
-    .select("id, course_id, title, description, due_at, max_points, assigned_grade, submission_state")
+    .select(
+      "id, course_id, title, description, due_at, max_points, assigned_grade, submission_state, materials, rubric",
+    )
     .order("due_at", { ascending: true, nullsFirst: false });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as ClassroomCoursework[];
 }
 
 export type ClassroomAnnouncement = {

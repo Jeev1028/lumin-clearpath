@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ClipboardList,
   GraduationCap,
+  HelpCircle,
   LogOut,
   Settings,
   ShieldCheck,
@@ -18,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTutorial } from "@/components/lumin/WelcomeTutorial";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +28,7 @@ export function AccountMenu() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin } = useAdminStatus();
+  const { open: openTutorial } = useTutorial();
   if (!user) return null;
 
   const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
@@ -101,6 +104,10 @@ export function AccountMenu() {
             <Settings className="h-4 w-4" aria-hidden />
             Account settings
           </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={openTutorial} className="cursor-pointer gap-2">
+          <HelpCircle className="h-4 w-4" aria-hidden />
+          Take the tour
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => void handleSignOut()}

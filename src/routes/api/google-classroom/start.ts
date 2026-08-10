@@ -9,6 +9,11 @@ const SCOPES = [
   "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
   "https://www.googleapis.com/auth/classroom.announcements.readonly",
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+  // Read-only teacher roster + profile email, used solely to relay a
+  // student's private note to their real teacher by email (Classroom's API
+  // has no comment/messaging endpoint of its own).
+  "https://www.googleapis.com/auth/classroom.rosters.readonly",
+  "https://www.googleapis.com/auth/classroom.profile.emails",
 ].join(" ");
 
 export const Route = createFileRoute("/api/google-classroom/start")({

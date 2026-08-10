@@ -16,6 +16,7 @@ type Props = {
   initialMessages: UIMessage[];
   accessToken: string;
   onActivity: () => void;
+  initialInput?: string | undefined;
 };
 
 const suggestions = [
@@ -24,8 +25,14 @@ const suggestions = [
   "Quiz me on my chemistry unit",
 ];
 
-export function ChatWindow({ threadId, initialMessages, accessToken, onActivity }: Props) {
-  const [input, setInput] = useState("");
+export function ChatWindow({
+  threadId,
+  initialMessages,
+  accessToken,
+  onActivity,
+  initialInput,
+}: Props) {
+  const [input, setInput] = useState(initialInput ?? "");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

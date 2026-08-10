@@ -39,6 +39,7 @@ import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api/google-calendar/sync'
 import { Route as ApiGoogleClassroomCallbackRouteImport } from './routes/api/google-classroom/callback'
 import { Route as ApiGoogleClassroomDisconnectRouteImport } from './routes/api/google-classroom/disconnect'
+import { Route as ApiGoogleClassroomMessageTeacherRouteImport } from './routes/api/google-classroom/message-teacher'
 import { Route as ApiGoogleClassroomStartRouteImport } from './routes/api/google-classroom/start'
 import { Route as ApiGoogleClassroomSyncRouteImport } from './routes/api/google-classroom/sync'
 import { Route as ApiMfaBackupCodesClearRouteImport } from './routes/api/mfa-backup-codes/clear'
@@ -201,6 +202,12 @@ const ApiGoogleClassroomDisconnectRoute =
     path: '/api/google-classroom/disconnect',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGoogleClassroomMessageTeacherRoute =
+  ApiGoogleClassroomMessageTeacherRouteImport.update({
+    id: '/api/google-classroom/message-teacher',
+    path: '/api/google-classroom/message-teacher',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGoogleClassroomStartRoute = ApiGoogleClassroomStartRouteImport.update({
   id: '/api/google-classroom/start',
   path: '/api/google-classroom/start',
@@ -270,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
@@ -349,6 +358,7 @@ export interface FileRoutesById {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
@@ -468,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/google-classroom/callback'
     | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/message-teacher'
     | '/api/google-classroom/start'
     | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
@@ -508,6 +521,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
   ApiGoogleClassroomCallbackRoute: typeof ApiGoogleClassroomCallbackRoute
   ApiGoogleClassroomDisconnectRoute: typeof ApiGoogleClassroomDisconnectRoute
+  ApiGoogleClassroomMessageTeacherRoute: typeof ApiGoogleClassroomMessageTeacherRoute
   ApiGoogleClassroomStartRoute: typeof ApiGoogleClassroomStartRoute
   ApiGoogleClassroomSyncRoute: typeof ApiGoogleClassroomSyncRoute
   ApiMfaBackupCodesClearRoute: typeof ApiMfaBackupCodesClearRoute
@@ -729,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleClassroomDisconnectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-classroom/message-teacher': {
+      id: '/api/google-classroom/message-teacher'
+      path: '/api/google-classroom/message-teacher'
+      fullPath: '/api/google-classroom/message-teacher'
+      preLoaderRoute: typeof ApiGoogleClassroomMessageTeacherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-classroom/start': {
       id: '/api/google-classroom/start'
       path: '/api/google-classroom/start'
@@ -812,6 +833,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
   ApiGoogleClassroomCallbackRoute: ApiGoogleClassroomCallbackRoute,
   ApiGoogleClassroomDisconnectRoute: ApiGoogleClassroomDisconnectRoute,
+  ApiGoogleClassroomMessageTeacherRoute: ApiGoogleClassroomMessageTeacherRoute,
   ApiGoogleClassroomStartRoute: ApiGoogleClassroomStartRoute,
   ApiGoogleClassroomSyncRoute: ApiGoogleClassroomSyncRoute,
   ApiMfaBackupCodesClearRoute: ApiMfaBackupCodesClearRoute,

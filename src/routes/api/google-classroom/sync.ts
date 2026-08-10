@@ -8,33 +8,16 @@ import {
   listCourseWorkMaterials,
   listMyCourses,
   listMySubmissions,
+  listRubrics,
+  listTeachers,
   refreshAccessToken,
+  summarizeMaterial,
+  type ClassroomRubric,
 } from "@/lib/google-classroom";
 import { decryptToken, encryptToken } from "@/lib/token-crypto";
 
 function mapTaskStatus(submissionState: string | undefined): "todo" | "submitted" {
   return submissionState === "TURNED_IN" || submissionState === "RETURNED" ? "submitted" : "todo";
-}
-
-function materialSummary(material: {
-  driveFile?: { driveFile?: { title?: string } };
-  link?: { title?: string; url?: string };
-  youTubeVideo?: { title?: string };
-  form?: { title?: string };
-}): { title: string; url: string | null } | null {
-  if (material.driveFile?.driveFile) {
-    return { title: material.driveFile.driveFile.title ?? "Drive file", url: null };
-  }
-  if (material.link) {
-    return { title: material.link.title ?? material.link.url ?? "Link", url: material.link.url ?? null };
-  }
-  if (material.youTubeVideo) {
-    return { title: material.youTubeVideo.title ?? "YouTube video", url: null };
-  }
-  if (material.form) {
-    return { title: material.form.title ?? "Form", url: null };
-  }
-  return null;
 }
 
 export const Route = createFileRoute("/api/google-classroom/sync")({
@@ -91,17 +74,29 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
         try {
           const courses = await listMyCourses(accessToken!);
           for (const course of courses) {
+            // Best-effort -- roster access can be restricted by the school's
+            // Workspace admin; a missing teacher email just disables the
+            // "message the teacher" relay for that course, nothing else.
+            let teacherEmail: string | null = null;
+            try {
+              const teachers = await listTeachers(accessToken!, course.id);
+              teacherEmail = teachers.find((t) => t.profile?.emailAddress)?.profile?.emailAddress ?? null;
+            } catch (err) {
+              console.error("[google-classroom] could not load teacher roster", err);
+            }
+
             await admin.from("classroom_courses").upsert({
               id: course.id,
               user_id: userId,
               name: course.name,
               section: course.section ?? null,
               room: course.room ?? null,
+              teacher_email: teacherEmail,
               updated_at: new Date().toISOString(),
             });
             courseCount++;
 
-            const [courseWork, submissions, announcements, materials] = await Promise.all([
+            const [courseWork, submissions, announcements, courseMaterials] = await Promise.all([
               listCourseWork(accessToken!, course.id),
               listMySubmissions(accessToken!, course.id),
               listAnnouncements(accessToken!, course.id),
@@ -113,6 +108,17 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
             for (const work of courseWork) {
               const submission = submissionByCourseWork.get(work.id);
               const dueDate = courseWorkDueDate(work);
+              const materials = (work.materials ?? [])
+                .map(summarizeMaterial)
+                .filter((m): m is NonNullable<typeof m> => m !== null);
+
+              let rubric: ClassroomRubric | null = null;
+              try {
+                const rubrics = await listRubrics(accessToken!, course.id, work.id);
+                rubric = rubrics[0] ?? null;
+              } catch (err) {
+                console.error("[google-classroom] could not load rubric", err);
+              }
 
               await admin.from("classroom_coursework").upsert({
                 id: work.id,
@@ -125,6 +131,8 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                 assigned_grade: submission?.assignedGrade ?? null,
                 submission_state: submission?.state ?? null,
                 work_type: work.workType ?? null,
+                materials,
+                rubric,
                 updated_at: new Date().toISOString(),
               });
               courseworkCount++;
@@ -137,8 +145,12 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                   kind: "assignment",
                   status: mapTaskStatus(submission?.state),
                   due_date: dueDate,
+                  description: work.description ?? null,
+                  materials,
+                  rubric,
                   source: "classroom",
                   google_classroom_id: work.id,
+                  classroom_course_id: course.id,
                 },
                 { onConflict: "google_classroom_id" },
               );
@@ -156,10 +168,10 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               announcementCount++;
             }
 
-            for (const material of materials) {
+            for (const material of courseMaterials) {
               const items = (material.materials ?? [])
-                .map(materialSummary)
-                .filter((m): m is { title: string; url: string | null } => m !== null);
+                .map(summarizeMaterial)
+                .filter((m): m is NonNullable<typeof m> => m !== null);
               await admin.from("classroom_materials").upsert({
                 id: material.id,
                 user_id: userId,

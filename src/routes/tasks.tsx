@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { StudyPlanner } from "@/components/lumin/StudyPlanner";
+import { TaskDetailDialog, type TaskDetailInfo } from "@/components/lumin/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,6 +106,8 @@ function TasksPage() {
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
+  const [detailTask, setDetailTask] = useState<TaskDetailInfo | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -307,14 +310,21 @@ function TasksPage() {
                   />
                 </div>
                 <div className="min-w-40 flex-1">
-                  <p className="flex items-center gap-1.5 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDetailTask(task);
+                      setDetailOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 font-medium hover:underline"
+                  >
                     {task.title}
                     {task.source === "classroom" && (
                       <span className="rounded-full border border-border/60 bg-background/40 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                         via Classroom
                       </span>
                     )}
-                  </p>
+                  </button>
                   <p
                     className={cn(
                       "text-xs",
@@ -370,6 +380,8 @@ function TasksPage() {
           )}
         </ul>
       </main>
+
+      <TaskDetailDialog task={detailTask} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 }

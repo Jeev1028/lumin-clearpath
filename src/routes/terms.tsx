@@ -17,7 +17,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsPage() {
   return (
-    <LegalLayout title="Terms of Service" effectiveDate="August 10, 2026">
+    <LegalLayout title="Terms of Service" effectiveDate="August 13, 2026">
       <p>
         Welcome to ClearPath. These Terms of Service ("Terms") govern your access to and use of
         ClearPath, including Lumin AI, our tasks and schedule tools, and any related features
@@ -82,6 +82,17 @@ function TermsPage() {
           Privacy Policy
         </Link>{" "}
         for details on how this data is used.
+      </p>
+
+      <h2 className="text-xl font-semibold">5a. Messaging a teacher</h2>
+      <p>
+        If you connect Google Classroom, you can send a private note to a course's teacher from
+        an assignment's detail view. Because Google's Classroom API does not let apps read or post
+        real Classroom comments, ClearPath delivers your note as a regular email sent directly to
+        the teacher's school email address, with your email set as the reply-to address. This is
+        not a Classroom comment and will not appear inside Google Classroom itself. You are
+        responsible for what you write, and it remains subject to the same academic honesty and
+        acceptable-use rules as everything else in the Service.
       </p>
 
       <h2 className="text-xl font-semibold">6. Acceptable use</h2>
