@@ -216,6 +216,7 @@ export type Database = {
       }
       study_plans: {
         Row: {
+          completed_blocks: string[]
           generated_at: string
           horizon: string
           plan_markdown: string
@@ -223,6 +224,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          completed_blocks?: string[]
           generated_at?: string
           horizon?: string
           plan_markdown: string
@@ -230,6 +232,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          completed_blocks?: string[]
           generated_at?: string
           horizon?: string
           plan_markdown?: string

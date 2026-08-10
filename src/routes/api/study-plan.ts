@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/study-plan")({
         if (!auth) return new Response("Unauthorized", { status: 401 });
         const { data, error } = await auth.supabase
           .from("study_plans")
-          .select("horizon, preferences, plan_markdown, generated_at")
+          .select("horizon, preferences, plan_markdown, generated_at, completed_blocks")
           .maybeSingle();
         if (error) return new Response("Could not load study plan", { status: 500 });
         return Response.json({ plan: data });
@@ -183,11 +183,18 @@ Produce the plan now, following the output format and boundaries in your instruc
           preferences: preferences || null,
           plan_markdown: text,
           generated_at: generatedAt,
+          completed_blocks: [],
         });
         if (saveError) console.error("[study-plan] failed to save plan", saveError);
 
         return Response.json({
-          plan: { horizon, preferences: preferences || null, plan_markdown: text, generated_at: generatedAt },
+          plan: {
+            horizon,
+            preferences: preferences || null,
+            plan_markdown: text,
+            generated_at: generatedAt,
+            completed_blocks: [] as string[],
+          },
         });
       },
     },
