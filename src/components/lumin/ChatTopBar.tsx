@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 const links = [
   { to: "/tasks", label: "Tasks" },
   { to: "/schedule", label: "Schedule" },
+  { to: "/classroom", label: "Classroom" },
   { to: "/chat", label: "Lumin AI" },
 ] as const;
 

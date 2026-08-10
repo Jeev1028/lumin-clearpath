@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ClassroomRouteImport } from './routes/classroom'
+import { Route as GradesRouteImport } from './routes/grades'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -35,6 +37,10 @@ import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/goog
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
 import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api/google-calendar/sync'
+import { Route as ApiGoogleClassroomCallbackRouteImport } from './routes/api/google-classroom/callback'
+import { Route as ApiGoogleClassroomDisconnectRouteImport } from './routes/api/google-classroom/disconnect'
+import { Route as ApiGoogleClassroomStartRouteImport } from './routes/api/google-classroom/start'
+import { Route as ApiGoogleClassroomSyncRouteImport } from './routes/api/google-classroom/sync'
 import { Route as ApiMfaBackupCodesClearRouteImport } from './routes/api/mfa-backup-codes/clear'
 import { Route as ApiMfaBackupCodesGenerateRouteImport } from './routes/api/mfa-backup-codes/generate'
 import { Route as ApiMfaBackupCodesStatusRouteImport } from './routes/api/mfa-backup-codes/status'
@@ -59,6 +65,16 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClassroomRoute = ClassroomRouteImport.update({
+  id: '/classroom',
+  path: '/classroom',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GradesRoute = GradesRouteImport.update({
+  id: '/grades',
+  path: '/grades',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MfaChallengeRoute = MfaChallengeRouteImport.update({
@@ -173,6 +189,28 @@ const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
   path: '/api/google-calendar/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoogleClassroomCallbackRoute =
+  ApiGoogleClassroomCallbackRouteImport.update({
+    id: '/api/google-classroom/callback',
+    path: '/api/google-classroom/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleClassroomDisconnectRoute =
+  ApiGoogleClassroomDisconnectRouteImport.update({
+    id: '/api/google-classroom/disconnect',
+    path: '/api/google-classroom/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleClassroomStartRoute = ApiGoogleClassroomStartRouteImport.update({
+  id: '/api/google-classroom/start',
+  path: '/api/google-classroom/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoogleClassroomSyncRoute = ApiGoogleClassroomSyncRouteImport.update({
+  id: '/api/google-classroom/sync',
+  path: '/api/google-classroom/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMfaBackupCodesClearRoute = ApiMfaBackupCodesClearRouteImport.update({
   id: '/api/mfa-backup-codes/clear',
   path: '/api/mfa-backup-codes/clear',
@@ -206,6 +244,8 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
+  '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -228,6 +268,10 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
+  '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
@@ -239,6 +283,8 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
+  '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -261,6 +307,10 @@ export interface FileRoutesByTo {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
+  '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
@@ -273,6 +323,8 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
+  '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -295,6 +347,10 @@ export interface FileRoutesById {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/google-classroom/callback': typeof ApiGoogleClassroomCallbackRoute
+  '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
+  '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
+  '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
   '/api/mfa-backup-codes/clear': typeof ApiMfaBackupCodesClearRoute
   '/api/mfa-backup-codes/generate': typeof ApiMfaBackupCodesGenerateRoute
   '/api/mfa-backup-codes/status': typeof ApiMfaBackupCodesStatusRoute
@@ -308,6 +364,8 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/classroom'
+    | '/grades'
     | '/mfa-challenge'
     | '/privacy'
     | '/reset-password'
@@ -330,6 +388,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/google-classroom/callback'
+    | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/start'
+    | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
@@ -341,6 +403,8 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/classroom'
+    | '/grades'
     | '/mfa-challenge'
     | '/privacy'
     | '/reset-password'
@@ -363,6 +427,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/google-classroom/callback'
+    | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/start'
+    | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
@@ -374,6 +442,8 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/classroom'
+    | '/grades'
     | '/mfa-challenge'
     | '/privacy'
     | '/reset-password'
@@ -396,6 +466,10 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
     | '/api/google-calendar/sync'
+    | '/api/google-classroom/callback'
+    | '/api/google-classroom/disconnect'
+    | '/api/google-classroom/start'
+    | '/api/google-classroom/sync'
     | '/api/mfa-backup-codes/clear'
     | '/api/mfa-backup-codes/generate'
     | '/api/mfa-backup-codes/status'
@@ -408,6 +482,8 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  ClassroomRoute: typeof ClassroomRoute
+  GradesRoute: typeof GradesRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -430,6 +506,10 @@ export interface RootRouteChildren {
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStartRoute: typeof ApiGoogleCalendarStartRoute
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
+  ApiGoogleClassroomCallbackRoute: typeof ApiGoogleClassroomCallbackRoute
+  ApiGoogleClassroomDisconnectRoute: typeof ApiGoogleClassroomDisconnectRoute
+  ApiGoogleClassroomStartRoute: typeof ApiGoogleClassroomStartRoute
+  ApiGoogleClassroomSyncRoute: typeof ApiGoogleClassroomSyncRoute
   ApiMfaBackupCodesClearRoute: typeof ApiMfaBackupCodesClearRoute
   ApiMfaBackupCodesGenerateRoute: typeof ApiMfaBackupCodesGenerateRoute
   ApiMfaBackupCodesStatusRoute: typeof ApiMfaBackupCodesStatusRoute
@@ -465,6 +545,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/classroom': {
+      id: '/classroom'
+      path: '/classroom'
+      fullPath: '/classroom'
+      preLoaderRoute: typeof ClassroomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grades': {
+      id: '/grades'
+      path: '/grades'
+      fullPath: '/grades'
+      preLoaderRoute: typeof GradesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mfa-challenge': {
@@ -621,6 +715,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-classroom/callback': {
+      id: '/api/google-classroom/callback'
+      path: '/api/google-classroom/callback'
+      fullPath: '/api/google-classroom/callback'
+      preLoaderRoute: typeof ApiGoogleClassroomCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-classroom/disconnect': {
+      id: '/api/google-classroom/disconnect'
+      path: '/api/google-classroom/disconnect'
+      fullPath: '/api/google-classroom/disconnect'
+      preLoaderRoute: typeof ApiGoogleClassroomDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-classroom/start': {
+      id: '/api/google-classroom/start'
+      path: '/api/google-classroom/start'
+      fullPath: '/api/google-classroom/start'
+      preLoaderRoute: typeof ApiGoogleClassroomStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-classroom/sync': {
+      id: '/api/google-classroom/sync'
+      path: '/api/google-classroom/sync'
+      fullPath: '/api/google-classroom/sync'
+      preLoaderRoute: typeof ApiGoogleClassroomSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mfa-backup-codes/clear': {
       id: '/api/mfa-backup-codes/clear'
       path: '/api/mfa-backup-codes/clear'
@@ -664,6 +786,8 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  ClassroomRoute: ClassroomRoute,
+  GradesRoute: GradesRoute,
   MfaChallengeRoute: MfaChallengeRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -686,6 +810,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStartRoute: ApiGoogleCalendarStartRoute,
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
+  ApiGoogleClassroomCallbackRoute: ApiGoogleClassroomCallbackRoute,
+  ApiGoogleClassroomDisconnectRoute: ApiGoogleClassroomDisconnectRoute,
+  ApiGoogleClassroomStartRoute: ApiGoogleClassroomStartRoute,
+  ApiGoogleClassroomSyncRoute: ApiGoogleClassroomSyncRoute,
   ApiMfaBackupCodesClearRoute: ApiMfaBackupCodesClearRoute,
   ApiMfaBackupCodesGenerateRoute: ApiMfaBackupCodesGenerateRoute,
   ApiMfaBackupCodesStatusRoute: ApiMfaBackupCodesStatusRoute,

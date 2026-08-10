@@ -307,7 +307,14 @@ function TasksPage() {
                   />
                 </div>
                 <div className="min-w-40 flex-1">
-                  <p className="font-medium">{task.title}</p>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    {task.title}
+                    {task.source === "classroom" && (
+                      <span className="rounded-full border border-border/60 bg-background/40 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                        via Classroom
+                      </span>
+                    )}
+                  </p>
                   <p
                     className={cn(
                       "text-xs",

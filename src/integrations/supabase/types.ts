@@ -375,9 +375,11 @@ export type Database = {
           course: string | null
           created_at: string
           due_date: string | null
+          google_classroom_id: string | null
           id: string
           kind: Database["public"]["Enums"]["task_kind"]
           notes: string | null
+          source: string
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -387,9 +389,11 @@ export type Database = {
           course?: string | null
           created_at?: string
           due_date?: string | null
+          google_classroom_id?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
           notes?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -399,12 +403,164 @@ export type Database = {
           course?: string | null
           created_at?: string
           due_date?: string | null
+          google_classroom_id?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["task_kind"]
           notes?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_classroom_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          access_token_expires_at: string | null
+          connected_at: string
+          last_synced_at: string | null
+          refresh_token_encrypted: string
+          user_id: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          last_synced_at?: string | null
+          refresh_token_encrypted: string
+          user_id: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          last_synced_at?: string | null
+          refresh_token_encrypted?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classroom_courses: {
+        Row: {
+          id: string
+          name: string
+          room: string | null
+          section: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id: string
+          name: string
+          room?: string | null
+          section?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          room?: string | null
+          section?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classroom_coursework: {
+        Row: {
+          assigned_grade: number | null
+          course_id: string
+          description: string | null
+          due_at: string | null
+          id: string
+          max_points: number | null
+          submission_state: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          work_type: string | null
+        }
+        Insert: {
+          assigned_grade?: number | null
+          course_id: string
+          description?: string | null
+          due_at?: string | null
+          id: string
+          max_points?: number | null
+          submission_state?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          work_type?: string | null
+        }
+        Update: {
+          assigned_grade?: number | null
+          course_id?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          max_points?: number | null
+          submission_state?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          work_type?: string | null
+        }
+        Relationships: []
+      }
+      classroom_announcements: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at: string
+          id: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classroom_materials: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          items: Json
+          title: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at: string
+          description?: string | null
+          id: string
+          items?: Json
+          title: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          items?: Json
+          title?: string
           user_id?: string
         }
         Relationships: []

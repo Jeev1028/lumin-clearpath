@@ -1,5 +1,13 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, ClipboardList, LogOut, Settings, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -59,6 +67,18 @@ export function AccountMenu() {
           <Link to="/schedule">
             <CalendarDays className="h-4 w-4" aria-hidden />
             Schedule
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/classroom">
+            <GraduationCap className="h-4 w-4" aria-hidden />
+            Classroom
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/grades">
+            <GraduationCap className="h-4 w-4" aria-hidden />
+            Grades
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer gap-2">

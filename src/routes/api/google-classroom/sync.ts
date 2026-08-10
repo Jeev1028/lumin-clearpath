@@ -1,0 +1,195 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+import { getAdminClient, requireUser } from "@/lib/api-auth";
+import {
+  courseWorkDueDate,
+  listAnnouncements,
+  listCourseWork,
+  listCourseWorkMaterials,
+  listMyCourses,
+  listMySubmissions,
+  refreshAccessToken,
+} from "@/lib/google-classroom";
+import { decryptToken, encryptToken } from "@/lib/token-crypto";
+
+function mapTaskStatus(submissionState: string | undefined): "todo" | "submitted" {
+  return submissionState === "TURNED_IN" || submissionState === "RETURNED" ? "submitted" : "todo";
+}
+
+function materialSummary(material: {
+  driveFile?: { driveFile?: { title?: string } };
+  link?: { title?: string; url?: string };
+  youTubeVideo?: { title?: string };
+  form?: { title?: string };
+}): { title: string; url: string | null } | null {
+  if (material.driveFile?.driveFile) {
+    return { title: material.driveFile.driveFile.title ?? "Drive file", url: null };
+  }
+  if (material.link) {
+    return { title: material.link.title ?? material.link.url ?? "Link", url: material.link.url ?? null };
+  }
+  if (material.youTubeVideo) {
+    return { title: material.youTubeVideo.title ?? "YouTube video", url: null };
+  }
+  if (material.form) {
+    return { title: material.form.title ?? "Form", url: null };
+  }
+  return null;
+}
+
+export const Route = createFileRoute("/api/google-classroom/sync")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const auth = await requireUser(request);
+        if (!auth) return new Response("Unauthorized", { status: 401 });
+        const { userId } = auth;
+
+        const admin = getAdminClient();
+        const { data: connection, error: connError } = await admin
+          .from("google_classroom_connections")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (connError) return new Response("Could not load connection", { status: 500 });
+        if (!connection) return new Response("Google Classroom is not connected", { status: 400 });
+
+        let accessToken = connection.access_token_encrypted
+          ? decryptToken(connection.access_token_encrypted)
+          : null;
+        const expiresAt = connection.access_token_expires_at
+          ? new Date(connection.access_token_expires_at).getTime()
+          : 0;
+        if (!accessToken || expiresAt - Date.now() < 60_000) {
+          try {
+            const refreshToken = decryptToken(connection.refresh_token_encrypted);
+            const refreshed = await refreshAccessToken(refreshToken);
+            accessToken = refreshed.access_token;
+            await admin
+              .from("google_classroom_connections")
+              .update({
+                access_token_encrypted: encryptToken(accessToken),
+                access_token_expires_at: new Date(
+                  Date.now() + refreshed.expires_in * 1000,
+                ).toISOString(),
+              })
+              .eq("user_id", userId);
+          } catch (err) {
+            console.error("[google-classroom] token refresh failed", err);
+            return new Response("Google Classroom access has expired — please reconnect it.", {
+              status: 409,
+            });
+          }
+        }
+
+        let courseCount = 0;
+        let courseworkCount = 0;
+        let taskCount = 0;
+        let announcementCount = 0;
+        let materialCount = 0;
+
+        try {
+          const courses = await listMyCourses(accessToken!);
+          for (const course of courses) {
+            await admin.from("classroom_courses").upsert({
+              id: course.id,
+              user_id: userId,
+              name: course.name,
+              section: course.section ?? null,
+              room: course.room ?? null,
+              updated_at: new Date().toISOString(),
+            });
+            courseCount++;
+
+            const [courseWork, submissions, announcements, materials] = await Promise.all([
+              listCourseWork(accessToken!, course.id),
+              listMySubmissions(accessToken!, course.id),
+              listAnnouncements(accessToken!, course.id),
+              listCourseWorkMaterials(accessToken!, course.id),
+            ]);
+
+            const submissionByCourseWork = new Map(submissions.map((s) => [s.courseWorkId, s]));
+
+            for (const work of courseWork) {
+              const submission = submissionByCourseWork.get(work.id);
+              const dueDate = courseWorkDueDate(work);
+
+              await admin.from("classroom_coursework").upsert({
+                id: work.id,
+                user_id: userId,
+                course_id: course.id,
+                title: work.title,
+                description: work.description ?? null,
+                due_at: dueDate,
+                max_points: work.maxPoints ?? null,
+                assigned_grade: submission?.assignedGrade ?? null,
+                submission_state: submission?.state ?? null,
+                work_type: work.workType ?? null,
+                updated_at: new Date().toISOString(),
+              });
+              courseworkCount++;
+
+              const { error: taskError } = await admin.from("tasks").upsert(
+                {
+                  user_id: userId,
+                  title: work.title,
+                  course: course.name,
+                  kind: "assignment",
+                  status: mapTaskStatus(submission?.state),
+                  due_date: dueDate,
+                  source: "classroom",
+                  google_classroom_id: work.id,
+                },
+                { onConflict: "google_classroom_id" },
+              );
+              if (!taskError) taskCount++;
+            }
+
+            for (const announcement of announcements) {
+              await admin.from("classroom_announcements").upsert({
+                id: announcement.id,
+                user_id: userId,
+                course_id: course.id,
+                text: announcement.text,
+                created_at: announcement.creationTime,
+              });
+              announcementCount++;
+            }
+
+            for (const material of materials) {
+              const items = (material.materials ?? [])
+                .map(materialSummary)
+                .filter((m): m is { title: string; url: string | null } => m !== null);
+              await admin.from("classroom_materials").upsert({
+                id: material.id,
+                user_id: userId,
+                course_id: course.id,
+                title: material.title,
+                description: material.description ?? null,
+                items,
+                created_at: material.creationTime,
+              });
+              materialCount++;
+            }
+          }
+
+          await admin
+            .from("google_classroom_connections")
+            .update({ last_synced_at: new Date().toISOString() })
+            .eq("user_id", userId);
+
+          return Response.json({
+            courses: courseCount,
+            coursework: courseworkCount,
+            tasksImported: taskCount,
+            announcements: announcementCount,
+            materials: materialCount,
+          });
+        } catch (err) {
+          console.error("[google-classroom] sync failed", err);
+          return new Response("Sync failed", { status: 500 });
+        }
+      },
+    },
+  },
+});

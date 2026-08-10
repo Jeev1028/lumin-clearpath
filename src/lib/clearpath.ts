@@ -11,9 +11,10 @@ export type Task = {
   status: TaskStatus;
   due_date: string | null;
   notes: string | null;
+  source: string;
 };
 
-const TASK_FIELDS = "id, title, course, kind, status, due_date, notes";
+const TASK_FIELDS = "id, title, course, kind, status, due_date, notes, source";
 
 export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -25,10 +26,13 @@ export async function listTasks(): Promise<Task[]> {
   return (data ?? []) as Task[];
 }
 
-export async function createTask(userId: string, input: Omit<Task, "id">): Promise<Task> {
+export async function createTask(
+  userId: string,
+  input: Omit<Task, "id" | "source">,
+): Promise<Task> {
   const { data, error } = await supabase
     .from("tasks")
-    .insert({ ...input, user_id: userId })
+    .insert({ ...input, user_id: userId, source: "clearpath" })
     .select(TASK_FIELDS)
     .single();
   if (error) throw error;
@@ -146,6 +150,92 @@ export async function getCalendarConnection(): Promise<CalendarConnection | null
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+// --- Google Classroom ---
+
+export type ClassroomConnection = {
+  connected_at: string;
+  last_synced_at: string | null;
+};
+
+export async function getClassroomConnection(): Promise<ClassroomConnection | null> {
+  const { data, error } = await supabase
+    .from("google_classroom_connections")
+    .select("connected_at, last_synced_at")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export type ClassroomCourse = {
+  id: string;
+  name: string;
+  section: string | null;
+  room: string | null;
+};
+
+export async function listClassroomCourses(): Promise<ClassroomCourse[]> {
+  const { data, error } = await supabase
+    .from("classroom_courses")
+    .select("id, name, section, room")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type ClassroomCoursework = {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string | null;
+  due_at: string | null;
+  max_points: number | null;
+  assigned_grade: number | null;
+  submission_state: string | null;
+};
+
+export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> {
+  const { data, error } = await supabase
+    .from("classroom_coursework")
+    .select("id, course_id, title, description, due_at, max_points, assigned_grade, submission_state")
+    .order("due_at", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type ClassroomAnnouncement = {
+  id: string;
+  course_id: string;
+  text: string;
+  created_at: string;
+};
+
+export async function listClassroomAnnouncements(): Promise<ClassroomAnnouncement[]> {
+  const { data, error } = await supabase
+    .from("classroom_announcements")
+    .select("id, course_id, text, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type ClassroomMaterial = {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string | null;
+  items: { title: string; url: string | null }[];
+  created_at: string;
+};
+
+export async function listClassroomMaterials(): Promise<ClassroomMaterial[]> {
+  const { data, error } = await supabase
+    .from("classroom_materials")
+    .select("id, course_id, title, description, items, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ClassroomMaterial[];
 }
 
 export const DAY_NAMES = [
