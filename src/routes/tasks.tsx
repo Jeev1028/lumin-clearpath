@@ -1,6 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  BookOpenCheck,
+  ClipboardList,
+  FolderKanban,
+  Library,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -16,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import {
   TASK_KIND_LABELS,
   TASK_STATUS_LABELS,
@@ -56,12 +64,46 @@ const emptyDraft = {
   due_date: "",
 };
 
+const TASK_KIND_ICONS: Record<TaskKind, typeof BookOpenCheck> = {
+  test: BookOpenCheck,
+  assignment: ClipboardList,
+  project: FolderKanban,
+  reading: Library,
+};
+
+const STATUS_DOT: Record<TaskStatus, string> = {
+  todo: "bg-muted-foreground/50",
+  in_progress: "bg-accent",
+  submitted: "bg-emerald-400",
+};
+
+const FILTERS = ["all", "todo", "in_progress", "submitted"] as const;
+type Filter = (typeof FILTERS)[number];
+
+const FILTER_LABELS: Record<Filter, string> = {
+  all: "All",
+  todo: "To do",
+  in_progress: "In progress",
+  submitted: "Submitted",
+};
+
+function todayStr(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function isOverdue(task: Task): boolean {
+  return Boolean(task.due_date) && task.status !== "submitted" && task.due_date! < todayStr();
+}
+
 function TasksPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     if (loading) return;
@@ -73,7 +115,13 @@ function TasksPage() {
   }, [loading, user, navigate]);
 
   const submitted = tasks.filter((t) => t.status === "submitted").length;
+  const overdueCount = tasks.filter(isOverdue).length;
   const pct = tasks.length ? Math.round((submitted / tasks.length) * 100) : 0;
+
+  const filteredTasks = useMemo(
+    () => (filter === "all" ? tasks : tasks.filter((t) => t.status === filter)),
+    [tasks, filter],
+  );
 
   async function onAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -125,9 +173,15 @@ function TasksPage() {
         </p>
 
         <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
-          <div className="mb-2 flex items-center justify-between text-sm">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className="font-medium">Progress</span>
-            <span className="text-muted-foreground">
+            <span className="flex items-center gap-3 text-muted-foreground">
+              {overdueCount > 0 && (
+                <span className="flex items-center gap-1 text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5" aria-hidden />
+                  {overdueCount} overdue
+                </span>
+              )}
               {submitted} of {tasks.length} submitted
             </span>
           </div>
@@ -195,45 +249,104 @@ function TasksPage() {
           </div>
         </form>
 
-        <ul className="mt-6 space-y-3">
-          {tasks.map((task) => (
-            <li
-              key={task.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-card/60 p-4"
+        <div className="mt-6 flex flex-wrap items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1 sm:inline-flex">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                filter === f
+                  ? "bg-secondary/70 text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
-              <div className="min-w-40 flex-1">
-                <p className="font-medium">{task.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {TASK_KIND_LABELS[task.kind]}
-                  {task.course ? ` · ${task.course}` : ""}
-                  {task.due_date ? ` · due ${task.due_date}` : ""}
-                </p>
-              </div>
-              <Select
-                value={task.status}
-                onValueChange={(value) => void onStatus(task.id, value as TaskStatus)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Delete ${task.title}`}
-                onClick={() => void onDelete(task.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
+              {FILTER_LABELS[f]}
+              {f !== "all" && (
+                <span className="ml-1.5 text-muted-foreground">
+                  {tasks.filter((t) => t.status === f).length}
+                </span>
+              )}
+            </button>
           ))}
+        </div>
+
+        <ul className="mt-4 space-y-3">
+          {filteredTasks.map((task) => {
+            const Icon = TASK_KIND_ICONS[task.kind];
+            const overdue = isOverdue(task);
+            return (
+              <li
+                key={task.id}
+                className={cn(
+                  "group flex flex-wrap items-center gap-3 rounded-xl border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow",
+                  overdue
+                    ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
+                    : "border-border/70 bg-card/60 hover:border-accent/40",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300",
+                    overdue ? "bg-destructive/10" : "bg-accent/10 group-hover:bg-accent/20",
+                  )}
+                >
+                  <Icon
+                    className={cn("h-5 w-5", overdue ? "text-destructive" : "text-accent")}
+                    aria-hidden
+                  />
+                </div>
+                <div className="min-w-40 flex-1">
+                  <p className="font-medium">{task.title}</p>
+                  <p
+                    className={cn(
+                      "text-xs",
+                      overdue ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {TASK_KIND_LABELS[task.kind]}
+                    {task.course ? ` · ${task.course}` : ""}
+                    {task.due_date ? ` · ${overdue ? "overdue since" : "due"} ${task.due_date}` : ""}
+                  </p>
+                </div>
+                <Select
+                  value={task.status}
+                  onValueChange={(value) => void onStatus(task.id, value as TaskStatus)}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        <span
+                          className={cn(
+                            "mr-1.5 inline-block h-2 w-2 rounded-full",
+                            STATUS_DOT[value as TaskStatus],
+                          )}
+                        />
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Delete ${task.title}`}
+                  onClick={() => void onDelete(task.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            );
+          })}
+          {filteredTasks.length === 0 && tasks.length > 0 && (
+            <li className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
+              No tasks match this filter.
+            </li>
+          )}
           {tasks.length === 0 && (
             <li className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
               Nothing tracked yet. Add your first test or assignment above.
