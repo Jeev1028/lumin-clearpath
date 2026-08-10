@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   CalendarDays,
+  Check,
   ClipboardList,
   Compass,
   Link2,
@@ -17,6 +18,9 @@ import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import showcaseLuminChat from "@/assets/showcase-lumin-chat.png";
+import showcaseTasks from "@/assets/showcase-tasks.png";
+import showcaseSchedule from "@/assets/showcase-schedule.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -86,6 +90,36 @@ const principles = [
   },
 ];
 
+const showcase = [
+  {
+    image: showcaseLuminChat,
+    alt: "Lumin AI answering a research question with sources and no over-explaining",
+    title: "Lumin AI, mid-conversation",
+    body: "A real research request, answered with sources and a few angles to explore — not a finished answer handed over.",
+  },
+  {
+    image: showcaseTasks,
+    alt: "The ClearPath tasks page showing tests and assignments with due dates",
+    title: "Every task, one list",
+    body: "Tests, assignments, and projects with due dates and status, replacing scattered reminders across apps.",
+  },
+  {
+    image: showcaseSchedule,
+    alt: "The ClearPath class schedule laid out across the week",
+    title: "Your whole week, laid out",
+    body: "Weekday classes, extracurriculars, and weekend sessions in one view, so nothing gets missed.",
+  },
+];
+
+const capabilities = [
+  "Tracks every test, assignment and project with due dates and submission status",
+  "Lays out your entire week — classes, extracurriculars, weekend and holiday sessions",
+  "An AI tutor that explains and researches, cites sources, and never writes your work for you",
+  "Google Sign-In with your own account — no separate password to manage",
+  "A public assistant right on this page that answers questions before you even sign up",
+  "Built to hold up under real, whole-school daily use — not a one-person demo",
+];
+
 function Index() {
   const { session, loading } = useAuth();
 
@@ -136,6 +170,54 @@ function Index() {
             >
               <Link to={session ? "/chat" : "/auth"}>Ask Lumin AI</Link>
             </Button>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 pb-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Why would I want to use this?</h2>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Because juggling Google Classroom, ManageBac, and a dozen reminders shouldn&apos;t
+              be the hardest part of school. These are real screenshots of the actual product —
+              not a mockup.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {showcase.map((item) => (
+              <figure
+                key={item.title}
+                className="group overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-panel transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:shadow-glow"
+              >
+                <img
+                  src={item.image}
+                  alt={item.alt}
+                  className="w-full border-b border-border/60"
+                  loading="lazy"
+                />
+                <figcaption className="p-5">
+                  <h3 className="text-sm font-semibold">{item.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                    {item.body}
+                  </p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+
+          <div className="mx-auto mt-16 max-w-3xl text-center">
+            <h2 className="text-2xl font-semibold sm:text-3xl">What is it truly capable of?</h2>
+            <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">
+              {capabilities.map((capability) => (
+                <div
+                  key={capability}
+                  className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-background/40 p-4 text-sm text-muted-foreground"
+                >
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {capability}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
