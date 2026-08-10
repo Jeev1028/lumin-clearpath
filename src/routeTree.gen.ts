@@ -25,6 +25,8 @@ import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
+import { Route as ApiAdminGroupMembersRouteImport } from './routes/api/admin/group-members'
+import { Route as ApiAdminGroupsRouteImport } from './routes/api/admin/groups'
 import { Route as ApiAdminMeRouteImport } from './routes/api/admin/me'
 import { Route as ApiAdminNoticesRouteImport } from './routes/api/admin/notices'
 import { Route as ApiAdminSendEmailRouteImport } from './routes/api/admin/send-email'
@@ -119,6 +121,16 @@ const ApiAdminAdminsRoute = ApiAdminAdminsRouteImport.update({
   path: '/api/admin/admins',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminGroupMembersRoute = ApiAdminGroupMembersRouteImport.update({
+  id: '/api/admin/group-members',
+  path: '/api/admin/group-members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminGroupsRoute = ApiAdminGroupsRouteImport.update({
+  id: '/api/admin/groups',
+  path: '/api/admin/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminMeRoute = ApiAdminMeRouteImport.update({
   id: '/api/admin/me',
   path: '/api/admin/me',
@@ -206,6 +218,8 @@ export interface FileRoutesByFullPath {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
+  '/api/admin/groups': typeof ApiAdminGroupsRoute
   '/api/admin/me': typeof ApiAdminMeRoute
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
@@ -237,6 +251,8 @@ export interface FileRoutesByTo {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
+  '/api/admin/groups': typeof ApiAdminGroupsRoute
   '/api/admin/me': typeof ApiAdminMeRoute
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
@@ -269,6 +285,8 @@ export interface FileRoutesById {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
+  '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
+  '/api/admin/groups': typeof ApiAdminGroupsRoute
   '/api/admin/me': typeof ApiAdminMeRoute
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
@@ -302,6 +320,8 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/chat/'
     | '/api/admin/admins'
+    | '/api/admin/group-members'
+    | '/api/admin/groups'
     | '/api/admin/me'
     | '/api/admin/notices'
     | '/api/admin/send-email'
@@ -333,6 +353,8 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/chat'
     | '/api/admin/admins'
+    | '/api/admin/group-members'
+    | '/api/admin/groups'
     | '/api/admin/me'
     | '/api/admin/notices'
     | '/api/admin/send-email'
@@ -364,6 +386,8 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/chat/'
     | '/api/admin/admins'
+    | '/api/admin/group-members'
+    | '/api/admin/groups'
     | '/api/admin/me'
     | '/api/admin/notices'
     | '/api/admin/send-email'
@@ -396,6 +420,8 @@ export interface RootRouteChildren {
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiAdminAdminsRoute: typeof ApiAdminAdminsRoute
+  ApiAdminGroupMembersRoute: typeof ApiAdminGroupMembersRoute
+  ApiAdminGroupsRoute: typeof ApiAdminGroupsRoute
   ApiAdminMeRoute: typeof ApiAdminMeRoute
   ApiAdminNoticesRoute: typeof ApiAdminNoticesRoute
   ApiAdminSendEmailRoute: typeof ApiAdminSendEmailRoute
@@ -525,6 +551,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAdminsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/group-members': {
+      id: '/api/admin/group-members'
+      path: '/api/admin/group-members'
+      fullPath: '/api/admin/group-members'
+      preLoaderRoute: typeof ApiAdminGroupMembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/groups': {
+      id: '/api/admin/groups'
+      path: '/api/admin/groups'
+      fullPath: '/api/admin/groups'
+      preLoaderRoute: typeof ApiAdminGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/me': {
       id: '/api/admin/me'
       path: '/api/admin/me'
@@ -636,6 +676,8 @@ const rootRouteChildren: RootRouteChildren = {
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiAdminAdminsRoute: ApiAdminAdminsRoute,
+  ApiAdminGroupMembersRoute: ApiAdminGroupMembersRoute,
+  ApiAdminGroupsRoute: ApiAdminGroupsRoute,
   ApiAdminMeRoute: ApiAdminMeRoute,
   ApiAdminNoticesRoute: ApiAdminNoticesRoute,
   ApiAdminSendEmailRoute: ApiAdminSendEmailRoute,

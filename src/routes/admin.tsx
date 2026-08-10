@@ -1,5 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Megaphone, Send, ShieldCheck, Trash2, Users as UsersIcon } from "lucide-react";
+import {
+  Layers,
+  Megaphone,
+  Send,
+  ShieldCheck,
+  Trash2,
+  Users as UsersIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -31,13 +38,22 @@ type UserRow = {
   is_admin: boolean;
 };
 
-type NoticeRow = { id: string; message: string; active: boolean; created_at: string };
+type NoticeRow = {
+  id: string;
+  message: string;
+  active: boolean;
+  created_at: string;
+  group_ids: string[] | null;
+};
+
+type GroupRow = { id: string; name: string; member_count: number };
 
 const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   can_view_users: "View users",
   can_view_grades: "View grades",
   can_manage_notices: "Manage notices",
   can_send_email: "Send email",
+  can_manage_groups: "Manage groups",
 };
 const CAPABILITY_KEYS = Object.keys(CAPABILITY_LABELS) as AdminCapability[];
 
@@ -47,6 +63,7 @@ function emptyCapabilities() {
     can_view_grades: false,
     can_manage_notices: false,
     can_send_email: false,
+    can_manage_groups: false,
   };
 }
 
@@ -61,18 +78,29 @@ function AdminPage() {
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [notices, setNotices] = useState<NoticeRow[]>([]);
   const [noticesLoading, setNoticesLoading] = useState(false);
+  const [groups, setGroups] = useState<GroupRow[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
 
   const [grantEmail, setGrantEmail] = useState("");
   const [grantCaps, setGrantCaps] = useState(emptyCapabilities());
   const [granting, setGranting] = useState(false);
 
   const [newNotice, setNewNotice] = useState("");
+  const [noticeGroupIds, setNoticeGroupIds] = useState<Set<string>>(new Set());
   const [postingNotice, setPostingNotice] = useState(false);
+
+  const [newGroupName, setNewGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [groupMemberIds, setGroupMemberIds] = useState<Set<string>>(new Set());
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  const [groupMemberFilter, setGroupMemberFilter] = useState("");
 
   const [userFilter, setUserFilter] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [emailGroupToAdd, setEmailGroupToAdd] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
@@ -139,11 +167,42 @@ function AdminPage() {
     }
   }
 
+  async function loadGroups() {
+    setGroupsLoading(true);
+    try {
+      const res = await fetch("/api/admin/groups", { headers: authHeaders() });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { groups: GroupRow[] };
+      setGroups(data.groups);
+    } catch {
+      toast.error("Could not load groups.");
+    } finally {
+      setGroupsLoading(false);
+    }
+  }
+
+  async function loadGroupMembers(groupId: string) {
+    setGroupMembersLoading(true);
+    try {
+      const res = await fetch(`/api/admin/group-members?group_id=${encodeURIComponent(groupId)}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { members: { id: string }[] };
+      setGroupMemberIds(new Set(data.members.map((m) => m.id)));
+    } catch {
+      toast.error("Could not load group members.");
+    } finally {
+      setGroupMembersLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!admin) return;
-    if (admin.can_view_users || admin.can_send_email) void loadUsers();
+    if (admin.can_view_users || admin.can_send_email || admin.can_manage_groups) void loadUsers();
     if (admin.is_root) void loadAdmins();
     if (admin.can_manage_notices) void loadNotices();
+    if (admin.can_manage_groups || admin.can_manage_notices || admin.can_send_email) void loadGroups();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admin?.user_id]);
 
@@ -208,14 +267,23 @@ function AdminPage() {
       const res = await fetch("/api/admin/notices", {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ message: newNotice.trim() }),
+        body: JSON.stringify({
+          message: newNotice.trim(),
+          groupIds: noticeGroupIds.size > 0 ? [...noticeGroupIds] : undefined,
+        }),
       });
-      if (!res.ok) throw new Error();
-      toast.success("Notice posted.");
+      const data = (await res.json().catch(() => ({}))) as { emailed?: number; error?: string };
+      if (!res.ok) throw new Error(data.error || "Could not post notice.");
+      toast.success(
+        typeof data.emailed === "number"
+          ? `Notice posted and emailed to ${data.emailed} recipient${data.emailed === 1 ? "" : "s"}.`
+          : "Notice posted.",
+      );
       setNewNotice("");
+      setNoticeGroupIds(new Set());
       await loadNotices();
-    } catch {
-      toast.error("Could not post notice.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not post notice.");
     } finally {
       setPostingNotice(false);
     }
@@ -249,11 +317,96 @@ function AdminPage() {
     }
   }
 
+  async function handleCreateGroup(event: React.FormEvent) {
+    event.preventDefault();
+    if (!newGroupName.trim()) return;
+    setCreatingGroup(true);
+    try {
+      const res = await fetch("/api/admin/groups", {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newGroupName.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || "Could not create group.");
+      toast.success(`Group "${newGroupName.trim()}" created.`);
+      setNewGroupName("");
+      await loadGroups();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create group.");
+    } finally {
+      setCreatingGroup(false);
+    }
+  }
+
+  async function handleDeleteGroup(id: string) {
+    try {
+      const res = await fetch(`/api/admin/groups?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Group deleted.");
+      if (activeGroupId === id) setActiveGroupId(null);
+      await loadGroups();
+    } catch {
+      toast.error("Could not delete group.");
+    }
+  }
+
+  function openGroupMembers(groupId: string) {
+    setActiveGroupId((current) => (current === groupId ? null : groupId));
+    setGroupMemberFilter("");
+    if (activeGroupId !== groupId) void loadGroupMembers(groupId);
+  }
+
+  async function toggleGroupMember(groupId: string, userId: string, isMember: boolean) {
+    const next = new Set(groupMemberIds);
+    if (isMember) next.delete(userId);
+    else next.add(userId);
+    setGroupMemberIds(next);
+    try {
+      const res = isMember
+        ? await fetch(
+            `/api/admin/group-members?group_id=${encodeURIComponent(groupId)}&user_id=${encodeURIComponent(userId)}`,
+            { method: "DELETE", headers: authHeaders() },
+          )
+        : await fetch("/api/admin/group-members", {
+            method: "POST",
+            headers: { ...authHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ groupId, userId }),
+          });
+      if (!res.ok) throw new Error();
+      await loadGroups();
+    } catch {
+      toast.error("Could not update group membership.");
+      setGroupMemberIds(groupMemberIds);
+    }
+  }
+
   function toggleRecipient(id: string) {
     const next = new Set(selectedRecipients);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedRecipients(next);
+  }
+
+  async function handleAddGroupToRecipients() {
+    if (!emailGroupToAdd) return;
+    try {
+      const res = await fetch(
+        `/api/admin/group-members?group_id=${encodeURIComponent(emailGroupToAdd)}`,
+        { headers: authHeaders() },
+      );
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { members: { id: string }[] };
+      const next = new Set(selectedRecipients);
+      for (const m of data.members) next.add(m.id);
+      setSelectedRecipients(next);
+      toast.success(`Added ${data.members.length} group member(s) to recipients.`);
+    } catch {
+      toast.error("Could not load that group's members.");
+    }
   }
 
   async function handleSendEmail(event: React.FormEvent) {
@@ -298,6 +451,16 @@ function AdminPage() {
     );
   }, [users, userFilter]);
 
+  const filteredGroupMemberCandidates = useMemo(() => {
+    const q = groupMemberFilter.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) => u.email?.toLowerCase().includes(q) || u.full_name?.toLowerCase().includes(q),
+    );
+  }, [users, groupMemberFilter]);
+
+  const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g.name])), [groups]);
+
   if (loading || adminLoading || !admin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-deep">
@@ -309,6 +472,7 @@ function AdminPage() {
   const availableTabs = [
     admin.can_view_users && "users",
     admin.is_root && "admins",
+    admin.can_manage_groups && "groups",
     admin.can_view_grades && "grades",
     admin.can_manage_notices && "notices",
     admin.can_send_email && "email",
@@ -340,6 +504,7 @@ function AdminPage() {
             <TabsList className="flex-wrap">
               {admin.can_view_users && <TabsTrigger value="users">Users</TabsTrigger>}
               {admin.is_root && <TabsTrigger value="admins">Admins</TabsTrigger>}
+              {admin.can_manage_groups && <TabsTrigger value="groups">Groups</TabsTrigger>}
               {admin.can_view_grades && <TabsTrigger value="grades">Grades</TabsTrigger>}
               {admin.can_manage_notices && <TabsTrigger value="notices">Notices</TabsTrigger>}
               {admin.can_send_email && <TabsTrigger value="email">Email</TabsTrigger>}
@@ -420,7 +585,7 @@ function AdminPage() {
                         required
                       />
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {CAPABILITY_KEYS.map((key) => (
                         <label key={key} className="flex items-center gap-2 text-sm">
                           <Checkbox
@@ -470,7 +635,7 @@ function AdminPage() {
                               )}
                             </div>
                             {!a.is_root && (
-                              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                                 {CAPABILITY_KEYS.map((key) => (
                                   <label key={key} className="flex items-center gap-2 text-xs">
                                     <Checkbox
@@ -481,6 +646,7 @@ function AdminPage() {
                                           can_view_grades: a.can_view_grades,
                                           can_manage_notices: a.can_manage_notices,
                                           can_send_email: a.can_send_email,
+                                          can_manage_groups: a.can_manage_groups,
                                           [key]: Boolean(checked),
                                         })
                                       }
@@ -488,6 +654,112 @@ function AdminPage() {
                                     {CAPABILITY_LABELS[key]}
                                   </label>
                                 ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            )}
+
+            {admin.can_manage_groups && (
+              <TabsContent value="groups">
+                <div className="mt-4 space-y-6">
+                  <form
+                    onSubmit={handleCreateGroup}
+                    className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel"
+                  >
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="new-group-name" className="flex items-center gap-2">
+                        <Layers className="h-4 w-4" aria-hidden />
+                        New group
+                      </Label>
+                      <Input
+                        id="new-group-name"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        placeholder="e.g. Grade 9, 9-1, Homeroom A…"
+                        required
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={creatingGroup}
+                      className="bg-gradient-lumin text-primary-foreground shadow-glow"
+                    >
+                      {creatingGroup ? "Creating…" : "Create group"}
+                    </Button>
+                  </form>
+
+                  <div className="rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+                    <p className="text-sm font-semibold">Groups</p>
+                    {groupsLoading ? (
+                      <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+                    ) : groups.length === 0 ? (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No groups yet — create one above.
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {groups.map((g) => (
+                          <div key={g.id} className="rounded-xl border border-border/60 bg-background/40">
+                            <div className="flex items-center justify-between gap-3 p-3">
+                              <button
+                                type="button"
+                                onClick={() => openGroupMembers(g.id)}
+                                className="flex-1 text-left text-sm font-medium hover:underline"
+                              >
+                                {g.name}{" "}
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  ({g.member_count} member{g.member_count === 1 ? "" : "s"})
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteGroup(g.id)}
+                                aria-label="Delete group"
+                                className="text-muted-foreground/70 transition-colors hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {activeGroupId === g.id && (
+                              <div className="border-t border-border/60 p-3">
+                                <Input
+                                  value={groupMemberFilter}
+                                  onChange={(e) => setGroupMemberFilter(e.target.value)}
+                                  placeholder="Search users to add/remove…"
+                                  className="mb-2"
+                                />
+                                {groupMembersLoading ? (
+                                  <p className="text-xs text-muted-foreground">Loading members…</p>
+                                ) : (
+                                  <div className="max-h-56 overflow-y-auto">
+                                    {filteredGroupMemberCandidates.map((u) => {
+                                      const isMember = groupMemberIds.has(u.id);
+                                      return (
+                                        <label
+                                          key={u.id}
+                                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary/40"
+                                        >
+                                          <Checkbox
+                                            checked={isMember}
+                                            onCheckedChange={() =>
+                                              void toggleGroupMember(g.id, u.id, isMember)
+                                            }
+                                          />
+                                          <span className="truncate">
+                                            {u.full_name ? `${u.full_name} — ` : ""}
+                                            {u.email}
+                                          </span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -523,7 +795,8 @@ function AdminPage() {
                       Post a notice
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Shows as a dismissible banner across the whole app.
+                      Shows as a dismissible banner across the whole app, and emails the target
+                      audience.
                     </p>
                     <Textarea
                       value={newNotice}
@@ -532,6 +805,37 @@ function AdminPage() {
                       className="mt-3 min-h-20"
                       required
                     />
+                    {groups.length > 0 && (
+                      <div className="mt-3">
+                        <p className="mb-1.5 text-xs text-muted-foreground">
+                          Target (leave unchecked to notify everyone):
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {groups.map((g) => {
+                            const checked = noticeGroupIds.has(g.id);
+                            return (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => {
+                                  const next = new Set(noticeGroupIds);
+                                  if (checked) next.delete(g.id);
+                                  else next.add(g.id);
+                                  setNoticeGroupIds(next);
+                                }}
+                                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                                  checked
+                                    ? "border-accent bg-accent/15 text-foreground"
+                                    : "border-border/60 bg-background/40 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {g.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <Button
                       type="submit"
                       disabled={postingNotice}
@@ -557,7 +861,10 @@ function AdminPage() {
                             <div>
                               <p className="text-sm">{n.message}</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {new Date(n.created_at).toLocaleString()}
+                                {new Date(n.created_at).toLocaleString()} ·{" "}
+                                {n.group_ids && n.group_ids.length > 0
+                                  ? n.group_ids.map((id) => groupsById.get(id) ?? "Unknown group").join(", ")
+                                  : "Everyone"}
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
@@ -595,6 +902,32 @@ function AdminPage() {
                   </p>
                   <div className="mt-3 space-y-2">
                     <Label>Recipients ({selectedRecipients.size} selected)</Label>
+                    {groups.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={emailGroupToAdd}
+                          onChange={(e) => setEmailGroupToAdd(e.target.value)}
+                          className="h-9 rounded-md border border-border/60 bg-background/40 px-2 text-sm"
+                        >
+                          <option value="">Add a group…</option>
+                          {groups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({g.member_count})
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={!emailGroupToAdd}
+                          onClick={() => void handleAddGroupToRecipients()}
+                          className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                        >
+                          Add group to recipients
+                        </Button>
+                      </div>
+                    )}
                     <Input
                       value={userFilter}
                       onChange={(e) => setUserFilter(e.target.value)}

@@ -10,6 +10,7 @@ export type AdminRecord = {
   can_view_grades: boolean;
   can_manage_notices: boolean;
   can_send_email: boolean;
+  can_manage_groups: boolean;
 };
 
 export function useAdminStatus() {

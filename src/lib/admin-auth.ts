@@ -12,7 +12,8 @@ export type AdminCapability =
   | "can_view_users"
   | "can_view_grades"
   | "can_manage_notices"
-  | "can_send_email";
+  | "can_send_email"
+  | "can_manage_groups";
 
 function isRootEmail(email: string | null | undefined): boolean {
   return (email ?? "").trim().toLowerCase() === ROOT_ADMIN_EMAIL;
@@ -42,6 +43,7 @@ export async function getAdminRecord(
         can_view_grades: true,
         can_manage_notices: true,
         can_send_email: true,
+        can_manage_groups: true,
       })
       .select()
       .single();

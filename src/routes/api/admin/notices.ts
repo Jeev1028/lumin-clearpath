@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { getAdminClient, requireUser } from "@/lib/api-auth";
 import { getAdminRecord, getCallerEmail, hasCapability } from "@/lib/admin-auth";
+import { escapeHtml, sendEmail } from "@/lib/email";
 
 async function requireNoticeAdmin(request: Request) {
   const auth = await requireUser(request);
@@ -13,6 +14,54 @@ async function requireNoticeAdmin(request: Request) {
     return { error: new Response("Forbidden", { status: 403 }) } as const;
   }
   return { admin, auth } as const;
+}
+
+/** Every registered user, or (if groupIds is non-empty) the distinct union
+ * of members across those groups. */
+async function resolveRecipientIds(
+  admin: ReturnType<typeof getAdminClient>,
+  groupIds: string[] | null,
+): Promise<string[]> {
+  if (groupIds && groupIds.length > 0) {
+    const { data } = await admin.from("group_members").select("user_id").in("group_id", groupIds);
+    return [...new Set((data ?? []).map((r) => r.user_id))];
+  }
+
+  const ids: string[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) break;
+    ids.push(...data.users.map((u) => u.id));
+    if (data.users.length < 200) break;
+  }
+  return ids;
+}
+
+async function emailNoticeToRecipients(
+  admin: ReturnType<typeof getAdminClient>,
+  recipientIds: string[],
+  message: string,
+) {
+  const html = `
+    <div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+      <h2 style="margin-bottom: 4px;">New ClearPath announcement</h2>
+      <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
+      <p><a href="https://luminclearpath.ca" style="color:#2563eb;">Open ClearPath →</a></p>
+    </div>`;
+
+  let sent = 0;
+  for (const userId of recipientIds) {
+    const { data } = await admin.auth.admin.getUserById(userId);
+    const email = data?.user?.email;
+    if (!email) continue;
+    try {
+      await sendEmail({ to: email, subject: "New ClearPath announcement", html });
+      sent++;
+    } catch (err) {
+      console.error("[notices] email failed for", userId, err);
+    }
+  }
+  return sent;
 }
 
 export const Route = createFileRoute("/api/admin/notices")({
@@ -34,17 +83,35 @@ export const Route = createFileRoute("/api/admin/notices")({
         if ("error" in result) return result.error;
         const { admin, auth } = result;
 
-        const body = (await request.json().catch(() => ({}))) as { message?: string };
+        const body = (await request.json().catch(() => ({}))) as {
+          message?: string;
+          groupIds?: string[];
+        };
         const message = body.message?.trim();
         if (!message) return Response.json({ error: "Message is required." }, { status: 400 });
 
+        const groupIds =
+          Array.isArray(body.groupIds) && body.groupIds.length > 0 ? body.groupIds : null;
+
         const { data, error } = await admin
           .from("notices")
-          .insert({ message, created_by: auth.userId, active: true })
+          .insert({ message, created_by: auth.userId, active: true, group_ids: groupIds })
           .select()
           .single();
         if (error) return new Response("Could not create notice", { status: 500 });
-        return Response.json({ notice: data });
+
+        // Best-effort: the notice is already live on the site regardless of
+        // whether email delivery succeeds, so failures here don't roll back
+        // the notice itself.
+        let emailed = 0;
+        try {
+          const recipientIds = await resolveRecipientIds(admin, groupIds);
+          emailed = await emailNoticeToRecipients(admin, recipientIds, message);
+        } catch (err) {
+          console.error("[notices] failed to email recipients", err);
+        }
+
+        return Response.json({ notice: data, emailed });
       },
 
       PATCH: async ({ request }) => {
