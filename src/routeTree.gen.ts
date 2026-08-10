@@ -16,6 +16,7 @@ import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 
@@ -54,6 +55,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSiteChatRoute = ApiSiteChatRouteImport.update({
+  id: '/api/site-chat',
+  path: '/api/site-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
   id: '/chat/',
   path: '/chat/',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/terms'
     | '/api/chat'
+    | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/terms'
     | '/api/chat'
+    | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/terms'
     | '/api/chat'
+    | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat/'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiSiteChatRoute: typeof ApiSiteChatRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
 }
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/site-chat': {
+      id: '/api/site-chat'
+      path: '/api/site-chat'
+      fullPath: '/api/site-chat'
+      preLoaderRoute: typeof ApiSiteChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/': {
       id: '/chat/'
       path: '/chat'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiSiteChatRoute: ApiSiteChatRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
 }

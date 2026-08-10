@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { LuminMark } from "@/components/lumin/LuminMark";
+import { SiteChatWidget } from "@/components/lumin/SiteChatWidget";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -247,6 +248,18 @@ function Index() {
             >
               <Link to={session ? "/schedule" : "/auth"}>Explore schedule</Link>
             </Button>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-5xl px-6 pb-24">
+          <h2 className="text-center text-2xl font-semibold sm:text-3xl">
+            How can this site help me?
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-muted-foreground">
+            Ask our chatbot — it can walk you through what ClearPath offers before you sign up.
+          </p>
+          <div className="mt-8">
+            <SiteChatWidget />
           </div>
         </section>
       </main>

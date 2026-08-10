@@ -93,6 +93,12 @@ export const Route = createFileRoute("/api/chat")({
           model: google("gemini-3.6-flash"),
           system: LUMIN_SYSTEM_PROMPT,
           messages: await convertToModelMessages(messages),
+          maxOutputTokens: 800,
+          providerOptions: {
+            google: {
+              thinkingConfig: { thinkingLevel: "low" },
+            },
+          },
         });
 
         return result.toUIMessageStreamResponse({
