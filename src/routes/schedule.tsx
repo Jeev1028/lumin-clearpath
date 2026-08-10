@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { StudyPlanner } from "@/components/lumin/StudyPlanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -275,6 +276,10 @@ function SchedulePage() {
           Weekday classes, weekend sessions, extracurriculars and holiday learning — one week at
           a glance.
         </p>
+
+        <div className="mt-6">
+          <StudyPlanner />
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
           <div className="flex items-center gap-3">

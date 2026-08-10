@@ -20,6 +20,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
+import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/google-calendar/callback'
@@ -85,6 +86,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
 const ApiSiteChatRoute = ApiSiteChatRouteImport.update({
   id: '/api/site-chat',
   path: '/api/site-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStudyPlanRoute = ApiStudyPlanRouteImport.update({
+  id: '/api/study-plan',
+  path: '/api/study-plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
+  '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
+  '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/site-chat': typeof ApiSiteChatRoute
+  '/api/study-plan': typeof ApiStudyPlanRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
+    | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat/'
     | '/api/google-calendar/callback'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
+    | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat'
     | '/api/google-calendar/callback'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/api/site-chat'
+    | '/api/study-plan'
     | '/chat/$threadId'
     | '/chat/'
     | '/api/google-calendar/callback'
@@ -307,6 +319,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSiteChatRoute: typeof ApiSiteChatRoute
+  ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
@@ -397,6 +410,13 @@ declare module '@tanstack/react-router' {
       path: '/api/site-chat'
       fullPath: '/api/site-chat'
       preLoaderRoute: typeof ApiSiteChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/study-plan': {
+      id: '/api/study-plan'
+      path: '/api/study-plan'
+      fullPath: '/api/study-plan'
+      preLoaderRoute: typeof ApiStudyPlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -491,6 +511,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSiteChatRoute: ApiSiteChatRoute,
+  ApiStudyPlanRoute: ApiStudyPlanRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,

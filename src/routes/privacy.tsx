@@ -17,7 +17,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" effectiveDate="August 9, 2026">
+    <LegalLayout title="Privacy Policy" effectiveDate="August 10, 2026">
       <p>
         ClearPath ("ClearPath," "we," "us," or "our") provides Lumin AI, a study platform that
         helps students track tasks, manage a class schedule, and work with an academically honest
@@ -35,8 +35,9 @@ function PrivacyPage() {
           sign in with Google.
         </li>
         <li>
-          <strong>Content you provide</strong> — tasks, assignments, class schedule entries, and
-          your conversations with Lumin AI.
+          <strong>Content you provide</strong> — tasks, assignments, class schedule entries, your
+          conversations with Lumin AI, and any study-planner preferences you choose to type in
+          (such as preferred study times or subjects you find harder).
         </li>
         <li>
           <strong>Connected Google services (optional)</strong> — if you choose to connect Google
@@ -55,6 +56,12 @@ function PrivacyPage() {
       <ul>
         <li>To provide, operate, and maintain ClearPath's core features (tasks, schedule, Lumin AI chat).</li>
         <li>To personalize your experience, such as showing your own tasks, schedule, and chat history.</li>
+        <li>
+          To let Lumin AI read your outstanding tasks, weekly schedule, upcoming calendar events,
+          and any preferences you provide, in order to generate a personalized study/assignment
+          plan when you use the study planner on the Tasks or Schedule page. See Section 4 below
+          for more detail.
+        </li>
         <li>To sync coursework, assignments, and events from Google Classroom and Google Calendar, if you connect them.</li>
         <li>To maintain the security and integrity of the platform, including detecting abuse.</li>
         <li>To communicate with you about your account or important changes to the service.</li>
@@ -83,20 +90,30 @@ function PrivacyPage() {
         .
       </p>
 
-      <h2 className="text-xl font-semibold">4. How your conversations with Lumin AI are handled</h2>
+      <h2 className="text-xl font-semibold">4. How Lumin AI uses your information</h2>
       <p>
         Messages you send to Lumin AI are processed by a third-party AI model provider in order to
         generate a response, and are stored in our database so your conversation history is
         available to you across sessions. Please avoid sharing sensitive personal information
         (such as government ID numbers, medical information, or passwords) in your chats.
       </p>
+      <p>
+        When you use the Lumin study planner (available on the Tasks and Schedule pages), Lumin AI
+        additionally reads your outstanding tasks (titles, courses, kinds, due dates, and status),
+        your weekly recurring schedule, any calendar events already saved within the plan's time
+        window, and any preferences you type in, and sends that information to the same
+        third-party AI model provider to generate a suggested day-by-day plan. The resulting plan
+        is saved to your account so it's available when you return, and is replaced each time you
+        regenerate it. This data is used only to build the plan shown to you — it is never used
+        to train third-party models, shared with your school, or shared with anyone else.
+      </p>
 
       <h2 className="text-xl font-semibold">5. Where your data is stored</h2>
       <p>
-        Your account data, tasks, schedule, and chat history are stored using Supabase, a hosted
-        database and authentication provider. Data is encrypted in transit (HTTPS/TLS), and access
-        to the underlying database is restricted and protected by authentication rules that
-        ensure you can only access your own data.
+        Your account data, tasks, schedule, chat history, and generated study plans are stored
+        using Supabase, a hosted database and authentication provider. Data is encrypted in
+        transit (HTTPS/TLS), and access to the underlying database is restricted and protected by
+        authentication rules that ensure you can only access your own data.
       </p>
 
       <h2 className="text-xl font-semibold">6. Students and school use</h2>
@@ -110,7 +127,7 @@ function PrivacyPage() {
 
       <h2 className="text-xl font-semibold">7. Your rights and choices</h2>
       <ul>
-        <li>You can access, update, or delete your task, schedule, and chat data at any time from within the app.</li>
+        <li>You can access, update, or delete your task, schedule, chat, and study-plan data at any time from within the app.</li>
         <li>You can disconnect Google Classroom or Google Calendar at any time, which stops future data access immediately.</li>
         <li>You can request a full copy of your data, or full deletion of your account and associated data, by contacting us.</li>
       </ul>

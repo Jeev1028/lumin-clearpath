@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { StudyPlanner } from "@/components/lumin/StudyPlanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,6 +176,10 @@ function TasksPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Tests, assignments and hand-ins in one calm list. Progress updates as you submit.
         </p>
+
+        <div className="mt-6">
+          <StudyPlanner />
+        </div>
 
         <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">

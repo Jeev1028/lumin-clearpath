@@ -214,6 +214,30 @@ export type Database = {
         }
         Relationships: []
       }
+      study_plans: {
+        Row: {
+          generated_at: string
+          horizon: string
+          plan_markdown: string
+          preferences: string | null
+          user_id: string
+        }
+        Insert: {
+          generated_at?: string
+          horizon?: string
+          plan_markdown: string
+          preferences?: string | null
+          user_id: string
+        }
+        Update: {
+          generated_at?: string
+          horizon?: string
+          plan_markdown?: string
+          preferences?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           course: string | null
