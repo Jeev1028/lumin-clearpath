@@ -87,6 +87,67 @@ export async function deleteEvent(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// --- One-off dated events (separate from the weekly schedule template) ---
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  source: "clearpath" | "google";
+  google_event_id: string | null;
+};
+
+const CALENDAR_EVENT_FIELDS =
+  "id, title, description, location, start_at, end_at, all_day, source, google_event_id";
+
+export async function listCalendarEvents(): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select(CALENDAR_EVENT_FIELDS)
+    .order("start_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as CalendarEvent[];
+}
+
+export async function createCalendarEvent(
+  userId: string,
+  input: { title: string; start_at: string; end_at: string; location?: string | null },
+): Promise<CalendarEvent> {
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .insert({ ...input, user_id: userId, source: "clearpath" })
+    .select(CALENDAR_EVENT_FIELDS)
+    .single();
+  if (error) throw error;
+  return data as CalendarEvent;
+}
+
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// --- Google Calendar connection status ---
+
+export type CalendarConnection = {
+  connected_at: string;
+  last_synced_at: string | null;
+  google_calendar_id: string;
+};
+
+export async function getCalendarConnection(): Promise<CalendarConnection | null> {
+  const { data, error } = await supabase
+    .from("google_calendar_connections")
+    .select("connected_at, last_synced_at, google_calendar_id")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export const DAY_NAMES = [
   "Sunday",
   "Monday",

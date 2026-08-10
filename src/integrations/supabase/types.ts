@@ -58,6 +58,7 @@ export type Database = {
           created_at: string
           day_of_week: number
           end_time: string
+          google_event_id: string | null
           id: string
           location: string | null
           start_time: string
@@ -70,6 +71,7 @@ export type Database = {
           created_at?: string
           day_of_week?: number
           end_time?: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           start_time?: string
@@ -82,11 +84,90 @@ export type Database = {
           created_at?: string
           day_of_week?: number
           end_time?: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           start_time?: string
           title?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          description: string | null
+          end_at: string
+          google_event_id: string | null
+          id: string
+          location: string | null
+          source: string
+          start_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          description?: string | null
+          end_at: string
+          google_event_id?: string | null
+          id?: string
+          location?: string | null
+          source?: string
+          start_at: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          description?: string | null
+          end_at?: string
+          google_event_id?: string | null
+          id?: string
+          location?: string | null
+          source?: string
+          start_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_calendar_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          access_token_expires_at: string | null
+          connected_at: string
+          google_calendar_id: string
+          id: string
+          last_synced_at: string | null
+          refresh_token_encrypted: string
+          user_id: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          google_calendar_id?: string
+          id?: string
+          last_synced_at?: string | null
+          refresh_token_encrypted: string
+          user_id: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          google_calendar_id?: string
+          id?: string
+          last_synced_at?: string | null
+          refresh_token_encrypted?: string
           user_id?: string
         }
         Relationships: []

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
+import { CalendarClock, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,11 +18,17 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   CATEGORY_LABELS,
   DAY_NAMES,
+  type CalendarConnection,
+  type CalendarEvent,
   type ScheduleCategory,
   type ScheduleEvent,
+  createCalendarEvent,
   createEvent,
+  deleteCalendarEvent,
   deleteEvent,
   formatTime,
+  getCalendarConnection,
+  listCalendarEvents,
   listEvents,
 } from "@/lib/clearpath";
 
@@ -56,12 +62,23 @@ const emptyDraft = {
   location: "",
 };
 
+const emptyOneOffDraft = {
+  title: "",
+  date: "",
+  start_time: "09:00",
+  end_time: "10:00",
+};
+
 function SchedulePage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { session, user, loading } = useAuth();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [oneOffEvents, setOneOffEvents] = useState<CalendarEvent[]>([]);
+  const [connection, setConnection] = useState<CalendarConnection | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
+  const [oneOffDraft, setOneOffDraft] = useState(emptyOneOffDraft);
   const [busy, setBusy] = useState(false);
+  const [calendarBusy, setCalendarBusy] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -69,8 +86,26 @@ function SchedulePage() {
       void navigate({ to: "/auth" });
       return;
     }
-    listEvents().then(setEvents).catch(() => toast.error("Could not load your schedule."));
+    Promise.all([listEvents(), listCalendarEvents(), getCalendarConnection()])
+      .then(([scheduleData, oneOffData, connectionData]) => {
+        setEvents(scheduleData);
+        setOneOffEvents(oneOffData);
+        setConnection(connectionData);
+      })
+      .catch(() => toast.error("Could not load your schedule."));
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("calendar");
+    if (!status) return;
+    if (status === "connected") toast.success("Google Calendar connected!");
+    else if (status === "denied") toast.error("Google Calendar connection was cancelled.");
+    else toast.error("Could not connect Google Calendar. Please try again.");
+    params.delete("calendar");
+    const rest = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
+  }, []);
 
   async function onAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -87,8 +122,7 @@ function SchedulePage() {
       });
       setEvents((prev) =>
         [...prev, created].sort(
-          (a, b) =>
-            a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time),
+          (a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time),
         ),
       );
       setDraft({ ...emptyDraft, category: draft.category });
@@ -108,6 +142,110 @@ function SchedulePage() {
     }
   }
 
+  async function onAddOneOff(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user || !oneOffDraft.title.trim() || !oneOffDraft.date) return;
+    setBusy(true);
+    try {
+      const [year, month, day] = oneOffDraft.date.split("-").map(Number);
+      const [startH, startM] = oneOffDraft.start_time.split(":").map(Number);
+      const [endH, endM] = oneOffDraft.end_time.split(":").map(Number);
+      const startAt = new Date(year!, (month ?? 1) - 1, day, startH, startM).toISOString();
+      const endAt = new Date(year!, (month ?? 1) - 1, day, endH, endM).toISOString();
+      const created = await createCalendarEvent(user.id, {
+        title: oneOffDraft.title.trim(),
+        start_at: startAt,
+        end_at: endAt,
+      });
+      setOneOffEvents((prev) =>
+        [...prev, created].sort((a, b) => a.start_at.localeCompare(b.start_at)),
+      );
+      setOneOffDraft(emptyOneOffDraft);
+    } catch {
+      toast.error("Could not save that event.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onDeleteOneOff(id: string) {
+    setOneOffEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await deleteCalendarEvent(id);
+    } catch {
+      toast.error("Could not remove that event.");
+    }
+  }
+
+  async function handleConnect() {
+    if (!session) return;
+    setCalendarBusy(true);
+    try {
+      const res = await fetch("/api/google-calendar/start", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error();
+      const { url } = (await res.json()) as { url: string };
+      window.location.href = url;
+    } catch {
+      toast.error("Could not start the Google Calendar connection.");
+      setCalendarBusy(false);
+    }
+  }
+
+  async function handleSync() {
+    if (!session) return;
+    setCalendarBusy(true);
+    try {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await fetch("/api/google-calendar/sync", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ timeZone }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const result = (await res.json()) as { pushed: number; pulled: number };
+      const [freshEvents, freshOneOff, freshConnection] = await Promise.all([
+        listEvents(),
+        listCalendarEvents(),
+        getCalendarConnection(),
+      ]);
+      setEvents(freshEvents);
+      setOneOffEvents(freshOneOff);
+      setConnection(freshConnection);
+      toast.success(`Synced — ${result.pushed} sent, ${result.pulled} new from Google.`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : "Sync failed — please try again.",
+      );
+    } finally {
+      setCalendarBusy(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    if (!session) return;
+    setCalendarBusy(true);
+    try {
+      await fetch("/api/google-calendar/disconnect", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      setConnection(null);
+      toast.success("Google Calendar disconnected.");
+    } catch {
+      toast.error("Could not disconnect.");
+    } finally {
+      setCalendarBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-deep">
       <SiteHeader />
@@ -117,6 +255,57 @@ function SchedulePage() {
           Weekday classes, weekend sessions, extracurriculars and holiday learning — one week at
           a glance.
         </p>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
+              <CalendarClock className="h-5 w-5 text-accent" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Google Calendar</p>
+              <p className="text-xs text-muted-foreground">
+                {connection
+                  ? connection.last_synced_at
+                    ? `Connected · last synced ${new Date(connection.last_synced_at).toLocaleString()}`
+                    : "Connected · not yet synced"
+                  : "Two-way sync with your Google Calendar, optional."}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {connection ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={calendarBusy}
+                  onClick={() => void handleSync()}
+                  className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                  Sync now
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={calendarBusy}
+                  onClick={() => void handleDisconnect()}
+                >
+                  Disconnect
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                disabled={calendarBusy}
+                onClick={() => void handleConnect()}
+                className="bg-gradient-lumin text-primary-foreground"
+              >
+                Connect Google Calendar
+              </Button>
+            )}
+          </div>
+        </div>
 
         <form
           onSubmit={onAdd}
@@ -248,6 +437,103 @@ function SchedulePage() {
           {events.length === 0 && (
             <p className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground md:col-span-2">
               Your week is empty. Add a class or session above.
+            </p>
+          )}
+        </div>
+
+        <h2 className="mt-12 text-xl font-semibold">Upcoming events</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          One-off events like appointments — added here, or pulled in from Google Calendar.
+        </p>
+
+        <form
+          onSubmit={onAddOneOff}
+          className="mt-4 grid gap-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel sm:grid-cols-4"
+        >
+          <div className="sm:col-span-2">
+            <Label htmlFor="oneoff-title">Event</Label>
+            <Input
+              id="oneoff-title"
+              value={oneOffDraft.title}
+              onChange={(e) => setOneOffDraft({ ...oneOffDraft, title: e.target.value })}
+              placeholder="Dentist appointment"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="oneoff-date">Date</Label>
+            <Input
+              id="oneoff-date"
+              type="date"
+              value={oneOffDraft.date}
+              onChange={(e) => setOneOffDraft({ ...oneOffDraft, date: e.target.value })}
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label htmlFor="oneoff-start">Starts</Label>
+              <Input
+                id="oneoff-start"
+                type="time"
+                value={oneOffDraft.start_time}
+                onChange={(e) => setOneOffDraft({ ...oneOffDraft, start_time: e.target.value })}
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="oneoff-end">Ends</Label>
+              <Input
+                id="oneoff-end"
+                type="time"
+                value={oneOffDraft.end_time}
+                onChange={(e) => setOneOffDraft({ ...oneOffDraft, end_time: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex items-end sm:col-span-4">
+            <Button
+              type="submit"
+              disabled={busy}
+              className="bg-gradient-lumin text-primary-foreground"
+            >
+              Add event
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-4 space-y-2">
+          {oneOffEvents.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/50 px-4 py-3"
+            >
+              <div>
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(item.start_at).toLocaleString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                  {item.location ? ` · ${item.location}` : ""}
+                  {item.source === "google" ? " · from Google Calendar" : ""}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Delete ${item.title}`}
+                onClick={() => void onDeleteOneOff(item.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          {oneOffEvents.length === 0 && (
+            <p className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+              No upcoming one-off events.
             </p>
           )}
         </div>

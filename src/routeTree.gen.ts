@@ -19,6 +19,10 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/google-calendar/callback'
+import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
+import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
+import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api/google-calendar/sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +74,28 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoogleCalendarCallbackRoute =
+  ApiGoogleCalendarCallbackRouteImport.update({
+    id: '/api/google-calendar/callback',
+    path: '/api/google-calendar/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleCalendarDisconnectRoute =
+  ApiGoogleCalendarDisconnectRouteImport.update({
+    id: '/api/google-calendar/disconnect',
+    path: '/api/google-calendar/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleCalendarStartRoute = ApiGoogleCalendarStartRouteImport.update({
+  id: '/api/google-calendar/start',
+  path: '/api/google-calendar/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
+  id: '/api/google-calendar/sync',
+  path: '/api/google-calendar/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +108,10 @@ export interface FileRoutesByFullPath {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +124,10 @@ export interface FileRoutesByTo {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +141,10 @@ export interface FileRoutesById {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +159,10 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/start'
+    | '/api/google-calendar/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +175,10 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/start'
+    | '/api/google-calendar/sync'
   id:
     | '__root__'
     | '/'
@@ -145,6 +191,10 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/start'
+    | '/api/google-calendar/sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +208,10 @@ export interface RootRouteChildren {
   ApiSiteChatRoute: typeof ApiSiteChatRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
+  ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
+  ApiGoogleCalendarStartRoute: typeof ApiGoogleCalendarStartRoute
+  ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +286,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-calendar/callback': {
+      id: '/api/google-calendar/callback'
+      path: '/api/google-calendar/callback'
+      fullPath: '/api/google-calendar/callback'
+      preLoaderRoute: typeof ApiGoogleCalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/disconnect': {
+      id: '/api/google-calendar/disconnect'
+      path: '/api/google-calendar/disconnect'
+      fullPath: '/api/google-calendar/disconnect'
+      preLoaderRoute: typeof ApiGoogleCalendarDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/start': {
+      id: '/api/google-calendar/start'
+      path: '/api/google-calendar/start'
+      fullPath: '/api/google-calendar/start'
+      preLoaderRoute: typeof ApiGoogleCalendarStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/sync': {
+      id: '/api/google-calendar/sync'
+      path: '/api/google-calendar/sync'
+      fullPath: '/api/google-calendar/sync'
+      preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +328,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSiteChatRoute: ApiSiteChatRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
+  ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
+  ApiGoogleCalendarStartRoute: ApiGoogleCalendarStartRoute,
+  ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
