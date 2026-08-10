@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, MessageSquarePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { UIMessage } from "ai";
 import { toast } from "sonner";
 
+import { ChatTopBar } from "@/components/lumin/ChatTopBar";
 import { ChatWindow } from "@/components/lumin/ChatWindow";
 import { LuminMark } from "@/components/lumin/LuminMark";
-import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { ThreadSidebar } from "@/components/lumin/ThreadSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,31 +104,12 @@ function ChatThreadPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      {/* Same site-wide header used everywhere else, so account access
-          (profile menu + sign out) and navigation are consistent across
-          the whole app. The hamburger (mobile only) opens the thread
-          drawer below since the persistent sidebar is hidden under md. */}
-      <SiteHeader
-        leading={
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open conversation menu"
-            className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        }
-        trailing={
-          <button
-            type="button"
-            onClick={() => void handleNewThread()}
-            aria-label="New conversation"
-            className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
-          >
-            <MessageSquarePlus className="h-5 w-5" />
-          </button>
-        }
+      {/* Chat-specific top bar: the logo cap matches the sidebar's own
+          styling (reads as part of it), while nav + account stay
+          consistent with the rest of the site. */}
+      <ChatTopBar
+        onOpenSidebar={() => setSidebarOpen(true)}
+        onNewThread={() => void handleNewThread()}
       />
 
       <div className="flex flex-1 overflow-hidden">

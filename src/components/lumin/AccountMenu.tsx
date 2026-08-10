@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, ClipboardList, LogOut, Sparkles } from "lucide-react";
+import { CalendarDays, ClipboardList, LogOut, Settings, Sparkles } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -66,6 +66,12 @@ export function AccountMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/account">
+            <Settings className="h-4 w-4" aria-hidden />
+            Account settings
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => void handleSignOut()}
           className="cursor-pointer gap-2 text-destructive focus:text-destructive"
