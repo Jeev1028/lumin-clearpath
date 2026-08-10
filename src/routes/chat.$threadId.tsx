@@ -31,12 +31,17 @@ function ChatThreadPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { session, user, loading } = useAuth();
+  const { session, user, loading, needsMfa } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/auth" });
-  }, [loading, user, navigate]);
+    if (loading) return;
+    if (!user) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+    if (needsMfa) void navigate({ to: "/mfa-challenge" });
+  }, [loading, user, needsMfa, navigate]);
 
   // Close the mobile drawer automatically if the thread changes (e.g. from
   // a link click, which already closes it, but also covers any other nav).

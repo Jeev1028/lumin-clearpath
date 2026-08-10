@@ -56,7 +56,7 @@ const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | un
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
+  const { session, loading, needsMfa } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,8 +65,9 @@ function AuthPage() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loading && session) void navigate({ to: "/chat" });
-  }, [loading, session, navigate]);
+    if (loading || !session) return;
+    void navigate({ to: needsMfa ? "/mfa-challenge" : "/chat" });
+  }, [loading, session, needsMfa, navigate]);
 
   // Google Identity Services: a fully client-side sign-in that talks to Google
   // directly from this origin, so the account picker shows "ClearPath" (from
@@ -85,7 +86,8 @@ function AuthPage() {
         toast.error("Google sign-in failed. Please try again.");
         return;
       }
-      void navigate({ to: "/chat" });
+      // The session-watching effect above handles routing (including to
+      // the MFA challenge if this account has 2FA enabled).
     }
 
     // Google's button needs a fixed pixel width — measure the actual

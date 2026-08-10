@@ -99,7 +99,7 @@ function isOverdue(task: Task): boolean {
 
 function TasksPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, needsMfa } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
@@ -111,8 +111,12 @@ function TasksPage() {
       void navigate({ to: "/auth" });
       return;
     }
+    if (needsMfa) {
+      void navigate({ to: "/mfa-challenge" });
+      return;
+    }
     listTasks().then(setTasks).catch(() => toast.error("Could not load your tasks."));
-  }, [loading, user, navigate]);
+  }, [loading, user, needsMfa, navigate]);
 
   const submitted = tasks.filter((t) => t.status === "submitted").length;
   const overdueCount = tasks.filter(isOverdue).length;

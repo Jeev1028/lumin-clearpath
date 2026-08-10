@@ -71,7 +71,7 @@ const emptyOneOffDraft = {
 
 function SchedulePage() {
   const navigate = useNavigate();
-  const { session, user, loading } = useAuth();
+  const { session, user, loading, needsMfa } = useAuth();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [oneOffEvents, setOneOffEvents] = useState<CalendarEvent[]>([]);
   const [connection, setConnection] = useState<CalendarConnection | null>(null);
@@ -86,6 +86,10 @@ function SchedulePage() {
       void navigate({ to: "/auth" });
       return;
     }
+    if (needsMfa) {
+      void navigate({ to: "/mfa-challenge" });
+      return;
+    }
     Promise.all([listEvents(), listCalendarEvents(), getCalendarConnection()])
       .then(([scheduleData, oneOffData, connectionData]) => {
         setEvents(scheduleData);
@@ -97,7 +101,7 @@ function SchedulePage() {
       })
       .catch(() => toast.error("Could not load your schedule."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user, navigate]);
+  }, [loading, user, needsMfa, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

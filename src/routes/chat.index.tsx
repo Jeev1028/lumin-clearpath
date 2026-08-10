@@ -19,13 +19,17 @@ export const Route = createFileRoute("/chat/")({
 
 function ChatIndex() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, needsMfa } = useAuth();
   const started = useRef(false);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       void navigate({ to: "/auth" });
+      return;
+    }
+    if (needsMfa) {
+      void navigate({ to: "/mfa-challenge" });
       return;
     }
     if (started.current) return;
@@ -40,7 +44,7 @@ function ChatIndex() {
         started.current = false;
       }
     })();
-  }, [loading, user, navigate]);
+  }, [loading, user, needsMfa, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-deep">

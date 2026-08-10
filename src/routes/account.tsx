@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { Factor } from "@supabase/supabase-js";
+import { ShieldCheck, ShieldOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -22,7 +24,7 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, needsMfa } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,17 +32,37 @@ function AccountPage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
+  const [mfaFactors, setMfaFactors] = useState<Factor[]>([]);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [enrollData, setEnrollData] = useState<{
+    factorId: string;
+    qrCode: string;
+    secret: string;
+  } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+
   useEffect(() => {
     if (loading) return;
     if (!user) {
       void navigate({ to: "/auth" });
       return;
     }
+    if (needsMfa) {
+      void navigate({ to: "/mfa-challenge" });
+      return;
+    }
     const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
     setFullName(meta["full_name"] || meta["name"] || "");
     setPhone(meta["phone_number"] || "");
     setAvatarUrl(meta["avatar_url"] || meta["picture"]);
-  }, [loading, user, navigate]);
+    void loadFactors();
+  }, [loading, user, needsMfa, navigate]);
+
+  async function loadFactors() {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) return;
+    setMfaFactors(data.all);
+  }
 
   if (loading || !user) {
     return (
@@ -51,6 +73,7 @@ function AccountPage() {
   }
 
   const initial = (fullName || user.email || "?").charAt(0).toUpperCase();
+  const verifiedTotp = mfaFactors.find((f) => f.factor_type === "totp" && f.status === "verified");
 
   async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -97,6 +120,67 @@ function AccountPage() {
       toast.error(err instanceof Error ? err.message : "Could not save your changes.");
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function handleStartEnroll() {
+    setMfaBusy(true);
+    try {
+      const stale = mfaFactors.find((f) => f.factor_type === "totp" && f.status === "unverified");
+      if (stale) await supabase.auth.mfa.unenroll({ factorId: stale.id });
+
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+      if (error) throw error;
+      setEnrollData({
+        factorId: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start 2FA setup.");
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function handleVerifyEnroll(event: React.FormEvent) {
+    event.preventDefault();
+    if (!enrollData) return;
+    setMfaBusy(true);
+    try {
+      const { error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: enrollData.factorId,
+        code: verifyCode.trim(),
+      });
+      if (error) throw error;
+      toast.success("Two-factor authentication enabled.");
+      setEnrollData(null);
+      setVerifyCode("");
+      await loadFactors();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "That code didn't work. Try again.");
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  function handleCancelEnroll() {
+    setEnrollData(null);
+    setVerifyCode("");
+  }
+
+  async function handleDisableMfa() {
+    if (!verifiedTotp) return;
+    setMfaBusy(true);
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: verifiedTotp.id });
+      if (error) throw error;
+      toast.success("Two-factor authentication disabled.");
+      await loadFactors();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not disable 2FA.");
+    } finally {
+      setMfaBusy(false);
     }
   }
 
@@ -175,6 +259,106 @@ function AccountPage() {
             {savingProfile ? "Saving…" : "Save changes"}
           </Button>
         </form>
+
+        <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                verifiedTotp ? "bg-emerald-400/10" : "bg-accent/10"
+              }`}
+            >
+              {verifiedTotp ? (
+                <ShieldCheck className="h-5 w-5 text-emerald-400" aria-hidden />
+              ) : (
+                <ShieldOff className="h-5 w-5 text-accent" aria-hidden />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">Two-factor authentication</p>
+              <p className="text-xs text-muted-foreground">
+                {verifiedTotp
+                  ? "Enabled — an authenticator app code is required to sign in."
+                  : "Add an extra layer of security with an authenticator app."}
+              </p>
+            </div>
+            {!enrollData &&
+              (verifiedTotp ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={mfaBusy}
+                  onClick={() => void handleDisableMfa()}
+                  className="border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                >
+                  Disable
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={mfaBusy}
+                  onClick={() => void handleStartEnroll()}
+                  className="bg-gradient-lumin text-primary-foreground"
+                >
+                  Enable
+                </Button>
+              ))}
+          </div>
+
+          {enrollData && (
+            <form onSubmit={handleVerifyEnroll} className="mt-6 space-y-4 border-t border-border/60 pt-6">
+              <p className="text-sm text-muted-foreground">
+                Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password,
+                etc.), or enter the code manually. Then confirm it below.
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <img
+                  src={enrollData.qrCode}
+                  alt="Scan this QR code with your authenticator app"
+                  className="h-40 w-40 rounded-xl border border-border/70 bg-white p-2"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Can&apos;t scan? Enter manually:</p>
+                  <code className="mt-1 block max-w-full break-all rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs">
+                    {enrollData.secret}
+                  </code>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="verify-code">6-digit code</Label>
+                <Input
+                  id="verify-code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  maxLength={6}
+                  required
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                  className="max-w-40 text-center text-lg tracking-[0.5em]"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={mfaBusy || verifyCode.length !== 6}
+                  className="bg-gradient-lumin text-primary-foreground shadow-glow"
+                >
+                  {mfaBusy ? "Verifying…" : "Verify & enable"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={handleCancelEnroll}>
+                  Cancel
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Keep your authenticator app accessible — if you lose it, contact{" "}
+                <a href="mailto:lumin-support@luminclearpath.ca" className="underline">
+                  lumin-support@luminclearpath.ca
+                </a>{" "}
+                to regain access.
+              </p>
+            </form>
+          )}
+        </div>
       </main>
     </div>
   );
