@@ -98,8 +98,9 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
           return Response.json({ ok: true, submissionState: newState });
         } catch (err) {
           console.error("[google-classroom] submission action failed", err);
-          return new Response(
-            "Could not update your submission — it may already be graded, or need attachments added in Google Classroom first.",
+          const detail = err instanceof Error ? err.message : String(err);
+          return Response.json(
+            { error: `Could not update your submission: ${detail}` },
             { status: 502 },
           );
         }
