@@ -91,8 +91,12 @@ function SchedulePage() {
         setEvents(scheduleData);
         setOneOffEvents(oneOffData);
         setConnection(connectionData);
+        // Already connected — keep it fresh automatically on every visit,
+        // without needing a manual "Sync now" click.
+        if (connectionData) void handleSync({ silent: true });
       })
       .catch(() => toast.error("Could not load your schedule."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, navigate]);
 
   useEffect(() => {
@@ -194,7 +198,7 @@ function SchedulePage() {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(options?: { silent?: boolean }) {
     if (!session) return;
     setCalendarBusy(true);
     try {
@@ -217,7 +221,9 @@ function SchedulePage() {
       setEvents(freshEvents);
       setOneOffEvents(freshOneOff);
       setConnection(freshConnection);
-      toast.success(`Synced — ${result.pushed} sent, ${result.pulled} new from Google.`);
+      if (!options?.silent) {
+        toast.success(`Synced — ${result.pushed} sent, ${result.pulled} new from Google.`);
+      }
     } catch (err) {
       toast.error(
         err instanceof Error && err.message
