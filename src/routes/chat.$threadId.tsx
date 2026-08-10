@@ -6,7 +6,8 @@ import type { UIMessage } from "ai";
 import { toast } from "sonner";
 
 import { ChatWindow } from "@/components/lumin/ChatWindow";
-import { LuminMark, LuminWordmark } from "@/components/lumin/LuminMark";
+import { LuminMark } from "@/components/lumin/LuminMark";
+import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { ThreadSidebar } from "@/components/lumin/ThreadSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,28 +105,32 @@ function ChatThreadPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      {/* Mobile-only top bar — the persistent sidebar is hidden below md,
-          so this is the only way to reach thread switching / new chat /
-          sign out on a phone. */}
-      <div className="flex items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 md:hidden">
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open conversation menu"
-          className="rounded-lg p-2 text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <LuminWordmark className="scale-90" />
-        <button
-          type="button"
-          onClick={handleNewThread}
-          aria-label="New conversation"
-          className="rounded-lg p-2 text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          <MessageSquarePlus className="h-5 w-5" />
-        </button>
-      </div>
+      {/* Same site-wide header used everywhere else, so account access
+          (profile menu + sign out) and navigation are consistent across
+          the whole app. The hamburger (mobile only) opens the thread
+          drawer below since the persistent sidebar is hidden under md. */}
+      <SiteHeader
+        leading={
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open conversation menu"
+            className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        }
+        trailing={
+          <button
+            type="button"
+            onClick={() => void handleNewThread()}
+            aria-label="New conversation"
+            className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
+          >
+            <MessageSquarePlus className="h-5 w-5" />
+          </button>
+        }
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex">
@@ -135,6 +140,7 @@ function ChatThreadPage() {
             onNewThread={handleNewThread}
             onDeleteThread={handleDeleteThread}
             onSignOut={handleSignOut}
+            showBranding={false}
           />
         </div>
         <ChatWindow

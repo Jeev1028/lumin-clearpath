@@ -16,6 +16,12 @@ type Props = {
    * mobile drawer this sidebar may be rendered inside of. No-op on the
    * persistent desktop sidebar. */
   onNavigate?: () => void;
+  /** The persistent desktop sidebar sits right below the site-wide
+   * SiteHeader (which already shows the logo), so its own wordmark would
+   * be redundant there. The mobile drawer, however, is a full-viewport
+   * overlay that visually covers SiteHeader, so it still needs its own
+   * branding. Defaults to shown. */
+  showBranding?: boolean;
 };
 
 export function ThreadSidebar({
@@ -25,19 +31,22 @@ export function ThreadSidebar({
   onDeleteThread,
   onSignOut,
   onNavigate,
+  showBranding = true,
 }: Props) {
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="border-b border-sidebar-border p-4">
-        <Link to="/" onClick={onNavigate}>
-          <LuminWordmark />
-        </Link>
+        {showBranding && (
+          <Link to="/" onClick={onNavigate} className="mb-4 inline-block">
+            <LuminWordmark />
+          </Link>
+        )}
         <Button
           onClick={() => {
             onNewThread();
             onNavigate?.();
           }}
-          className="mt-4 w-full bg-gradient-lumin text-primary-foreground"
+          className="w-full bg-gradient-lumin text-primary-foreground"
           size="sm"
         >
           <MessageSquarePlus className="h-4 w-4" />
