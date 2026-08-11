@@ -10,9 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import type { TextSize } from "@/components/lumin/AccessibilityProvider";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -37,6 +45,10 @@ function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [emailDigestEnabled, setEmailDigestEnabled] = useState(true);
   const [savingDigestPref, setSavingDigestPref] = useState(false);
+  const [textSize, setTextSize] = useState<TextSize>("default");
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  const [savingA11yPref, setSavingA11yPref] = useState(false);
 
   const [mfaFactors, setMfaFactors] = useState<Factor[]>([]);
   const [mfaBusy, setMfaBusy] = useState(false);
@@ -68,6 +80,9 @@ function AccountPage() {
     setPhone((meta["phone_number"] as string) || "");
     setAvatarUrl((meta["avatar_url"] as string) || (meta["picture"] as string) || undefined);
     setEmailDigestEnabled(meta["email_digest_enabled"] !== false);
+    setTextSize((meta["a11y_text_size"] as TextSize) || "default");
+    setReducedMotion(Boolean(meta["a11y_reduced_motion"]));
+    setHighContrast(Boolean(meta["a11y_high_contrast"]));
     void loadFactors();
   }, [loading, user, needsMfa, navigate]);
 
@@ -130,6 +145,36 @@ function AccountPage() {
       toast.error(err instanceof Error ? err.message : "Could not save that preference.");
     } finally {
       setSavingDigestPref(false);
+    }
+  }
+
+  async function saveA11yPrefs(next: {
+    textSize?: TextSize;
+    reducedMotion?: boolean;
+    highContrast?: boolean;
+  }) {
+    setSavingA11yPref(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          a11y_text_size: next.textSize ?? textSize,
+          a11y_reduced_motion: next.reducedMotion ?? reducedMotion,
+          a11y_high_contrast: next.highContrast ?? highContrast,
+        },
+      });
+      if (error) throw error;
+      // Applied instantly by AccessibilityProvider once the auth state
+      // refreshes, but set it directly too so the change feels immediate.
+      const html = document.documentElement;
+      if (next.textSize !== undefined) html.setAttribute("data-text-size", next.textSize);
+      if (next.reducedMotion !== undefined)
+        html.setAttribute("data-reduced-motion", String(next.reducedMotion));
+      if (next.highContrast !== undefined)
+        html.setAttribute("data-high-contrast", String(next.highContrast));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save that preference.");
+    } finally {
+      setSavingA11yPref(false);
     }
   }
 
@@ -301,7 +346,7 @@ function AccountPage() {
   return (
     <div className="min-h-screen bg-deep">
       <SiteHeader />
-      <main className="mx-auto max-w-2xl px-6 pb-24">
+      <main id="main-content" className="mx-auto max-w-2xl px-6 pb-24">
         <h1 className="mt-10 text-3xl font-bold">Account settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Manage your profile picture and personal details.
@@ -386,6 +431,72 @@ function AccountPage() {
             disabled={savingDigestPref}
             onCheckedChange={(checked) => void handleToggleEmailDigest(checked)}
           />
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+          <div>
+            <p className="text-sm font-semibold">Accessibility</p>
+            <p className="text-xs text-muted-foreground">
+              These apply across all of ClearPath, on any device you sign in on.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Label htmlFor="text-size" className="text-sm font-normal">
+              Text size
+            </Label>
+            <Select
+              value={textSize}
+              disabled={savingA11yPref}
+              onValueChange={(value) => {
+                setTextSize(value as TextSize);
+                void saveA11yPrefs({ textSize: value as TextSize });
+              }}
+            >
+              <SelectTrigger id="text-size" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default</SelectItem>
+                <SelectItem value="large">Large</SelectItem>
+                <SelectItem value="x-large">Extra large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Reduce motion</p>
+              <p className="text-xs text-muted-foreground">
+                Turns off animations and transitions across the app.
+              </p>
+            </div>
+            <Switch
+              checked={reducedMotion}
+              disabled={savingA11yPref}
+              onCheckedChange={(checked) => {
+                setReducedMotion(checked);
+                void saveA11yPrefs({ reducedMotion: checked });
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">High contrast</p>
+              <p className="text-xs text-muted-foreground">
+                Brighter borders and text for better visibility.
+              </p>
+            </div>
+            <Switch
+              checked={highContrast}
+              disabled={savingA11yPref}
+              onCheckedChange={(checked) => {
+                setHighContrast(checked);
+                void saveA11yPrefs({ highContrast: checked });
+              }}
+            />
+          </div>
         </div>
 
         <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">

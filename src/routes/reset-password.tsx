@@ -84,7 +84,7 @@ function ResetPasswordPage() {
         </Link>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-6 pb-20">
+      <main id="main-content" className="flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card/80 p-8 shadow-panel backdrop-blur-sm">
           {checking ? (
             <p className="text-sm text-muted-foreground">Checking your link…</p>

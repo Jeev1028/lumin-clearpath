@@ -127,7 +127,7 @@ function CalendarPage() {
   return (
     <div className="min-h-screen bg-deep">
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-6 pb-24">
+      <main id="main-content" className="mx-auto max-w-5xl px-6 pb-24">
         <h1 className="text-3xl font-bold">Calendar</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Classes, one-off events, and every assignment due date — merged from Schedule and

@@ -109,7 +109,7 @@ function TeacherPortalPage() {
         <LuminWordmark />
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-6 pb-20">
+      <main id="main-content" className="mx-auto w-full max-w-lg flex-1 px-6 pb-20">
         {loading ? (
           <p className="mt-10 text-sm text-muted-foreground">Loading…</p>
         ) : loadError ? (

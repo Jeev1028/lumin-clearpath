@@ -282,3 +282,66 @@
     font-size: 1.05em;
   }
 }
+
+/*
+ * Accessibility preferences (Account settings -> Accessibility, and the
+ * OS-level prefers-reduced-motion media query). Applied via data-*
+ * attributes on <html> so a logged-out visitor's OS preference and a
+ * signed-in user's saved preference both work through the same rules.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-text-size="x-large"] {
+  font-size: 125%;
+}
+
+html[data-high-contrast="true"] {
+  --border: oklch(1 0 0 / 35%);
+  --muted-foreground: oklch(0.86 0.02 255);
+  --ring: oklch(0.8 0.14 245);
+}
+
+html[data-high-contrast="true"] :focus-visible {
+  outline: 2px solid oklch(0.8 0.14 245);
+  outline-offset: 2px;
+}
+
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip-to-content:focus {
+  left: 0;
+}
