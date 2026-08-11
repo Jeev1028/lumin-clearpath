@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { undoableDelete } from "@/lib/undoable-delete";
 import { cn } from "@/lib/utils";
 import {
   TASK_KIND_LABELS,
@@ -170,13 +171,21 @@ function TasksPage() {
     }
   }
 
-  async function onDelete(id: string) {
+  function onDelete(id: string) {
+    const item = tasks.find((t) => t.id === id);
+    if (!item) return;
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    try {
-      await deleteTask(id);
-    } catch {
-      toast.error("Could not remove that task.");
-    }
+    undoableDelete({
+      label: `Deleted "${item.title}"`,
+      onCommit: async () => {
+        try {
+          await deleteTask(id);
+        } catch {
+          toast.error("Could not remove that task.");
+        }
+      },
+      onUndo: () => setTasks((prev) => [item, ...prev]),
+    });
   }
 
   return (

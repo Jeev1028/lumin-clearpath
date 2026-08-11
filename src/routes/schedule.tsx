@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { buildIcs, downloadIcs } from "@/lib/ics";
+import { undoableDelete } from "@/lib/undoable-delete";
 import {
   CATEGORY_LABELS,
   DAY_NAMES,
@@ -146,13 +147,26 @@ function SchedulePage() {
     }
   }
 
-  async function onDelete(id: string) {
+  function onDelete(id: string) {
+    const item = events.find((e) => e.id === id);
+    if (!item) return;
     setEvents((prev) => prev.filter((e) => e.id !== id));
-    try {
-      await deleteEvent(id);
-    } catch {
-      toast.error("Could not remove that class.");
-    }
+    undoableDelete({
+      label: `Deleted "${item.title}"`,
+      onCommit: async () => {
+        try {
+          await deleteEvent(id);
+        } catch {
+          toast.error("Could not remove that class.");
+        }
+      },
+      onUndo: () =>
+        setEvents((prev) =>
+          [...prev, item].sort(
+            (a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time),
+          ),
+        ),
+    });
   }
 
   async function onAddOneOff(event: React.FormEvent) {
@@ -181,13 +195,22 @@ function SchedulePage() {
     }
   }
 
-  async function onDeleteOneOff(id: string) {
+  function onDeleteOneOff(id: string) {
+    const item = oneOffEvents.find((e) => e.id === id);
+    if (!item) return;
     setOneOffEvents((prev) => prev.filter((e) => e.id !== id));
-    try {
-      await deleteCalendarEvent(id);
-    } catch {
-      toast.error("Could not remove that event.");
-    }
+    undoableDelete({
+      label: `Deleted "${item.title}"`,
+      onCommit: async () => {
+        try {
+          await deleteCalendarEvent(id);
+        } catch {
+          toast.error("Could not remove that event.");
+        }
+      },
+      onUndo: () =>
+        setOneOffEvents((prev) => [...prev, item].sort((a, b) => a.start_at.localeCompare(b.start_at))),
+    });
   }
 
   async function handleConnect() {

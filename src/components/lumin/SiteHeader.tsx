@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AccountMenu } from "@/components/lumin/AccountMenu";
@@ -50,6 +51,18 @@ export function SiteHeader({
               </Button>
             )}
           </nav>
+          {session && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Open quick search (Ctrl+K)"
+              title="Quick search (Ctrl+K)"
+              className="rounded-full border border-border/70 bg-card/40 text-muted-foreground hover:text-foreground"
+              onClick={() => window.dispatchEvent(new Event("clearpath:open-command-palette"))}
+            >
+              <Search className="h-4 w-4" aria-hidden />
+            </Button>
+          )}
           {session && <ReminderBell />}
           {session && <AccountMenu />}
           {trailing}

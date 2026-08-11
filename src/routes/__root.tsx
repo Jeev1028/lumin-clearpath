@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AccessibilityProvider } from "@/components/lumin/AccessibilityProvider";
+import { CommandPalette } from "@/components/lumin/CommandPalette";
 import { NoticeBanner } from "@/components/lumin/NoticeBanner";
 import { PwaRegister } from "@/components/lumin/PwaRegister";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
@@ -151,6 +152,7 @@ function RootComponent() {
         <AccessibilityProvider />
         <PwaRegister />
         <NoticeBanner />
+        <CommandPalette />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />

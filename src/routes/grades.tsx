@@ -1,6 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { GraduationCap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -31,6 +40,29 @@ function average(items: ClassroomCoursework[]): number | null {
   if (graded.length === 0) return null;
   const pct = graded.reduce((sum, i) => sum + i.assigned_grade! / i.max_points!, 0) / graded.length;
   return Math.round(pct * 1000) / 10;
+}
+
+type TrendPoint = { label: string; date: string; percent: number };
+
+/** Grade trend over time, using each item's due date as the best available
+ * chronological anchor (Classroom doesn't expose a separate "graded on"
+ * timestamp). Only meaningful with at least a couple of graded, dated
+ * items, so callers should check length before rendering a chart. */
+function gradeTrend(items: ClassroomCoursework[]): TrendPoint[] {
+  return items
+    .filter(
+      (i) =>
+        typeof i.assigned_grade === "number" &&
+        typeof i.max_points === "number" &&
+        i.max_points > 0 &&
+        i.due_at,
+    )
+    .map((i) => ({
+      label: i.title,
+      date: i.due_at!,
+      percent: Math.round((i.assigned_grade! / i.max_points!) * 1000) / 10,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function GradesPage() {
@@ -114,6 +146,7 @@ function GradesPage() {
               {courses.map((course) => {
                 const work = courseworkByCourseId.get(course.id) ?? [];
                 const courseAverage = average(work);
+                const trend = gradeTrend(work);
                 if (work.length === 0) return null;
                 return (
                   <div
@@ -126,6 +159,52 @@ function GradesPage() {
                         <span className="text-sm font-semibold text-accent">{courseAverage}%</span>
                       )}
                     </div>
+
+                    {trend.length >= 2 && (
+                      <div className="mt-3 h-32 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={trend} margin={{ top: 5, right: 8, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                              tickFormatter={(value: string) =>
+                                new Date(value).toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              }
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                              width={32}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                background: "var(--card)",
+                                border: "1px solid var(--border)",
+                                borderRadius: 8,
+                                fontSize: 12,
+                              }}
+                              labelFormatter={(value: string) => new Date(value).toLocaleDateString()}
+                              formatter={(value: number, _name, item) => [
+                                `${value}%`,
+                                item.payload.label,
+                              ]}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="percent"
+                              stroke="var(--accent)"
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
                     <div className="mt-3 overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
