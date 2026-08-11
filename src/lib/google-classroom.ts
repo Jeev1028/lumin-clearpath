@@ -118,10 +118,19 @@ export type ClassroomAnnouncement = {
   creationTime: string;
 };
 
+type DriveFileFields = { title?: string; alternateLink?: string; thumbnailUrl?: string };
+
 export type ClassroomMaterial = {
-  driveFile?: {
-    driveFile?: { title?: string; alternateLink?: string; thumbnailUrl?: string };
-  };
+  // Classroom's API returns two DIFFERENT shapes for a Drive file depending
+  // on where it came from: a shared "Material" (courseWork.materials[] /
+  // courseWorkMaterials) wraps it one level deeper as
+  // { driveFile: { driveFile: {...} } }, while a student's own submission
+  // attachment (assignmentSubmission.attachments[]) has the fields
+  // directly on driveFile with no extra wrapper. Both are handled below
+  // since ClearPath shows both kinds of "material" through this same
+  // summarizeMaterial() helper -- only checking the wrapped shape silently
+  // dropped every "make a copy for each student" attachment.
+  driveFile?: { driveFile?: DriveFileFields } & Partial<DriveFileFields>;
   link?: { url?: string; title?: string; thumbnailUrl?: string };
   youTubeVideo?: { title?: string; alternateLink?: string; thumbnailUrl?: string };
   form?: { title?: string; formUrl?: string; thumbnailUrl?: string };
@@ -142,11 +151,12 @@ export type MaterialSummary = {
  * material type directly -- no separate Drive API call or scope needed to
  * show a real preview like Classroom's own UI does. */
 export function summarizeMaterial(material: ClassroomMaterial): MaterialSummary | null {
-  if (material.driveFile?.driveFile) {
+  if (material.driveFile) {
+    const df = material.driveFile.driveFile ?? material.driveFile;
     return {
-      title: material.driveFile.driveFile.title ?? "Drive file",
-      url: material.driveFile.driveFile.alternateLink ?? null,
-      thumbnailUrl: material.driveFile.driveFile.thumbnailUrl ?? null,
+      title: df.title ?? "Drive file",
+      url: df.alternateLink ?? null,
+      thumbnailUrl: df.thumbnailUrl ?? null,
       type: "driveFile",
     };
   }

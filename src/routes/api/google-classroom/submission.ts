@@ -138,11 +138,12 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
         } catch (err) {
           console.error("[google-classroom] submission action failed", err);
           const detail = err instanceof Error ? err.message : String(err);
-          // Some school Google Workspace domains block third-party apps from
-          // calling Classroom's write endpoints (turnIn/reclaim) even with
-          // the correct OAuth scope granted -- that's an admin-level
-          // restriction, not something ClearPath can work around. Surface a
-          // clear message pointing at the guaranteed-working fallback
+          // Google sometimes rejects this specific write call (turnIn,
+          // reclaim, modifyAttachments) even when the token genuinely
+          // carries the right OAuth scope -- root cause still unconfirmed
+          // (possibly Google's own app-verification requirements for
+          // Classroom's write methods). Whatever the exact reason, surface
+          // a clear message pointing at the guaranteed-working fallback
           // (opening the assignment directly in Google Classroom) rather
           // than a raw API error.
           const isPermissionIssue =
@@ -151,7 +152,7 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
             );
           const fallbackNoun = action === "addLink" ? "attach that link" : "update your submission";
           const message = isPermissionIssue
-            ? `Your school's Google Workspace settings don't allow ClearPath to ${fallbackNoun} directly — please use Open in Google Classroom below instead.`
+            ? `Google didn't allow ClearPath to ${fallbackNoun} directly this time — please use Open in Google Classroom below instead.`
             : `Could not update your submission: ${detail}`;
           return Response.json({ error: message }, { status: 502 });
         }
