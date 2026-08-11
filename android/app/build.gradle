@@ -23,7 +23,7 @@ plugins {
 def twaManifest = [
     applicationId: 'ca.luminclearpath.twa',
     hostName: 'luminclearpath.ca', // The domain being opened in the TWA.
-    launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
+    launchUrl: '/auth', // The start path for the TWA. Must be relative to the domain.
     name: 'ClearPath by Lumin AI', // The application name.
     launcherName: 'ClearPath', // The name shown on the Android Launcher.
     themeColor: '#0A1128', // The color used for the status bar.
@@ -57,8 +57,8 @@ android {
         applicationId "ca.luminclearpath.twa"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 2
+        versionName "1.0.1"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
