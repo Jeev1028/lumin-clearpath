@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
 import { Route as GradesRouteImport } from './routes/grades'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
@@ -71,6 +72,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClassroomRoute = ClassroomRouteImport.update({
@@ -284,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/calendar'
     | '/classroom'
     | '/grades'
     | '/mfa-challenge'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/calendar'
     | '/classroom'
     | '/grades'
     | '/mfa-challenge'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/calendar'
     | '/classroom'
     | '/grades'
     | '/mfa-challenge'
@@ -558,6 +570,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
   GradesRoute: typeof GradesRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
@@ -627,6 +640,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/classroom': {
@@ -910,6 +930,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,
   GradesRoute: GradesRoute,
   MfaChallengeRoute: MfaChallengeRoute,
