@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Compass, Sparkles } from "lucide-react";
+import { ChevronRight, Compass, Layers, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { createCard, createDeck } from "@/lib/flashcards";
 import { createThread } from "@/lib/threads";
 
 export const Route = createFileRoute("/knowledge")({
@@ -41,6 +42,7 @@ function KnowledgePage() {
   const [node, setNode] = useState<GraphNode | null>(null);
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [makingFlashcards, setMakingFlashcards] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -119,6 +121,32 @@ function KnowledgePage() {
       toast.error("Could not start a conversation with Lumin.");
     } finally {
       setAsking(false);
+    }
+  }
+
+  async function handleMakeFlashcards() {
+    if (!user || !node) return;
+    setMakingFlashcards(true);
+    try {
+      const deck = await createDeck(user.id, { title: node.topic });
+      const res = await fetch("/api/flashcards/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: await authHeader() },
+        body: JSON.stringify({ topic: node.topic }),
+      });
+      if (!res.ok) throw new Error("Could not generate flashcards right now.");
+      const { cards } = (await res.json()) as { cards: { front: string; back: string }[] };
+      for (const card of cards) {
+        await createCard(user.id, { deck_id: deck.id, front: card.front, back: card.back });
+      }
+      toast.success(`Created a ${cards.length}-card deck for "${node.topic}".`);
+      await navigate({ to: "/flashcards/$deckId", params: { deckId: deck.id } });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not create a flashcard deck right now.",
+      );
+    } finally {
+      setMakingFlashcards(false);
     }
   }
 
@@ -244,16 +272,28 @@ function KnowledgePage() {
               </div>
             )}
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void handleAskLumin()}
-              disabled={asking}
-              className="mt-4 gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
-            >
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              {asking ? "Starting…" : "Ask Lumin about this"}
-            </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleAskLumin()}
+                disabled={asking}
+                className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                {asking ? "Starting…" : "Ask Lumin about this"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleMakeFlashcards()}
+                disabled={makingFlashcards}
+                className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+              >
+                <Layers className="h-3.5 w-3.5" aria-hidden />
+                {makingFlashcards ? "Creating…" : "Turn into flashcards"}
+              </Button>
+            </div>
           </div>
         )}
 

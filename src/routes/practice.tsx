@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Brain, ChevronDown, RefreshCw, Sparkles } from "lucide-react";
+import { Brain, ChevronDown, Layers, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { createCard, createDeck } from "@/lib/flashcards";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/practice")({
@@ -54,6 +55,7 @@ function PracticePage() {
   const [generating, setGenerating] = useState(false);
   const [questions, setQuestions] = useState<PracticeQuestion[] | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const [savingDeck, setSavingDeck] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -141,6 +143,25 @@ function PracticePage() {
       else next.add(index);
       return next;
     });
+  }
+
+  async function handleSaveFlashcards() {
+    if (!user || !questions || questions.length === 0) return;
+    setSavingDeck(true);
+    try {
+      const deck = await createDeck(user.id, {
+        title: `${subject} (${DIFFICULTY_LABELS[difficulty]})`,
+      });
+      for (const q of questions) {
+        await createCard(user.id, { deck_id: deck.id, front: q.question, back: q.answer });
+      }
+      toast.success(`Saved ${questions.length} cards to a new deck.`);
+      await navigate({ to: "/flashcards/$deckId", params: { deckId: deck.id } });
+    } catch {
+      toast.error("Could not save these as flashcards right now.");
+    } finally {
+      setSavingDeck(false);
+    }
   }
 
   return (
@@ -252,21 +273,34 @@ function PracticePage() {
 
         {questions && (
           <div className="mt-6 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">
                 {DIFFICULTY_LABELS[difficulty]} practice — {subject}
               </h2>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={generating}
-                onClick={() => void handleGenerate()}
-                className="gap-1.5"
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", generating && "animate-spin")} aria-hidden />
-                New set
-              </Button>
+              <div className="flex gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={savingDeck}
+                  onClick={() => void handleSaveFlashcards()}
+                  className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                >
+                  <Layers className="h-3.5 w-3.5" aria-hidden />
+                  {savingDeck ? "Saving…" : "Save as flashcards"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={generating}
+                  onClick={() => void handleGenerate()}
+                  className="gap-1.5"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", generating && "animate-spin")} aria-hidden />
+                  New set
+                </Button>
+              </div>
             </div>
             {questions.map((q, i) => (
               <div key={i} className="rounded-xl border border-border/60 bg-card/60 p-4">
