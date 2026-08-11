@@ -19,6 +19,11 @@ const SCOPES = [
   // has no comment/messaging endpoint of its own).
   "https://www.googleapis.com/auth/classroom.rosters.readonly",
   "https://www.googleapis.com/auth/classroom.profile.emails",
+  // Narrow, per-file Drive access -- only grants access to files the
+  // student explicitly picks via the Google Picker widget (browsing their
+  // Drive) or uploads through it, never blanket access to their whole
+  // Drive. Used to attach a Drive file to a submission.
+  "https://www.googleapis.com/auth/drive.file",
 ].join(" ");
 
 export const Route = createFileRoute("/api/google-classroom/start")({

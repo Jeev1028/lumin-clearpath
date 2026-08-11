@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileEdit,
   GraduationCap,
+  HardDriveUpload,
   Link2,
   MessageSquare,
   Paperclip,
@@ -34,7 +35,10 @@ import {
   type Rubric,
   type TeacherComment,
 } from "@/lib/clearpath";
+import { openDrivePicker } from "@/lib/google-picker";
 import { createThread } from "@/lib/threads";
+
+const GOOGLE_PICKER_API_KEY = import.meta.env["VITE_GOOGLE_API_KEY"] as string | undefined;
 
 const SUBMITTED_STATES = new Set(["TURNED_IN", "RETURNED"]);
 
@@ -77,6 +81,7 @@ export function TaskDetailDialog({
   const [studentWork, setStudentWork] = useState<MaterialItem[]>([]);
   const [linkInput, setLinkInput] = useState("");
   const [attaching, setAttaching] = useState(false);
+  const [pickerBusy, setPickerBusy] = useState(false);
 
   useEffect(() => {
     setSubmissionState(task?.submission_state ?? null);
@@ -200,6 +205,64 @@ export function TaskDetailDialog({
       }
     } finally {
       setAttaching(false);
+    }
+  }
+
+  async function handleAddFromDrive() {
+    if (!session || !task?.classroom_course_id || !task.google_classroom_id) return;
+    if (!GOOGLE_PICKER_API_KEY) {
+      toast.error("Google Drive picking isn't set up yet for this deployment.");
+      return;
+    }
+    setPickerBusy(true);
+    try {
+      const tokenRes = await fetch("/api/google-classroom/picker-token", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!tokenRes.ok) {
+        throw new Error("Could not connect to Google Drive right now.");
+      }
+      const { accessToken } = (await tokenRes.json()) as { accessToken: string };
+
+      const picked = await openDrivePicker({ accessToken, apiKey: GOOGLE_PICKER_API_KEY });
+      if (!picked) return; // student cancelled
+
+      const res = await fetch("/api/google-classroom/submission", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId: task.classroom_course_id,
+          courseworkId: task.google_classroom_id,
+          action: "addDriveFile",
+          driveFileId: picked.id,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        studentWork?: MaterialItem[];
+      };
+      if (!res.ok) throw new Error(data.error || "Could not attach that file.");
+      setStudentWork(data.studentWork ?? []);
+      toast.success(`"${picked.name}" attached to your work.`);
+      onSubmissionChanged?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not attach that file.";
+      if (task.alternate_link) {
+        toast.error(message, {
+          action: {
+            label: "Open in Classroom",
+            onClick: () => window.open(task.alternate_link!, "_blank", "noreferrer"),
+          },
+        });
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setPickerBusy(false);
     }
   }
 
@@ -366,24 +429,37 @@ export function TaskDetailDialog({
               </ul>
             )}
             {isClassroom && task.classroom_course_id && task.google_classroom_id && (
-              <form onSubmit={handleAttachLink} className="mt-2 flex gap-1.5">
-                <Input
-                  value={linkInput}
-                  onChange={(e) => setLinkInput(e.target.value)}
-                  placeholder="Paste a Google Drive or other link to attach…"
-                  className="h-8 text-xs"
-                />
+              <div className="mt-2 space-y-1.5">
                 <Button
-                  type="submit"
+                  type="button"
                   size="sm"
                   variant="outline"
-                  disabled={attaching || !linkInput.trim()}
-                  className="h-8 shrink-0 gap-1 border-border/70 bg-background/40 px-2.5 text-xs text-foreground hover:text-foreground"
+                  disabled={pickerBusy}
+                  onClick={() => void handleAddFromDrive()}
+                  className="h-8 w-full gap-1.5 border-border/70 bg-background/40 text-xs text-foreground hover:text-foreground"
                 >
-                  <Link2 className="h-3.5 w-3.5" aria-hidden />
-                  {attaching ? "Attaching…" : "Attach"}
+                  <HardDriveUpload className="h-3.5 w-3.5" aria-hidden />
+                  {pickerBusy ? "Opening…" : "Add from Drive or upload a file"}
                 </Button>
-              </form>
+                <form onSubmit={handleAttachLink} className="flex gap-1.5">
+                  <Input
+                    value={linkInput}
+                    onChange={(e) => setLinkInput(e.target.value)}
+                    placeholder="…or paste a link to attach"
+                    className="h-8 text-xs"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    disabled={attaching || !linkInput.trim()}
+                    className="h-8 shrink-0 gap-1 border-border/70 bg-background/40 px-2.5 text-xs text-foreground hover:text-foreground"
+                  >
+                    <Link2 className="h-3.5 w-3.5" aria-hidden />
+                    {attaching ? "Attaching…" : "Attach"}
+                  </Button>
+                </form>
+              </div>
             )}
           </div>
         )}

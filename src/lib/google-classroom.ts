@@ -403,6 +403,28 @@ export async function addSubmissionLink(
   if (!res.ok) throw new Error(`Classroom API error (${res.status}): ${await res.text()}`);
 }
 
+/** Attaches an existing Drive file (picked via the Google Picker widget, or
+ * just uploaded through it) to the student's own submission, as a real
+ * Drive attachment rather than a plain link -- matching what "Add
+ * attachment > Google Drive" does inside Classroom itself. */
+export async function addSubmissionDriveFile(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+  driveFileId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${CLASSROOM_API}/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:modifyAttachments`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ addAttachments: [{ driveFile: { id: driveFileId } }] }),
+    },
+  );
+  if (!res.ok) throw new Error(`Classroom API error (${res.status}): ${await res.text()}`);
+}
+
 /** Classroom's dueDate/dueTime are separate structured fields -- combine
  * into a single "YYYY-MM-DD" date string matching how ClearPath's own
  * tasks.due_date column is stored (date-only, no time-of-day tracking). */

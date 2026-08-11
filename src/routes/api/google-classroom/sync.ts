@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { getAdminClient, requireUser } from "@/lib/api-auth";
 import {
+  ClassroomNotConnectedError,
+  ClassroomTokenExpiredError,
+  getValidClassroomAccessToken,
+} from "@/lib/classroom-connection";
+import {
   courseWorkDueDate,
   listAnnouncements,
   listCourseWork,
@@ -10,11 +15,9 @@ import {
   listMySubmissions,
   listRubrics,
   listTeachers,
-  refreshAccessToken,
   summarizeMaterial,
   type ClassroomRubric,
 } from "@/lib/google-classroom";
-import { decryptToken, encryptToken } from "@/lib/token-crypto";
 
 function mapTaskStatus(submissionState: string | undefined): "todo" | "submitted" {
   return submissionState === "TURNED_IN" || submissionState === "RETURNED" ? "submitted" : "todo";
@@ -29,40 +32,17 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
         const { userId } = auth;
 
         const admin = getAdminClient();
-        const { data: connection, error: connError } = await admin
-          .from("google_classroom_connections")
-          .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (connError) return new Response("Could not load connection", { status: 500 });
-        if (!connection) return new Response("Google Classroom is not connected", { status: 400 });
-
-        let accessToken = connection.access_token_encrypted
-          ? decryptToken(connection.access_token_encrypted)
-          : null;
-        const expiresAt = connection.access_token_expires_at
-          ? new Date(connection.access_token_expires_at).getTime()
-          : 0;
-        if (!accessToken || expiresAt - Date.now() < 60_000) {
-          try {
-            const refreshToken = decryptToken(connection.refresh_token_encrypted);
-            const refreshed = await refreshAccessToken(refreshToken);
-            accessToken = refreshed.access_token;
-            await admin
-              .from("google_classroom_connections")
-              .update({
-                access_token_encrypted: encryptToken(accessToken),
-                access_token_expires_at: new Date(
-                  Date.now() + refreshed.expires_in * 1000,
-                ).toISOString(),
-              })
-              .eq("user_id", userId);
-          } catch (err) {
-            console.error("[google-classroom] token refresh failed", err);
-            return new Response("Google Classroom access has expired — please reconnect it.", {
-              status: 409,
-            });
+        let accessToken: string;
+        try {
+          accessToken = await getValidClassroomAccessToken(admin, userId);
+        } catch (err) {
+          if (err instanceof ClassroomNotConnectedError) {
+            return new Response("Google Classroom is not connected", { status: 400 });
           }
+          if (err instanceof ClassroomTokenExpiredError) {
+            return new Response(err.message, { status: 409 });
+          }
+          return new Response("Could not load connection", { status: 500 });
         }
 
         let courseCount = 0;
@@ -72,14 +52,14 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
         let materialCount = 0;
 
         try {
-          const courses = await listMyCourses(accessToken!);
+          const courses = await listMyCourses(accessToken);
           for (const course of courses) {
             // Best-effort -- roster access can be restricted by the school's
             // Workspace admin; a missing teacher email just disables the
             // "message the teacher" relay for that course, nothing else.
             let teacherEmail: string | null = null;
             try {
-              const teachers = await listTeachers(accessToken!, course.id);
+              const teachers = await listTeachers(accessToken, course.id);
               teacherEmail = teachers.find((t) => t.profile?.emailAddress)?.profile?.emailAddress ?? null;
             } catch (err) {
               console.error("[google-classroom] could not load teacher roster", err);
@@ -100,10 +80,10 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
             courseCount++;
 
             const [courseWork, submissions, announcements, courseMaterials] = await Promise.all([
-              listCourseWork(accessToken!, course.id),
-              listMySubmissions(accessToken!, course.id),
-              listAnnouncements(accessToken!, course.id),
-              listCourseWorkMaterials(accessToken!, course.id),
+              listCourseWork(accessToken, course.id),
+              listMySubmissions(accessToken, course.id),
+              listAnnouncements(accessToken, course.id),
+              listCourseWorkMaterials(accessToken, course.id),
             ]);
 
             const submissionByCourseWork = new Map(submissions.map((s) => [s.courseWorkId, s]));
@@ -124,7 +104,7 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
 
               let rubric: ClassroomRubric | null = null;
               try {
-                const rubrics = await listRubrics(accessToken!, course.id, work.id);
+                const rubrics = await listRubrics(accessToken, course.id, work.id);
                 rubric = rubrics[0] ?? null;
               } catch (err) {
                 console.error("[google-classroom] could not load rubric", err);

@@ -43,6 +43,7 @@ import { Route as ApiGoogleClassroomCallbackRouteImport } from './routes/api/goo
 import { Route as ApiGoogleClassroomDisconnectRouteImport } from './routes/api/google-classroom/disconnect'
 import { Route as ApiGoogleClassroomInviteTeacherRouteImport } from './routes/api/google-classroom/invite-teacher'
 import { Route as ApiGoogleClassroomMessageTeacherRouteImport } from './routes/api/google-classroom/message-teacher'
+import { Route as ApiGoogleClassroomPickerTokenRouteImport } from './routes/api/google-classroom/picker-token'
 import { Route as ApiGoogleClassroomStartRouteImport } from './routes/api/google-classroom/start'
 import { Route as ApiGoogleClassroomSubmissionRouteImport } from './routes/api/google-classroom/submission'
 import { Route as ApiGoogleClassroomSyncRouteImport } from './routes/api/google-classroom/sync'
@@ -228,6 +229,12 @@ const ApiGoogleClassroomMessageTeacherRoute =
     path: '/api/google-classroom/message-teacher',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGoogleClassroomPickerTokenRoute =
+  ApiGoogleClassroomPickerTokenRouteImport.update({
+    id: '/api/google-classroom/picker-token',
+    path: '/api/google-classroom/picker-token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGoogleClassroomStartRoute = ApiGoogleClassroomStartRouteImport.update({
   id: '/api/google-classroom/start',
   path: '/api/google-classroom/start',
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
+  '/api/google-classroom/picker-token': typeof ApiGoogleClassroomPickerTokenRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -351,6 +359,7 @@ export interface FileRoutesByTo {
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
+  '/api/google-classroom/picker-token': typeof ApiGoogleClassroomPickerTokenRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -396,6 +405,7 @@ export interface FileRoutesById {
   '/api/google-classroom/disconnect': typeof ApiGoogleClassroomDisconnectRoute
   '/api/google-classroom/invite-teacher': typeof ApiGoogleClassroomInviteTeacherRoute
   '/api/google-classroom/message-teacher': typeof ApiGoogleClassroomMessageTeacherRoute
+  '/api/google-classroom/picker-token': typeof ApiGoogleClassroomPickerTokenRoute
   '/api/google-classroom/start': typeof ApiGoogleClassroomStartRoute
   '/api/google-classroom/submission': typeof ApiGoogleClassroomSubmissionRoute
   '/api/google-classroom/sync': typeof ApiGoogleClassroomSyncRoute
@@ -442,6 +452,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/disconnect'
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
+    | '/api/google-classroom/picker-token'
     | '/api/google-classroom/start'
     | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/disconnect'
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
+    | '/api/google-classroom/picker-token'
     | '/api/google-classroom/start'
     | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
@@ -530,6 +542,7 @@ export interface FileRouteTypes {
     | '/api/google-classroom/disconnect'
     | '/api/google-classroom/invite-teacher'
     | '/api/google-classroom/message-teacher'
+    | '/api/google-classroom/picker-token'
     | '/api/google-classroom/start'
     | '/api/google-classroom/submission'
     | '/api/google-classroom/sync'
@@ -575,6 +588,7 @@ export interface RootRouteChildren {
   ApiGoogleClassroomDisconnectRoute: typeof ApiGoogleClassroomDisconnectRoute
   ApiGoogleClassroomInviteTeacherRoute: typeof ApiGoogleClassroomInviteTeacherRoute
   ApiGoogleClassroomMessageTeacherRoute: typeof ApiGoogleClassroomMessageTeacherRoute
+  ApiGoogleClassroomPickerTokenRoute: typeof ApiGoogleClassroomPickerTokenRoute
   ApiGoogleClassroomStartRoute: typeof ApiGoogleClassroomStartRoute
   ApiGoogleClassroomSubmissionRoute: typeof ApiGoogleClassroomSubmissionRoute
   ApiGoogleClassroomSyncRoute: typeof ApiGoogleClassroomSyncRoute
@@ -825,6 +839,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleClassroomMessageTeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-classroom/picker-token': {
+      id: '/api/google-classroom/picker-token'
+      path: '/api/google-classroom/picker-token'
+      fullPath: '/api/google-classroom/picker-token'
+      preLoaderRoute: typeof ApiGoogleClassroomPickerTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-classroom/start': {
       id: '/api/google-classroom/start'
       path: '/api/google-classroom/start'
@@ -919,6 +940,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleClassroomDisconnectRoute: ApiGoogleClassroomDisconnectRoute,
   ApiGoogleClassroomInviteTeacherRoute: ApiGoogleClassroomInviteTeacherRoute,
   ApiGoogleClassroomMessageTeacherRoute: ApiGoogleClassroomMessageTeacherRoute,
+  ApiGoogleClassroomPickerTokenRoute: ApiGoogleClassroomPickerTokenRoute,
   ApiGoogleClassroomStartRoute: ApiGoogleClassroomStartRoute,
   ApiGoogleClassroomSubmissionRoute: ApiGoogleClassroomSubmissionRoute,
   ApiGoogleClassroomSyncRoute: ApiGoogleClassroomSyncRoute,

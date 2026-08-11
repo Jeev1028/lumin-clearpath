@@ -2,20 +2,25 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { getAdminClient, requireUser } from "@/lib/api-auth";
 import {
+  ClassroomNotConnectedError,
+  ClassroomTokenExpiredError,
+  getValidClassroomAccessToken,
+} from "@/lib/classroom-connection";
+import {
+  addSubmissionDriveFile,
   addSubmissionLink,
   getMySubmission,
   reclaimSubmission,
-  refreshAccessToken,
   summarizeMaterial,
   turnInSubmission,
 } from "@/lib/google-classroom";
-import { decryptToken, encryptToken } from "@/lib/token-crypto";
 
 type Body = {
   courseId?: string;
   courseworkId?: string;
-  action?: "turnIn" | "reclaim" | "addLink";
+  action?: "turnIn" | "reclaim" | "addLink" | "addDriveFile";
   url?: string;
+  driveFileId?: string;
 };
 
 export const Route = createFileRoute("/api/google-classroom/submission")({
@@ -31,11 +36,9 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
         const courseworkId = body.courseworkId?.trim();
         const action = body.action;
         const url = body.url?.trim();
-        if (
-          !courseId ||
-          !courseworkId ||
-          (action !== "turnIn" && action !== "reclaim" && action !== "addLink")
-        ) {
+        const driveFileId = body.driveFileId?.trim();
+        const validActions = ["turnIn", "reclaim", "addLink", "addDriveFile"];
+        if (!courseId || !courseworkId || !action || !validActions.includes(action)) {
           return Response.json(
             { error: "courseId, courseworkId, and a valid action are required." },
             { status: 400 },
@@ -44,58 +47,42 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
         if (action === "addLink" && !url) {
           return Response.json({ error: "A link is required." }, { status: 400 });
         }
+        if (action === "addDriveFile" && !driveFileId) {
+          return Response.json({ error: "A Drive file is required." }, { status: 400 });
+        }
 
         const admin = getAdminClient();
-        const { data: connection, error: connError } = await admin
-          .from("google_classroom_connections")
-          .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (connError) return new Response("Could not load connection", { status: 500 });
-        if (!connection) return new Response("Google Classroom is not connected", { status: 400 });
-
-        let accessToken = connection.access_token_encrypted
-          ? decryptToken(connection.access_token_encrypted)
-          : null;
-        const expiresAt = connection.access_token_expires_at
-          ? new Date(connection.access_token_expires_at).getTime()
-          : 0;
-        if (!accessToken || expiresAt - Date.now() < 60_000) {
-          try {
-            const refreshToken = decryptToken(connection.refresh_token_encrypted);
-            const refreshed = await refreshAccessToken(refreshToken);
-            accessToken = refreshed.access_token;
-            await admin
-              .from("google_classroom_connections")
-              .update({
-                access_token_encrypted: encryptToken(accessToken),
-                access_token_expires_at: new Date(
-                  Date.now() + refreshed.expires_in * 1000,
-                ).toISOString(),
-              })
-              .eq("user_id", userId);
-          } catch (err) {
-            console.error("[google-classroom] token refresh failed", err);
-            return new Response("Google Classroom access has expired — please reconnect it.", {
-              status: 409,
-            });
+        let accessToken: string;
+        try {
+          accessToken = await getValidClassroomAccessToken(admin, userId);
+        } catch (err) {
+          if (err instanceof ClassroomNotConnectedError) {
+            return new Response("Google Classroom is not connected", { status: 400 });
           }
+          if (err instanceof ClassroomTokenExpiredError) {
+            return new Response(err.message, { status: 409 });
+          }
+          return new Response("Could not load connection", { status: 500 });
         }
 
         try {
-          const submission = await getMySubmission(accessToken!, courseId, courseworkId);
+          const submission = await getMySubmission(accessToken, courseId, courseworkId);
           if (!submission) {
             return Response.json({ error: "Could not find your submission for this assignment." }, {
               status: 404,
             });
           }
 
-          if (action === "addLink") {
-            await addSubmissionLink(accessToken!, courseId, courseworkId, submission.id, url!);
+          if (action === "addLink" || action === "addDriveFile") {
+            if (action === "addLink") {
+              await addSubmissionLink(accessToken, courseId, courseworkId, submission.id, url!);
+            } else {
+              await addSubmissionDriveFile(accessToken, courseId, courseworkId, submission.id, driveFileId!);
+            }
 
-            // Re-fetch so "Your work" reflects the newly attached link
+            // Re-fetch so "Your work" reflects the newly attached item
             // immediately, without waiting for the next full sync.
-            const updated = await getMySubmission(accessToken!, courseId, courseworkId);
+            const updated = await getMySubmission(accessToken, courseId, courseworkId);
             const studentWork = (updated?.assignmentSubmission?.attachments ?? [])
               .map(summarizeMaterial)
               .filter((m): m is NonNullable<typeof m> => m !== null);
@@ -115,9 +102,9 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
           }
 
           if (action === "turnIn") {
-            await turnInSubmission(accessToken!, courseId, courseworkId, submission.id);
+            await turnInSubmission(accessToken, courseId, courseworkId, submission.id);
           } else {
-            await reclaimSubmission(accessToken!, courseId, courseworkId, submission.id);
+            await reclaimSubmission(accessToken, courseId, courseworkId, submission.id);
           }
 
           const newState = action === "turnIn" ? "TURNED_IN" : "CREATED";
@@ -150,7 +137,10 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
             /PERMISSION_DENIED|ProjectPermissionDenied|insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(
               detail,
             );
-          const fallbackNoun = action === "addLink" ? "attach that link" : "update your submission";
+          const fallbackNoun =
+            action === "addLink" || action === "addDriveFile"
+              ? "attach that item"
+              : "update your submission";
           const message = isPermissionIssue
             ? `Google didn't allow ClearPath to ${fallbackNoun} directly this time — please use Open in Google Classroom below instead.`
             : `Could not update your submission: ${detail}`;
