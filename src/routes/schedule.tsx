@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarClock, Download, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Download, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -82,6 +82,8 @@ function SchedulePage() {
   const [busy, setBusy] = useState(false);
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [subscribeUrl, setSubscribeUrl] = useState<string | null>(null);
+  const [subscribeBusy, setSubscribeBusy] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -250,6 +252,34 @@ function SchedulePage() {
     toast.success("Calendar exported.");
   }
 
+  async function handleGetSubscribeLink() {
+    if (!session) return;
+    setSubscribeBusy(true);
+    try {
+      const res = await fetch("/api/calendar-feed/link", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error();
+      const { webcalUrl } = (await res.json()) as { webcalUrl: string; httpsUrl: string };
+      setSubscribeUrl(webcalUrl);
+    } catch {
+      toast.error("Could not create a subscription link.");
+    } finally {
+      setSubscribeBusy(false);
+    }
+  }
+
+  async function handleCopySubscribeLink() {
+    if (!subscribeUrl) return;
+    try {
+      await navigator.clipboard.writeText(subscribeUrl);
+      toast.success("Link copied.");
+    } catch {
+      toast.error("Could not copy — select and copy the link manually.");
+    }
+  }
+
   async function handleDisconnect() {
     if (!session) return;
     setCalendarBusy(true);
@@ -354,6 +384,60 @@ function SchedulePage() {
             <Download className="h-3.5 w-3.5" aria-hidden />
             Export .ics
           </Button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
+                <CalendarClock className="h-5 w-5 text-accent" aria-hidden />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Subscribe from Apple Calendar, Outlook, etc.</p>
+                <p className="text-xs text-muted-foreground">
+                  A live link that keeps updating automatically — unlike Export, you only set this
+                  up once.
+                </p>
+              </div>
+            </div>
+            {!subscribeUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={subscribeBusy}
+                onClick={() => void handleGetSubscribeLink()}
+                className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+              >
+                {subscribeBusy ? "Creating…" : "Get subscription link"}
+              </Button>
+            )}
+          </div>
+          {subscribeUrl && (
+            <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs">
+                  {subscribeUrl}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleCopySubscribeLink()}
+                  className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                  Copy
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <strong>Apple Calendar:</strong> tap the link on your iPhone/Mac and it opens
+                automatically, or in the Calendar app go to File → New Calendar Subscription and
+                paste it in.{" "}
+                <strong>Outlook/Google Calendar:</strong> use "Add calendar → From URL" and paste
+                the link (swap <code>webcal://</code> for <code>https://</code> if asked for a
+                plain URL). Keep this link private — anyone with it can see your schedule.
+              </p>
+            </div>
+          )}
         </div>
 
         <form

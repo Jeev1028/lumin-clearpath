@@ -25,6 +25,7 @@ import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiCalendarFeedRouteImport } from './routes/api/calendar-feed'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge-graph'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
@@ -41,6 +42,7 @@ import { Route as ApiAdminMeRouteImport } from './routes/api/admin/me'
 import { Route as ApiAdminNoticesRouteImport } from './routes/api/admin/notices'
 import { Route as ApiAdminSendEmailRouteImport } from './routes/api/admin/send-email'
 import { Route as ApiAdminUsersRouteImport } from './routes/api/admin/users'
+import { Route as ApiCalendarFeedLinkRouteImport } from './routes/api/calendar-feed/link'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/google-calendar/callback'
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
 import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
@@ -139,6 +141,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCalendarFeedRoute = ApiCalendarFeedRouteImport.update({
+  id: '/api/calendar-feed',
+  path: '/api/calendar-feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -218,6 +225,11 @@ const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
   id: '/api/admin/users',
   path: '/api/admin/users',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCalendarFeedLinkRoute = ApiCalendarFeedLinkRouteImport.update({
+  id: '/link',
+  path: '/link',
+  getParentRoute: () => ApiCalendarFeedRoute,
 } as any)
 const ApiGoogleCalendarCallbackRoute =
   ApiGoogleCalendarCallbackRouteImport.update({
@@ -332,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
@@ -348,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -383,6 +397,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
@@ -399,6 +414,7 @@ export interface FileRoutesByTo {
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -435,6 +451,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
@@ -451,6 +468,7 @@ export interface FileRoutesById {
   '/api/admin/notices': typeof ApiAdminNoticesRoute
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -488,6 +506,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/calendar-feed'
     | '/api/chat'
     | '/api/knowledge-graph'
     | '/api/site-chat'
@@ -504,6 +523,7 @@ export interface FileRouteTypes {
     | '/api/admin/notices'
     | '/api/admin/send-email'
     | '/api/admin/users'
+    | '/api/calendar-feed/link'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -539,6 +559,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/calendar-feed'
     | '/api/chat'
     | '/api/knowledge-graph'
     | '/api/site-chat'
@@ -555,6 +576,7 @@ export interface FileRouteTypes {
     | '/api/admin/notices'
     | '/api/admin/send-email'
     | '/api/admin/users'
+    | '/api/calendar-feed/link'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -590,6 +612,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/calendar-feed'
     | '/api/chat'
     | '/api/knowledge-graph'
     | '/api/site-chat'
@@ -606,6 +629,7 @@ export interface FileRouteTypes {
     | '/api/admin/notices'
     | '/api/admin/send-email'
     | '/api/admin/users'
+    | '/api/calendar-feed/link'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -642,6 +666,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TeacherPortalRoute: typeof TeacherPortalRoute
   TermsRoute: typeof TermsRoute
+  ApiCalendarFeedRoute: typeof ApiCalendarFeedRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiSiteChatRoute: typeof ApiSiteChatRoute
@@ -791,6 +816,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/calendar-feed': {
+      id: '/api/calendar-feed'
+      path: '/api/calendar-feed'
+      fullPath: '/api/calendar-feed'
+      preLoaderRoute: typeof ApiCalendarFeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -902,6 +934,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/users'
       preLoaderRoute: typeof ApiAdminUsersRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/calendar-feed/link': {
+      id: '/api/calendar-feed/link'
+      path: '/link'
+      fullPath: '/api/calendar-feed/link'
+      preLoaderRoute: typeof ApiCalendarFeedLinkRouteImport
+      parentRoute: typeof ApiCalendarFeedRoute
     }
     '/api/google-calendar/callback': {
       id: '/api/google-calendar/callback'
@@ -1025,6 +1064,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiCalendarFeedRouteChildren {
+  ApiCalendarFeedLinkRoute: typeof ApiCalendarFeedLinkRoute
+}
+
+const ApiCalendarFeedRouteChildren: ApiCalendarFeedRouteChildren = {
+  ApiCalendarFeedLinkRoute: ApiCalendarFeedLinkRoute,
+}
+
+const ApiCalendarFeedRouteWithChildren = ApiCalendarFeedRoute._addFileChildren(
+  ApiCalendarFeedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
@@ -1042,6 +1093,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TeacherPortalRoute: TeacherPortalRoute,
   TermsRoute: TermsRoute,
+  ApiCalendarFeedRoute: ApiCalendarFeedRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiSiteChatRoute: ApiSiteChatRoute,

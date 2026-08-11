@@ -1,4 +1,4 @@
-import type { CalendarEvent, ScheduleEvent } from "@/lib/clearpath";
+import type { CalendarEvent, ScheduleEvent, Task } from "@/lib/clearpath";
 
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -69,7 +69,11 @@ function buildEvent(lines: string[]) {
   return lines.map(foldLine).join("\r\n");
 }
 
-export function buildIcs(scheduleEvents: ScheduleEvent[], calendarEvents: CalendarEvent[]): string {
+export function buildIcs(
+  scheduleEvents: ScheduleEvent[],
+  calendarEvents: CalendarEvent[],
+  tasks: Pick<Task, "id" | "title" | "course" | "due_date">[] = [],
+): string {
   const now = new Date();
   const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
@@ -105,6 +109,25 @@ export function buildIcs(scheduleEvents: ScheduleEvent[], calendarEvents: Calend
     if (event.description) lines.push(`DESCRIPTION:${escapeText(event.description)}`);
     if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
     lines.push("END:VEVENT");
+    vevents.push(buildEvent(lines));
+  }
+
+  // Assignment due dates -- shown as all-day events, matching how Classroom
+  // and most student calendars represent a due date (a day, not a specific
+  // time slot).
+  for (const task of tasks) {
+    if (!task.due_date) continue;
+    const startDate = task.due_date.replace(/-/g, "");
+    const endDate = dateOnly(`${task.due_date}T00:00:00.000Z`, startDate);
+    const lines = [
+      "BEGIN:VEVENT",
+      `UID:task-${task.id}@luminclearpath.ca`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${startDate}`,
+      `DTEND;VALUE=DATE:${endDate}`,
+      `SUMMARY:${escapeText(`Due: ${task.title}${task.course ? ` (${task.course})` : ""}`)}`,
+      "END:VEVENT",
+    ];
     vevents.push(buildEvent(lines));
   }
 
