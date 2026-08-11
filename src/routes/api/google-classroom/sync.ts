@@ -6,6 +6,7 @@ import {
   ClassroomTokenExpiredError,
   getValidClassroomAccessToken,
 } from "@/lib/classroom-connection";
+import { escapeHtml, sendEmail } from "@/lib/email";
 import {
   courseWorkDueDate,
   listAnnouncements,
@@ -45,6 +46,47 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
           return new Response("Could not load connection", { status: 500 });
         }
 
+        // Notifications ("new assignment posted" / "you got a grade") are
+        // only meaningful once there's a prior sync to diff against --
+        // without this, a student's very first connect would email them
+        // once for every single pre-existing assignment in every course.
+        const { data: connMeta } = await admin
+          .from("google_classroom_connections")
+          .select("last_synced_at")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const notifyEnabled = Boolean(connMeta?.last_synced_at);
+
+        let studentEmail: string | null = null;
+        let emailsEnabled = false;
+        if (notifyEnabled) {
+          const { data: authUser } = await admin.auth.admin.getUserById(userId);
+          studentEmail = authUser?.user?.email ?? null;
+          const meta = (authUser?.user?.user_metadata ?? {}) as Record<string, unknown>;
+          emailsEnabled = meta["email_digest_enabled"] !== false;
+        }
+
+        async function notify(subject: string, bodyHtml: string) {
+          if (!notifyEnabled || !emailsEnabled || !studentEmail) return;
+          try {
+            await sendEmail({
+              to: studentEmail,
+              subject,
+              html: `
+                <div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+                  ${bodyHtml}
+                  <p><a href="https://luminclearpath.ca/classroom" style="color:#2563eb;">Open Classroom on ClearPath →</a></p>
+                  <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
+                    You're getting this because email notifications are on for your ClearPath account.
+                    Turn them off anytime in Account settings.
+                  </p>
+                </div>`,
+            });
+          } catch (err) {
+            console.error("[google-classroom] notification email failed", err);
+          }
+        }
+
         let courseCount = 0;
         let courseworkCount = 0;
         let taskCount = 0;
@@ -79,14 +121,21 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
             );
             courseCount++;
 
-            const [courseWork, submissions, announcements, courseMaterials] = await Promise.all([
-              listCourseWork(accessToken, course.id),
-              listMySubmissions(accessToken, course.id),
-              listAnnouncements(accessToken, course.id),
-              listCourseWorkMaterials(accessToken, course.id),
-            ]);
+            const [courseWork, submissions, announcements, courseMaterials, existingCoursework] =
+              await Promise.all([
+                listCourseWork(accessToken, course.id),
+                listMySubmissions(accessToken, course.id),
+                listAnnouncements(accessToken, course.id),
+                listCourseWorkMaterials(accessToken, course.id),
+                admin
+                  .from("classroom_coursework")
+                  .select("id, submission_state, assigned_grade")
+                  .eq("course_id", course.id)
+                  .eq("user_id", userId),
+              ]);
 
             const submissionByCourseWork = new Map(submissions.map((s) => [s.courseWorkId, s]));
+            const existingById = new Map((existingCoursework.data ?? []).map((c) => [c.id, c]));
 
             for (const work of courseWork) {
               const submission = submissionByCourseWork.get(work.id);
@@ -109,6 +158,14 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               } catch (err) {
                 console.error("[google-classroom] could not load rubric", err);
               }
+
+              const existing = existingById.get(work.id);
+              const isNewCoursework = notifyEnabled && !existing;
+              const gradeJustPosted =
+                notifyEnabled &&
+                Boolean(existing) &&
+                typeof submission?.assignedGrade === "number" &&
+                existing?.assigned_grade !== submission.assignedGrade;
 
               await admin.from("classroom_coursework").upsert(
                 {
@@ -155,6 +212,24 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
                 { onConflict: "user_id,google_classroom_id" },
               );
               if (!taskError) taskCount++;
+
+              if (isNewCoursework) {
+                await notify(
+                  `New assignment posted — ${course.name}`,
+                  `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
+                   <p style="color: #475569;">Just posted in ${escapeHtml(course.name)}${dueDate ? ` — due ${escapeHtml(dueDate)}` : ""}.</p>`,
+                );
+              } else if (gradeJustPosted) {
+                const points =
+                  typeof work.maxPoints === "number"
+                    ? ` (${submission!.assignedGrade}/${work.maxPoints})`
+                    : ` (${submission!.assignedGrade})`;
+                await notify(
+                  `You got a grade — ${work.title}`,
+                  `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
+                   <p style="color: #475569;">Graded${escapeHtml(points)} in ${escapeHtml(course.name)}.</p>`,
+                );
+              }
             }
 
             for (const announcement of announcements) {
