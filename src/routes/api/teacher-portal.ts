@@ -50,13 +50,48 @@ export const Route = createFileRoute("/api/teacher-portal")({
           });
         }
 
-        const { data: coursework } = await admin
+        // Every student's row for every coursework item in this course --
+        // used to build a class-wide "who's turned in what" overview.
+        // Different students can have slightly different max_points/title
+        // if Classroom's own data was fetched at different sync times, so
+        // coursework metadata (title, max_points, due date) is taken from
+        // whichever row has it, and roster status is reported per student.
+        const { data: allCoursework } = await admin
           .from("classroom_coursework")
-          .select("id, title")
+          .select("id, user_id, title, due_at, max_points, submission_state, assigned_grade")
           .eq("course_id", claims.courseId);
-        const uniqueCoursework = [...new Map((coursework ?? []).map((c) => [c.id, c])).values()];
 
-        return Response.json({ courseName, students, coursework: uniqueCoursework });
+        const courseworkMeta = new Map<
+          string,
+          { id: string; title: string; due_at: string | null; max_points: number | null }
+        >();
+        const roster: {
+          courseworkId: string;
+          userId: string;
+          submissionState: string | null;
+          assignedGrade: number | null;
+        }[] = [];
+        for (const row of allCoursework ?? []) {
+          if (!courseworkMeta.has(row.id)) {
+            courseworkMeta.set(row.id, {
+              id: row.id,
+              title: row.title,
+              due_at: row.due_at,
+              max_points: row.max_points,
+            });
+          }
+          roster.push({
+            courseworkId: row.id,
+            userId: row.user_id,
+            submissionState: row.submission_state,
+            assignedGrade: row.assigned_grade,
+          });
+        }
+        const uniqueCoursework = [...courseworkMeta.values()].sort((a, b) =>
+          (a.due_at ?? "").localeCompare(b.due_at ?? ""),
+        );
+
+        return Response.json({ courseName, students, coursework: uniqueCoursework, roster });
       },
 
       POST: async ({ request }) => {

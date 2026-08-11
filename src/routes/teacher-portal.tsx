@@ -25,8 +25,16 @@ export const Route = createFileRoute("/teacher-portal")({
 type PortalData = {
   courseName: string;
   students: { userId: string; name: string; email: string }[];
-  coursework: { id: string; title: string }[];
+  coursework: { id: string; title: string; due_at: string | null; max_points: number | null }[];
+  roster: {
+    courseworkId: string;
+    userId: string;
+    submissionState: string | null;
+    assignedGrade: number | null;
+  }[];
 };
+
+const SUBMITTED_STATES = new Set(["TURNED_IN", "RETURNED"]);
 
 function TeacherPortalPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -122,7 +130,69 @@ function TeacherPortalPage() {
                 None of your students in this class use ClearPath yet.
               </p>
             ) : (
-              <form onSubmit={handleSend} className="mt-6 space-y-4">
+              <>
+                {data.coursework.length > 0 && (
+                  <div className="mt-6">
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      Class overview
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Only shows students using ClearPath — not your full Classroom roster.
+                    </p>
+                    <div className="mt-3 overflow-x-auto rounded-xl border border-border/60">
+                      <table className="w-full min-w-[480px] border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-border/60 bg-background/40">
+                            <th className="sticky left-0 bg-background/95 p-2 text-left font-medium">
+                              Assignment
+                            </th>
+                            {data.students.map((s) => (
+                              <th key={s.userId} className="p-2 text-left font-medium">
+                                {s.name.split(" ")[0]}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.coursework.map((cw) => (
+                            <tr key={cw.id} className="border-b border-border/40 last:border-0">
+                              <td className="sticky left-0 bg-card/95 p-2 font-medium">{cw.title}</td>
+                              {data.students.map((s) => {
+                                const entry = data.roster.find(
+                                  (r) => r.courseworkId === cw.id && r.userId === s.userId,
+                                );
+                                const submitted = entry?.submissionState
+                                  ? SUBMITTED_STATES.has(entry.submissionState)
+                                  : false;
+                                const graded = entry?.submissionState === "RETURNED";
+                                return (
+                                  <td key={s.userId} className="p-2">
+                                    {!entry ? (
+                                      <span className="text-muted-foreground">—</span>
+                                    ) : graded ? (
+                                      <span className="text-emerald-400">
+                                        Graded
+                                        {typeof entry.assignedGrade === "number"
+                                          ? ` (${entry.assignedGrade}${typeof cw.max_points === "number" ? `/${cw.max_points}` : ""})`
+                                          : ""}
+                                      </span>
+                                    ) : submitted ? (
+                                      <span className="text-accent">Turned in</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">Not yet</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleSend} className="mt-6 space-y-4">
                 <div className="space-y-2">
                   <Label>Student</Label>
                   <Select value={studentId} onValueChange={setStudentId}>
@@ -177,7 +247,8 @@ function TeacherPortalPage() {
                   <Send className="h-3.5 w-3.5" aria-hidden />
                   {sending ? "Sending…" : "Send comment"}
                 </Button>
-              </form>
+                </form>
+              </>
             )}
           </div>
         ) : null}
