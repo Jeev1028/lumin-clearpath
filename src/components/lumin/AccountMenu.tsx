@@ -6,6 +6,7 @@ import {
   Compass,
   GraduationCap,
   HelpCircle,
+  Layers,
   LogOut,
   Settings,
   ShieldCheck,
@@ -102,6 +103,12 @@ export function AccountMenu() {
           <Link to="/practice">
             <Brain className="h-4 w-4" aria-hidden />
             Adaptive practice
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/flashcards">
+            <Layers className="h-4 w-4" aria-hidden />
+            Flashcards
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

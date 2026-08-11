@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
+import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GradesRouteImport } from './routes/grades'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
@@ -33,6 +34,7 @@ import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
 import { Route as ApiAdaptiveLevelCheckRouteImport } from './routes/api/adaptive/level-check'
 import { Route as ApiAdaptivePracticeRouteImport } from './routes/api/adaptive/practice'
 import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
@@ -43,6 +45,7 @@ import { Route as ApiAdminNoticesRouteImport } from './routes/api/admin/notices'
 import { Route as ApiAdminSendEmailRouteImport } from './routes/api/admin/send-email'
 import { Route as ApiAdminUsersRouteImport } from './routes/api/admin/users'
 import { Route as ApiCalendarFeedLinkRouteImport } from './routes/api/calendar-feed/link'
+import { Route as ApiFlashcardsGenerateRouteImport } from './routes/api/flashcards/generate'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api/google-calendar/callback'
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api/google-calendar/disconnect'
 import { Route as ApiGoogleCalendarStartRouteImport } from './routes/api/google-calendar/start'
@@ -89,6 +92,11 @@ const CalendarRoute = CalendarRouteImport.update({
 const ClassroomRoute = ClassroomRouteImport.update({
   id: '/classroom',
   path: '/classroom',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlashcardsRoute = FlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GradesRoute = GradesRouteImport.update({
@@ -181,6 +189,11 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FlashcardsDeckIdRoute = FlashcardsDeckIdRouteImport.update({
+  id: '/$deckId',
+  path: '/$deckId',
+  getParentRoute: () => FlashcardsRoute,
+} as any)
 const ApiAdaptiveLevelCheckRoute = ApiAdaptiveLevelCheckRouteImport.update({
   id: '/api/adaptive/level-check',
   path: '/api/adaptive/level-check',
@@ -230,6 +243,11 @@ const ApiCalendarFeedLinkRoute = ApiCalendarFeedLinkRouteImport.update({
   id: '/link',
   path: '/link',
   getParentRoute: () => ApiCalendarFeedRoute,
+} as any)
+const ApiFlashcardsGenerateRoute = ApiFlashcardsGenerateRouteImport.update({
+  id: '/api/flashcards/generate',
+  path: '/api/flashcards/generate',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGoogleCalendarCallbackRoute =
   ApiGoogleCalendarCallbackRouteImport.update({
@@ -334,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
+  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -351,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
@@ -362,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
+  '/api/flashcards/generate': typeof ApiFlashcardsGenerateRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -387,6 +408,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
+  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -404,6 +426,7 @@ export interface FileRoutesByTo {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat': typeof ChatIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
@@ -415,6 +438,7 @@ export interface FileRoutesByTo {
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
+  '/api/flashcards/generate': typeof ApiFlashcardsGenerateRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -441,6 +465,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
+  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -458,6 +483,7 @@ export interface FileRoutesById {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
@@ -469,6 +495,7 @@ export interface FileRoutesById {
   '/api/admin/send-email': typeof ApiAdminSendEmailRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/calendar-feed/link': typeof ApiCalendarFeedLinkRoute
+  '/api/flashcards/generate': typeof ApiFlashcardsGenerateRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/start': typeof ApiGoogleCalendarStartRoute
@@ -496,6 +523,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
+    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -513,6 +541,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
+    | '/flashcards/$deckId'
     | '/chat/'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
@@ -524,6 +553,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-email'
     | '/api/admin/users'
     | '/api/calendar-feed/link'
+    | '/api/flashcards/generate'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -549,6 +579,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
+    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -566,6 +597,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
+    | '/flashcards/$deckId'
     | '/chat'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
@@ -577,6 +609,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-email'
     | '/api/admin/users'
     | '/api/calendar-feed/link'
+    | '/api/flashcards/generate'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -602,6 +635,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
+    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -619,6 +653,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
+    | '/flashcards/$deckId'
     | '/chat/'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
@@ -630,6 +665,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-email'
     | '/api/admin/users'
     | '/api/calendar-feed/link'
+    | '/api/flashcards/generate'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/start'
@@ -656,6 +692,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
+  FlashcardsRoute: typeof FlashcardsRouteWithChildren
   GradesRoute: typeof GradesRoute
   KnowledgeRoute: typeof KnowledgeRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
@@ -683,6 +720,7 @@ export interface RootRouteChildren {
   ApiAdminNoticesRoute: typeof ApiAdminNoticesRoute
   ApiAdminSendEmailRoute: typeof ApiAdminSendEmailRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
+  ApiFlashcardsGenerateRoute: typeof ApiFlashcardsGenerateRoute
   ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStartRoute: typeof ApiGoogleCalendarStartRoute
@@ -744,6 +782,13 @@ declare module '@tanstack/react-router' {
       path: '/classroom'
       fullPath: '/classroom'
       preLoaderRoute: typeof ClassroomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flashcards': {
+      id: '/flashcards'
+      path: '/flashcards'
+      fullPath: '/flashcards'
+      preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grades': {
@@ -872,6 +917,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/flashcards/$deckId': {
+      id: '/flashcards/$deckId'
+      path: '/$deckId'
+      fullPath: '/flashcards/$deckId'
+      preLoaderRoute: typeof FlashcardsDeckIdRouteImport
+      parentRoute: typeof FlashcardsRoute
+    }
     '/api/adaptive/level-check': {
       id: '/api/adaptive/level-check'
       path: '/api/adaptive/level-check'
@@ -941,6 +993,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/calendar-feed/link'
       preLoaderRoute: typeof ApiCalendarFeedLinkRouteImport
       parentRoute: typeof ApiCalendarFeedRoute
+    }
+    '/api/flashcards/generate': {
+      id: '/api/flashcards/generate'
+      path: '/api/flashcards/generate'
+      fullPath: '/api/flashcards/generate'
+      preLoaderRoute: typeof ApiFlashcardsGenerateRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/google-calendar/callback': {
       id: '/api/google-calendar/callback'
@@ -1064,6 +1123,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface FlashcardsRouteChildren {
+  FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
+}
+
+const FlashcardsRouteChildren: FlashcardsRouteChildren = {
+  FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
+}
+
+const FlashcardsRouteWithChildren = FlashcardsRoute._addFileChildren(
+  FlashcardsRouteChildren,
+)
+
 interface ApiCalendarFeedRouteChildren {
   ApiCalendarFeedLinkRoute: typeof ApiCalendarFeedLinkRoute
 }
@@ -1083,6 +1154,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,
+  FlashcardsRoute: FlashcardsRouteWithChildren,
   GradesRoute: GradesRoute,
   KnowledgeRoute: KnowledgeRoute,
   MfaChallengeRoute: MfaChallengeRoute,
@@ -1110,6 +1182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminNoticesRoute: ApiAdminNoticesRoute,
   ApiAdminSendEmailRoute: ApiAdminSendEmailRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
+  ApiFlashcardsGenerateRoute: ApiFlashcardsGenerateRoute,
   ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStartRoute: ApiGoogleCalendarStartRoute,

@@ -553,6 +553,72 @@ export type Database = {
         }
         Relationships: []
       }
+      flashcard_decks: {
+        Row: {
+          course: string | null
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flashcards: {
+        Row: {
+          back: string
+          box: number
+          created_at: string
+          deck_id: string
+          due_at: string
+          front: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          back: string
+          box?: number
+          created_at?: string
+          deck_id: string
+          due_at?: string
+          front: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          back?: string
+          box?: number
+          created_at?: string
+          deck_id?: string
+          due_at?: string
+          front?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_notifications: {
         Row: {
           body: string | null

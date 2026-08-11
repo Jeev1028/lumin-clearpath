@@ -6,6 +6,7 @@ import {
   Compass,
   GraduationCap,
   HelpCircle,
+  Layers,
   LogOut,
   Settings,
   Sparkles,
@@ -34,6 +35,7 @@ const PAGES = [
   { to: "/grades", label: "Grades", icon: GraduationCap },
   { to: "/knowledge", label: "Knowledge Graph", icon: Compass },
   { to: "/practice", label: "Adaptive practice", icon: Brain },
+  { to: "/flashcards", label: "Flashcards", icon: Layers },
   { to: "/chat", label: "Lumin AI", icon: Sparkles },
   { to: "/account", label: "Account settings", icon: Settings },
 ] as const;
