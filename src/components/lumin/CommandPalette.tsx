@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ClipboardList,
   Compass,
+  FileText,
   GraduationCap,
   HelpCircle,
   Home,
@@ -26,7 +27,16 @@ import {
 import { useTutorial } from "@/components/lumin/WelcomeTutorial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { listTasks, type Task } from "@/lib/clearpath";
+import {
+  listClassroomCourses,
+  listClassroomCoursework,
+  listClassroomMaterials,
+  listTasks,
+  type ClassroomCoursework,
+  type ClassroomMaterial,
+  type Task,
+} from "@/lib/clearpath";
+import { listDecks, type FlashcardDeck } from "@/lib/flashcards";
 
 const PAGES = [
   { to: "/home", label: "Today", icon: Home },
@@ -42,15 +52,32 @@ const PAGES = [
   { to: "/account", label: "Account settings", icon: Settings },
 ] as const;
 
+type SearchData = {
+  tasks: Task[];
+  decks: FlashcardDeck[];
+  coursework: ClassroomCoursework[];
+  materials: ClassroomMaterial[];
+  courseNames: Record<string, string>;
+};
+
+const EMPTY_DATA: SearchData = {
+  tasks: [],
+  decks: [],
+  coursework: [],
+  materials: [],
+  courseNames: {},
+};
+
 /** Global Cmd/Ctrl+K quick-jump — page navigation plus a fuzzy search over
- * the signed-in user's own tasks. Tasks are fetched lazily on first open
- * and cached for the rest of the session. */
+ * the signed-in user's own tasks, flashcard decks, grades and Classroom
+ * materials. Everything is fetched lazily on first open and cached for
+ * the rest of the session. */
 export function CommandPalette() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { open: openTutorial } = useTutorial();
   const [open, setOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [data, setData] = useState<SearchData | null>(null);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -71,17 +98,36 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (!open || !user || tasks !== null) return;
-    void listTasks()
-      .then(setTasks)
-      .catch(() => setTasks([]));
-  }, [open, user, tasks]);
+    if (!open || !user || data !== null) return;
+    Promise.all([
+      listTasks(),
+      listDecks(),
+      listClassroomCoursework(),
+      listClassroomMaterials(),
+      listClassroomCourses(),
+    ])
+      .then(([tasks, decks, coursework, materials, courses]) => {
+        const courseNames = Object.fromEntries(courses.map((c) => [c.id, c.name]));
+        setData({ tasks, decks, coursework, materials, courseNames });
+      })
+      .catch(() => setData(EMPTY_DATA));
+  }, [open, user, data]);
 
   if (!user) return null;
+
+  const { tasks, decks, coursework, materials, courseNames } = data ?? EMPTY_DATA;
+  const gradedWork = coursework.filter(
+    (cw) => typeof cw.assigned_grade === "number" && typeof cw.max_points === "number",
+  );
 
   function go(to: string) {
     setOpen(false);
     void navigate({ to });
+  }
+
+  function goDeck(deckId: string) {
+    setOpen(false);
+    void navigate({ to: "/flashcards/$deckId", params: { deckId } });
   }
 
   async function handleSignOut() {
@@ -92,7 +138,7 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Jump to a page, search your tasks…" />
+      <CommandInput placeholder="Jump to a page, search tasks, grades, decks, materials…" />
       <CommandList>
         <CommandEmpty>Nothing found.</CommandEmpty>
         <CommandGroup heading="Pages">
@@ -104,7 +150,7 @@ export function CommandPalette() {
           ))}
         </CommandGroup>
 
-        {tasks && tasks.length > 0 && (
+        {tasks.length > 0 && (
           <>
             <CommandSeparator />
             <CommandGroup heading="Tasks">
@@ -119,6 +165,73 @@ export function CommandPalette() {
                   {task.course && (
                     <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                       {task.course}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {decks.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Flashcard decks">
+              {decks.slice(0, 30).map((deck) => (
+                <CommandItem
+                  key={deck.id}
+                  value={`${deck.title} ${deck.course ?? ""} flashcards`}
+                  onSelect={() => goDeck(deck.id)}
+                >
+                  <Layers className="h-4 w-4" aria-hidden />
+                  <span className="truncate">{deck.title}</span>
+                  {deck.course && (
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                      {deck.course}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {gradedWork.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Grades">
+              {gradedWork.slice(0, 30).map((cw) => (
+                <CommandItem
+                  key={cw.id}
+                  value={`${cw.title} ${courseNames[cw.course_id] ?? ""} grade`}
+                  onSelect={() => go("/grades")}
+                >
+                  <GraduationCap className="h-4 w-4" aria-hidden />
+                  <span className="truncate">{cw.title}</span>
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                    {cw.assigned_grade}/{cw.max_points}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {materials.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Classroom materials">
+              {materials.slice(0, 30).map((m) => (
+                <CommandItem
+                  key={m.id}
+                  value={`${m.title} ${courseNames[m.course_id] ?? ""} material`}
+                  onSelect={() => go("/classroom")}
+                >
+                  <FileText className="h-4 w-4" aria-hidden />
+                  <span className="truncate">{m.title}</span>
+                  {courseNames[m.course_id] && (
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                      {courseNames[m.course_id]}
                     </span>
                   )}
                 </CommandItem>
