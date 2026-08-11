@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NoticeBanner } from "@/components/lumin/NoticeBanner";
+import { PwaRegister } from "@/components/lumin/PwaRegister";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -87,6 +88,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Lumin AI is the ClearPath study companion that guides students with research, sources and summaries — never doing the work for them.",
       },
       { name: "author", content: "ClearPath" },
+      { name: "theme-color", content: "#0A1128" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { property: "og:title", content: "Lumin AI — Illuminate your educational journey" },
       {
         property: "og:description",
@@ -105,6 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon-32.png", sizes: "32x32", type: "image/png" },
       { rel: "icon", href: "/favicon-16.png", sizes: "16x16", type: "image/png" },
       { rel: "apple-touch-icon", href: "/favicon-180.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -139,6 +144,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <TutorialProvider>
+        <PwaRegister />
         <NoticeBanner />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
