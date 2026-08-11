@@ -48,4 +48,5 @@ android/local.properties
 android/*.keystore
 android/gen-key.mjs
 android/*.apk
+android/*.apk.idsig
 android/*.aab
