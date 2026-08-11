@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileEdit,
   GraduationCap,
+  Link2,
   MessageSquare,
   Paperclip,
   RotateCcw,
@@ -22,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -71,10 +73,15 @@ export function TaskDetailDialog({
   const [comments, setComments] = useState<TeacherComment[]>([]);
   const [submissionState, setSubmissionState] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [studentWork, setStudentWork] = useState<MaterialItem[]>([]);
+  const [linkInput, setLinkInput] = useState("");
+  const [attaching, setAttaching] = useState(false);
 
   useEffect(() => {
     setSubmissionState(task?.submission_state ?? null);
-  }, [task?.google_classroom_id, task?.submission_state]);
+    setStudentWork(task?.student_work ?? []);
+    setLinkInput("");
+  }, [task?.google_classroom_id, task?.submission_state, task?.student_work]);
 
   useEffect(() => {
     if (!open || !task?.classroom_course_id) {
@@ -148,6 +155,50 @@ export function TaskDetailDialog({
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleAttachLink(event: React.FormEvent) {
+    event.preventDefault();
+    if (!session || !task?.classroom_course_id || !task.google_classroom_id || !linkInput.trim()) return;
+    setAttaching(true);
+    try {
+      const res = await fetch("/api/google-classroom/submission", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId: task.classroom_course_id,
+          courseworkId: task.google_classroom_id,
+          action: "addLink",
+          url: linkInput.trim(),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        studentWork?: MaterialItem[];
+      };
+      if (!res.ok) throw new Error(data.error || "Could not attach that link.");
+      setStudentWork(data.studentWork ?? []);
+      setLinkInput("");
+      toast.success("Link attached to your work.");
+      onSubmissionChanged?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not attach that link.";
+      if (task.alternate_link) {
+        toast.error(message, {
+          action: {
+            label: "Open in Classroom",
+            onClick: () => window.open(task.alternate_link!, "_blank", "noreferrer"),
+          },
+        });
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setAttaching(false);
     }
   }
 
@@ -295,7 +346,7 @@ export function TaskDetailDialog({
           </div>
         )}
 
-        {task.student_work.length > 0 && (
+        {(studentWork.length > 0 || (isClassroom && task.classroom_course_id && task.google_classroom_id)) && (
           <div>
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <FileEdit className="h-3.5 w-3.5" aria-hidden />
@@ -304,25 +355,47 @@ export function TaskDetailDialog({
             <p className="mb-1.5 text-xs text-muted-foreground">
               Your own copy of this assignment — edit it, then use Turn in above when you're done.
             </p>
-            <ul className="space-y-1">
-              {task.student_work.map((m, i) => (
-                <li key={i}>
-                  {m.url ? (
-                    <a
-                      href={m.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-sm font-medium text-accent hover:bg-accent/20"
-                    >
-                      <FileEdit className="h-3.5 w-3.5" aria-hidden />
-                      Open "{m.title}"
-                    </a>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">{m.title}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {studentWork.length > 0 && (
+              <ul className="space-y-1">
+                {studentWork.map((m, i) => (
+                  <li key={i}>
+                    {m.url ? (
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-sm font-medium text-accent hover:bg-accent/20"
+                      >
+                        <FileEdit className="h-3.5 w-3.5" aria-hidden />
+                        Open "{m.title}"
+                      </a>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{m.title}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {isClassroom && task.classroom_course_id && task.google_classroom_id && (
+              <form onSubmit={handleAttachLink} className="mt-2 flex gap-1.5">
+                <Input
+                  value={linkInput}
+                  onChange={(e) => setLinkInput(e.target.value)}
+                  placeholder="Paste a Google Drive or other link to attach…"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline"
+                  disabled={attaching || !linkInput.trim()}
+                  className="h-8 shrink-0 gap-1 border-border/70 bg-background/40 px-2.5 text-xs text-foreground hover:text-foreground"
+                >
+                  <Link2 className="h-3.5 w-3.5" aria-hidden />
+                  {attaching ? "Attaching…" : "Attach"}
+                </Button>
+              </form>
+            )}
           </div>
         )}
 

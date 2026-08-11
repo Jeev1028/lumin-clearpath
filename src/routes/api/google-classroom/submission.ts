@@ -2,14 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { getAdminClient, requireUser } from "@/lib/api-auth";
 import {
+  addSubmissionLink,
   getMySubmission,
   reclaimSubmission,
   refreshAccessToken,
+  summarizeMaterial,
   turnInSubmission,
 } from "@/lib/google-classroom";
 import { decryptToken, encryptToken } from "@/lib/token-crypto";
 
-type Body = { courseId?: string; courseworkId?: string; action?: "turnIn" | "reclaim" };
+type Body = {
+  courseId?: string;
+  courseworkId?: string;
+  action?: "turnIn" | "reclaim" | "addLink";
+  url?: string;
+};
 
 export const Route = createFileRoute("/api/google-classroom/submission")({
   server: {
@@ -23,11 +30,19 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
         const courseId = body.courseId?.trim();
         const courseworkId = body.courseworkId?.trim();
         const action = body.action;
-        if (!courseId || !courseworkId || (action !== "turnIn" && action !== "reclaim")) {
+        const url = body.url?.trim();
+        if (
+          !courseId ||
+          !courseworkId ||
+          (action !== "turnIn" && action !== "reclaim" && action !== "addLink")
+        ) {
           return Response.json(
             { error: "courseId, courseworkId, and a valid action are required." },
             { status: 400 },
           );
+        }
+        if (action === "addLink" && !url) {
+          return Response.json({ error: "A link is required." }, { status: 400 });
         }
 
         const admin = getAdminClient();
@@ -75,6 +90,30 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
             });
           }
 
+          if (action === "addLink") {
+            await addSubmissionLink(accessToken!, courseId, courseworkId, submission.id, url!);
+
+            // Re-fetch so "Your work" reflects the newly attached link
+            // immediately, without waiting for the next full sync.
+            const updated = await getMySubmission(accessToken!, courseId, courseworkId);
+            const studentWork = (updated?.assignmentSubmission?.attachments ?? [])
+              .map(summarizeMaterial)
+              .filter((m): m is NonNullable<typeof m> => m !== null);
+
+            await admin
+              .from("classroom_coursework")
+              .update({ student_work: studentWork })
+              .eq("id", courseworkId)
+              .eq("user_id", userId);
+            await admin
+              .from("tasks")
+              .update({ student_work: studentWork })
+              .eq("google_classroom_id", courseworkId)
+              .eq("user_id", userId);
+
+            return Response.json({ ok: true, studentWork });
+          }
+
           if (action === "turnIn") {
             await turnInSubmission(accessToken!, courseId, courseworkId, submission.id);
           } else {
@@ -110,8 +149,9 @@ export const Route = createFileRoute("/api/google-classroom/submission")({
             /PERMISSION_DENIED|ProjectPermissionDenied|insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(
               detail,
             );
+          const fallbackNoun = action === "addLink" ? "attach that link" : "update your submission";
           const message = isPermissionIssue
-            ? "Your school's Google Workspace settings don't allow ClearPath to do this directly — please use Open in Google Classroom below instead."
+            ? `Your school's Google Workspace settings don't allow ClearPath to ${fallbackNoun} directly — please use Open in Google Classroom below instead.`
             : `Could not update your submission: ${detail}`;
           return Response.json({ error: message }, { status: 502 });
         }

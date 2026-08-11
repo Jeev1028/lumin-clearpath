@@ -344,6 +344,29 @@ export async function reclaimSubmission(
   );
 }
 
+/** Attaches a link (or an existing Drive file the student owns/has access
+ * to) to the student's own submission -- the same action as clicking "Add
+ * attachment" inside Google Classroom's assignment view. Uses the same
+ * classroom.coursework.me scope as turnIn/reclaim, no extra Drive scope
+ * needed for links. */
+export async function addSubmissionLink(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+  url: string,
+): Promise<void> {
+  const res = await fetch(
+    `${CLASSROOM_API}/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:modifyAttachments`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ addAttachments: [{ link: { url } }] }),
+    },
+  );
+  if (!res.ok) throw new Error(`Classroom API error (${res.status}): ${await res.text()}`);
+}
+
 /** Classroom's dueDate/dueTime are separate structured fields -- combine
  * into a single "YYYY-MM-DD" date string matching how ClearPath's own
  * tasks.due_date column is stored (date-only, no time-of-day tracking). */
