@@ -183,9 +183,7 @@ function AuthPage() {
       </div>
 
       <header className="mx-auto w-full max-w-6xl px-6 py-6">
-        <Link to="/" className="inline-block transition-transform duration-200 hover:scale-[1.02]">
-          <LuminWordmark />
-        </Link>
+        <LuminWordmark />
       </header>
       <main id="main-content" className="flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card/80 p-8 shadow-panel backdrop-blur-sm">
