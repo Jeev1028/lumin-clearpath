@@ -38,3 +38,14 @@ supabase/.temp/
 *.sw?
 .vercel
 .env*
+
+# Android TWA project (generated app wrapper)
+android/node_modules
+android/app/build
+android/build
+android/.gradle
+android/local.properties
+android/*.keystore
+android/gen-key.mjs
+android/*.apk
+android/*.aab

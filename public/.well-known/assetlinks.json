@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ca.luminclearpath.twa",
+      "sha256_cert_fingerprints": [
+        "B9:66:35:E8:C8:2D:1B:96:FB:85:9C:C9:7E:87:BB:EB:8E:6B:EE:4F:B1:5B:E9:97:E6:37:E9:1D:42:A6:2B:FB"
+      ]
+    }
+  }
+]
