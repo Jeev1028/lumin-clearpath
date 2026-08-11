@@ -66,15 +66,36 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
           emailsEnabled = meta["email_digest_enabled"] !== false;
         }
 
-        async function notify(subject: string, bodyHtml: string) {
-          if (!notifyEnabled || !emailsEnabled || !studentEmail) return;
+        async function notify(options: {
+          type: string;
+          title: string;
+          bodyText: string;
+          bodyHtml: string;
+        }) {
+          if (!notifyEnabled) return;
+
+          // In-app notification center entry -- independent of the email
+          // digest preference, since that's a separate channel/toggle.
+          try {
+            await admin.from("app_notifications").insert({
+              user_id: userId,
+              type: options.type,
+              title: options.title,
+              body: options.bodyText,
+              url: "/classroom",
+            });
+          } catch (err) {
+            console.error("[google-classroom] in-app notification failed", err);
+          }
+
+          if (!emailsEnabled || !studentEmail) return;
           try {
             await sendEmail({
               to: studentEmail,
-              subject,
+              subject: options.title,
               html: `
                 <div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
-                  ${bodyHtml}
+                  ${options.bodyHtml}
                   <p><a href="https://luminclearpath.ca/classroom" style="color:#2563eb;">Open Classroom on ClearPath →</a></p>
                   <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
                     You're getting this because email notifications are on for your ClearPath account.
@@ -214,21 +235,27 @@ export const Route = createFileRoute("/api/google-classroom/sync")({
               if (!taskError) taskCount++;
 
               if (isNewCoursework) {
-                await notify(
-                  `New assignment posted — ${course.name}`,
-                  `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
-                   <p style="color: #475569;">Just posted in ${escapeHtml(course.name)}${dueDate ? ` — due ${escapeHtml(dueDate)}` : ""}.</p>`,
-                );
+                const bodyText = `Just posted in ${course.name}${dueDate ? ` — due ${dueDate}` : ""}.`;
+                await notify({
+                  type: "new_assignment",
+                  title: `New assignment: ${work.title}`,
+                  bodyText,
+                  bodyHtml: `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
+                   <p style="color: #475569;">${escapeHtml(bodyText)}</p>`,
+                });
               } else if (gradeJustPosted) {
                 const points =
                   typeof work.maxPoints === "number"
                     ? ` (${submission!.assignedGrade}/${work.maxPoints})`
                     : ` (${submission!.assignedGrade})`;
-                await notify(
-                  `You got a grade — ${work.title}`,
-                  `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
-                   <p style="color: #475569;">Graded${escapeHtml(points)} in ${escapeHtml(course.name)}.</p>`,
-                );
+                const bodyText = `Graded${points} in ${course.name}.`;
+                await notify({
+                  type: "grade",
+                  title: `Grade posted: ${work.title}`,
+                  bodyText,
+                  bodyHtml: `<h2 style="margin-bottom: 4px;">${escapeHtml(work.title)}</h2>
+                   <p style="color: #475569;">${escapeHtml(bodyText)}</p>`,
+                });
               }
             }
 

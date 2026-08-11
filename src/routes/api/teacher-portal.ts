@@ -133,6 +133,18 @@ export const Route = createFileRoute("/api/teacher-portal")({
         });
         if (insertError) return new Response("Could not save your comment.", { status: 500 });
 
+        try {
+          await admin.from("app_notifications").insert({
+            user_id: studentUserId,
+            type: "teacher_comment",
+            title: "Your teacher left you a comment",
+            body: message.length > 140 ? `${message.slice(0, 140)}…` : message,
+            url: "/classroom",
+          });
+        } catch (err) {
+          console.error("[teacher-portal] in-app notification failed", err);
+        }
+
         const { data: userData } = await admin.auth.admin.getUserById(studentUserId);
         const studentEmail = userData?.user?.email;
         if (studentEmail) {
