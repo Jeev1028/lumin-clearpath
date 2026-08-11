@@ -119,34 +119,60 @@ export type ClassroomAnnouncement = {
 };
 
 export type ClassroomMaterial = {
-  driveFile?: { driveFile?: { title?: string; alternateLink?: string } };
-  link?: { url?: string; title?: string };
-  youTubeVideo?: { title?: string; alternateLink?: string };
-  form?: { title?: string; formUrl?: string };
+  driveFile?: {
+    driveFile?: { title?: string; alternateLink?: string; thumbnailUrl?: string };
+  };
+  link?: { url?: string; title?: string; thumbnailUrl?: string };
+  youTubeVideo?: { title?: string; alternateLink?: string; thumbnailUrl?: string };
+  form?: { title?: string; formUrl?: string; thumbnailUrl?: string };
 };
 
-export type MaterialSummary = { title: string; url: string | null };
+export type MaterialType = "driveFile" | "link" | "youTubeVideo" | "form";
+
+export type MaterialSummary = {
+  title: string;
+  url: string | null;
+  thumbnailUrl?: string | null;
+  type?: MaterialType;
+};
 
 /** Flattens Classroom's discriminated-union material shape into a simple
- * {title, url} the UI can render without caring which attachment type it is. */
+ * {title, url, thumbnailUrl, type} the UI can render without caring which
+ * attachment type it is. Classroom's API returns a thumbnailUrl for every
+ * material type directly -- no separate Drive API call or scope needed to
+ * show a real preview like Classroom's own UI does. */
 export function summarizeMaterial(material: ClassroomMaterial): MaterialSummary | null {
   if (material.driveFile?.driveFile) {
     return {
       title: material.driveFile.driveFile.title ?? "Drive file",
       url: material.driveFile.driveFile.alternateLink ?? null,
+      thumbnailUrl: material.driveFile.driveFile.thumbnailUrl ?? null,
+      type: "driveFile",
     };
   }
   if (material.link) {
-    return { title: material.link.title ?? material.link.url ?? "Link", url: material.link.url ?? null };
+    return {
+      title: material.link.title ?? material.link.url ?? "Link",
+      url: material.link.url ?? null,
+      thumbnailUrl: material.link.thumbnailUrl ?? null,
+      type: "link",
+    };
   }
   if (material.youTubeVideo) {
     return {
       title: material.youTubeVideo.title ?? "YouTube video",
       url: material.youTubeVideo.alternateLink ?? null,
+      thumbnailUrl: material.youTubeVideo.thumbnailUrl ?? null,
+      type: "youTubeVideo",
     };
   }
   if (material.form) {
-    return { title: material.form.title ?? "Form", url: material.form.formUrl ?? null };
+    return {
+      title: material.form.title ?? "Form",
+      url: material.form.formUrl ?? null,
+      thumbnailUrl: material.form.thumbnailUrl ?? null,
+      type: "form",
+    };
   }
   return null;
 }

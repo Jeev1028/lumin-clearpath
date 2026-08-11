@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BookOpenCheck, CheckCircle2, GraduationCap, Mail, Megaphone, Paperclip, RefreshCw } from "lucide-react";
+import { MaterialPreviewCard } from "@/components/lumin/MaterialPreviewCard";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -418,25 +419,12 @@ function ClassroomPage() {
                           >
                             <p className="font-medium">{m.title}</p>
                             {m.items.length > 0 && (
-                              <ul className="mt-1 space-y-0.5">
-                                {m.items.map((item, i) =>
-                                  item.url ? (
-                                    <li key={i}>
-                                      <a
-                                        href={item.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-accent underline underline-offset-4"
-                                      >
-                                        {item.title}
-                                      </a>
-                                    </li>
-                                  ) : (
-                                    <li key={i} className="text-muted-foreground">
-                                      {item.title}
-                                    </li>
-                                  ),
-                                )}
+                              <ul className="mt-1.5 space-y-1.5">
+                                {m.items.map((item, i) => (
+                                  <li key={i}>
+                                    <MaterialPreviewCard item={item} compact />
+                                  </li>
+                                ))}
                               </ul>
                             )}
                           </div>

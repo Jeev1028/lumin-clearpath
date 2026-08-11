@@ -3,7 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 export type TaskKind = "test" | "assignment" | "project" | "reading";
 export type TaskStatus = "todo" | "in_progress" | "submitted";
 
-export type MaterialItem = { title: string; url: string | null };
+export type MaterialItem = {
+  title: string;
+  url: string | null;
+  thumbnailUrl?: string | null;
+  type?: "driveFile" | "link" | "youTubeVideo" | "form";
+};
 export type RubricCriterion = {
   title?: string;
   levels?: { title?: string; points?: number; description?: string }[];
@@ -264,7 +269,7 @@ export type ClassroomMaterial = {
   course_id: string;
   title: string;
   description: string | null;
-  items: { title: string; url: string | null }[];
+  items: MaterialItem[];
   created_at: string;
 };
 

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MaterialPreviewCard } from "@/components/lumin/MaterialPreviewCard";
 import { useAuth } from "@/hooks/useAuth";
 import {
   listTeacherComments,
@@ -356,22 +357,10 @@ export function TaskDetailDialog({
               Your own copy of this assignment — edit it, then use Turn in above when you're done.
             </p>
             {studentWork.length > 0 && (
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {studentWork.map((m, i) => (
                   <li key={i}>
-                    {m.url ? (
-                      <a
-                        href={m.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-sm font-medium text-accent hover:bg-accent/20"
-                      >
-                        <FileEdit className="h-3.5 w-3.5" aria-hidden />
-                        Open "{m.title}"
-                      </a>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">{m.title}</span>
-                    )}
+                    <MaterialPreviewCard item={m} />
                   </li>
                 ))}
               </ul>
@@ -405,25 +394,12 @@ export function TaskDetailDialog({
               <Paperclip className="h-3.5 w-3.5" aria-hidden />
               Attached materials
             </p>
-            <ul className="space-y-1">
-              {task.materials.map((m, i) =>
-                m.url ? (
-                  <li key={i}>
-                    <a
-                      href={m.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-accent underline underline-offset-4"
-                    >
-                      {m.title}
-                    </a>
-                  </li>
-                ) : (
-                  <li key={i} className="text-sm text-muted-foreground">
-                    {m.title}
-                  </li>
-                ),
-              )}
+            <ul className="space-y-1.5">
+              {task.materials.map((m, i) => (
+                <li key={i}>
+                  <MaterialPreviewCard item={m} />
+                </li>
+              ))}
             </ul>
           </div>
         )}
