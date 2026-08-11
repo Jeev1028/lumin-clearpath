@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  classroomAverage,
   getClassroomConnection,
   listClassroomCourses,
   listClassroomCoursework,
@@ -32,15 +33,6 @@ export const Route = createFileRoute("/grades")({
   }),
   component: GradesPage,
 });
-
-function average(items: ClassroomCoursework[]): number | null {
-  const graded = items.filter(
-    (i) => typeof i.assigned_grade === "number" && typeof i.max_points === "number" && i.max_points > 0,
-  );
-  if (graded.length === 0) return null;
-  const pct = graded.reduce((sum, i) => sum + i.assigned_grade! / i.max_points!, 0) / graded.length;
-  return Math.round(pct * 1000) / 10;
-}
 
 type TrendPoint = { label: string; date: string; percent: number };
 
@@ -101,7 +93,7 @@ function GradesPage() {
     return map;
   }, [coursework]);
 
-  const overallAverage = average(coursework);
+  const overallAverage = classroomAverage(coursework);
 
   return (
     <div className="min-h-screen bg-deep">
@@ -145,7 +137,7 @@ function GradesPage() {
             <div className="mt-6 space-y-6">
               {courses.map((course) => {
                 const work = courseworkByCourseId.get(course.id) ?? [];
-                const courseAverage = average(work);
+                const courseAverage = classroomAverage(work);
                 const trend = gradeTrend(work);
                 if (work.length === 0) return null;
                 return (

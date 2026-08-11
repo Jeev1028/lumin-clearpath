@@ -248,6 +248,18 @@ export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> 
   return (data ?? []) as ClassroomCoursework[];
 }
 
+/** Average percentage across all graded items with a positive max_points.
+ * Returns null when there's nothing graded yet to average. Shared between
+ * the Grades page and the Today dashboard so both stay in sync. */
+export function classroomAverage(items: ClassroomCoursework[]): number | null {
+  const graded = items.filter(
+    (i) => typeof i.assigned_grade === "number" && typeof i.max_points === "number" && i.max_points > 0,
+  );
+  if (graded.length === 0) return null;
+  const pct = graded.reduce((sum, i) => sum + i.assigned_grade! / i.max_points!, 0) / graded.length;
+  return Math.round(pct * 1000) / 10;
+}
+
 export type ClassroomAnnouncement = {
   id: string;
   course_id: string;

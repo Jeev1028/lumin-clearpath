@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 const links = [
+  { to: "/home", label: "Today" },
   { to: "/tasks", label: "Tasks" },
   { to: "/calendar", label: "Calendar" },
   { to: "/schedule", label: "Schedule" },
@@ -29,7 +30,10 @@ export function SiteHeader({
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-2">
           {leading}
-          <Link to="/" className="transition-transform duration-200 hover:scale-[1.02]">
+          <Link
+            to={session ? "/home" : "/"}
+            className="transition-transform duration-200 hover:scale-[1.02]"
+          >
             <LuminWordmark />
           </Link>
         </div>

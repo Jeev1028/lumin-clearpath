@@ -31,7 +31,7 @@ function MfaChallengePage() {
       return;
     }
     if (!needsMfa) {
-      void navigate({ to: "/chat" });
+      void navigate({ to: "/home" });
     }
   }, [loading, session, needsMfa, navigate]);
 
@@ -50,7 +50,7 @@ function MfaChallengePage() {
       });
       if (error) throw error;
 
-      void navigate({ to: "/chat" });
+      void navigate({ to: "/home" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That code didn't work.");
     } finally {
@@ -80,7 +80,7 @@ function MfaChallengePage() {
           ? `Backup code accepted — ${data.remaining} left.`
           : "Backup code accepted.",
       );
-      void navigate({ to: "/chat" });
+      void navigate({ to: "/home" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That backup code didn't work.");
     } finally {

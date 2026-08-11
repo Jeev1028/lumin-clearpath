@@ -66,7 +66,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (loading || !session) return;
-    void navigate({ to: needsMfa ? "/mfa-challenge" : "/chat" });
+    void navigate({ to: needsMfa ? "/mfa-challenge" : "/home" });
   }, [loading, session, needsMfa, navigate]);
 
   // Google Identity Services: a fully client-side sign-in that talks to Google

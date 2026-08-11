@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
 import { Route as GradesRouteImport } from './routes/grades'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -97,6 +98,11 @@ const ClassroomRoute = ClassroomRouteImport.update({
 const GradesRoute = GradesRouteImport.update({
   id: '/grades',
   path: '/grades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeRoute = KnowledgeRouteImport.update({
@@ -353,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/home': typeof HomeRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/practice': typeof PracticeRoute
@@ -409,6 +416,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/home': typeof HomeRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/practice': typeof PracticeRoute
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/home': typeof HomeRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/practice': typeof PracticeRoute
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/home'
     | '/knowledge'
     | '/mfa-challenge'
     | '/practice'
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/home'
     | '/knowledge'
     | '/mfa-challenge'
     | '/practice'
@@ -636,6 +647,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/home'
     | '/knowledge'
     | '/mfa-challenge'
     | '/practice'
@@ -693,6 +705,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
   GradesRoute: typeof GradesRoute
+  HomeRoute: typeof HomeRoute
   KnowledgeRoute: typeof KnowledgeRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
   PracticeRoute: typeof PracticeRoute
@@ -790,6 +803,13 @@ declare module '@tanstack/react-router' {
       path: '/grades'
       fullPath: '/grades'
       preLoaderRoute: typeof GradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/knowledge': {
@@ -1144,6 +1164,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,
   GradesRoute: GradesRoute,
+  HomeRoute: HomeRoute,
   KnowledgeRoute: KnowledgeRoute,
   MfaChallengeRoute: MfaChallengeRoute,
   PracticeRoute: PracticeRoute,

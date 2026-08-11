@@ -158,7 +158,7 @@ function Index() {
               size="lg"
               className="bg-gradient-lumin px-8 text-primary-foreground shadow-glow transition-transform duration-200 hover:scale-105"
             >
-              <Link to={session ? "/tasks" : "/auth"}>
+              <Link to={session ? "/home" : "/auth"}>
                 {loading ? "Enter ClearPath" : session ? "Enter ClearPath" : "Get started"}
               </Link>
             </Button>

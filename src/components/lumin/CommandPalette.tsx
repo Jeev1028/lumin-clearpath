@@ -6,6 +6,7 @@ import {
   Compass,
   GraduationCap,
   HelpCircle,
+  Home,
   Layers,
   LogOut,
   Settings,
@@ -28,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listTasks, type Task } from "@/lib/clearpath";
 
 const PAGES = [
+  { to: "/home", label: "Today", icon: Home },
   { to: "/tasks", label: "Tasks", icon: ClipboardList },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/schedule", label: "Schedule", icon: CalendarDays },
