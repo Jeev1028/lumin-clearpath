@@ -1,0 +1,17 @@
+{
+  "name": "clearpath-ios",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Capacitor iOS wrapper for ClearPath -- loads the live site (see capacitor.config.json) rather than bundling built web assets, mirroring the Android TWA's 'render the live site' approach.",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.0",
+    "@capacitor/ios": "8.5.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.0"
+  }
+}

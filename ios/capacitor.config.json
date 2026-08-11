@@ -1,0 +1,14 @@
+{
+  "appId": "ca.luminclearpath.ios",
+  "appName": "ClearPath",
+  "webDir": "www",
+  "backgroundColor": "#0A1128",
+  "server": {
+    "url": "https://luminclearpath.ca/auth",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0A1128"
+  }
+}
