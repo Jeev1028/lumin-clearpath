@@ -15,7 +15,6 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
-import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GradesRouteImport } from './routes/grades'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
@@ -34,6 +33,7 @@ import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
 import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
 import { Route as ApiAdaptiveLevelCheckRouteImport } from './routes/api/adaptive/level-check'
 import { Route as ApiAdaptivePracticeRouteImport } from './routes/api/adaptive/practice'
@@ -92,11 +92,6 @@ const CalendarRoute = CalendarRouteImport.update({
 const ClassroomRoute = ClassroomRouteImport.update({
   id: '/classroom',
   path: '/classroom',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlashcardsRoute = FlashcardsRouteImport.update({
-  id: '/flashcards',
-  path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GradesRoute = GradesRouteImport.update({
@@ -189,10 +184,15 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FlashcardsIndexRoute = FlashcardsIndexRouteImport.update({
+  id: '/flashcards/',
+  path: '/flashcards/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FlashcardsDeckIdRoute = FlashcardsDeckIdRouteImport.update({
-  id: '/$deckId',
-  path: '/$deckId',
-  getParentRoute: () => FlashcardsRoute,
+  id: '/flashcards/$deckId',
+  path: '/flashcards/$deckId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdaptiveLevelCheckRoute = ApiAdaptiveLevelCheckRouteImport.update({
   id: '/api/adaptive/level-check',
@@ -352,7 +352,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
-  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -372,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/flashcards/': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -408,7 +408,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
-  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -428,6 +427,7 @@ export interface FileRoutesByTo {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat': typeof ChatIndexRoute
+  '/flashcards': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -465,7 +465,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
-  '/flashcards': typeof FlashcardsRouteWithChildren
   '/grades': typeof GradesRoute
   '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
@@ -485,6 +484,7 @@ export interface FileRoutesById {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/flashcards/': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
   '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
@@ -523,7 +523,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
-    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -543,6 +542,7 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
+    | '/flashcards/'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
     | '/api/admin/admins'
@@ -579,7 +579,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
-    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -599,6 +598,7 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat'
+    | '/flashcards'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
     | '/api/admin/admins'
@@ -635,7 +635,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/classroom'
-    | '/flashcards'
     | '/grades'
     | '/knowledge'
     | '/mfa-challenge'
@@ -655,6 +654,7 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
+    | '/flashcards/'
     | '/api/adaptive/level-check'
     | '/api/adaptive/practice'
     | '/api/admin/admins'
@@ -692,7 +692,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
-  FlashcardsRoute: typeof FlashcardsRouteWithChildren
   GradesRoute: typeof GradesRoute
   KnowledgeRoute: typeof KnowledgeRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
@@ -710,7 +709,9 @@ export interface RootRouteChildren {
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ApiTeacherPortalRoute: typeof ApiTeacherPortalRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
+  FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  FlashcardsIndexRoute: typeof FlashcardsIndexRoute
   ApiAdaptiveLevelCheckRoute: typeof ApiAdaptiveLevelCheckRoute
   ApiAdaptivePracticeRoute: typeof ApiAdaptivePracticeRoute
   ApiAdminAdminsRoute: typeof ApiAdminAdminsRoute
@@ -782,13 +783,6 @@ declare module '@tanstack/react-router' {
       path: '/classroom'
       fullPath: '/classroom'
       preLoaderRoute: typeof ClassroomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flashcards': {
-      id: '/flashcards'
-      path: '/flashcards'
-      fullPath: '/flashcards'
-      preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grades': {
@@ -917,12 +911,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/flashcards/': {
+      id: '/flashcards/'
+      path: '/flashcards'
+      fullPath: '/flashcards/'
+      preLoaderRoute: typeof FlashcardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/flashcards/$deckId': {
       id: '/flashcards/$deckId'
-      path: '/$deckId'
+      path: '/flashcards/$deckId'
       fullPath: '/flashcards/$deckId'
       preLoaderRoute: typeof FlashcardsDeckIdRouteImport
-      parentRoute: typeof FlashcardsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/adaptive/level-check': {
       id: '/api/adaptive/level-check'
@@ -1123,18 +1124,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface FlashcardsRouteChildren {
-  FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
-}
-
-const FlashcardsRouteChildren: FlashcardsRouteChildren = {
-  FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
-}
-
-const FlashcardsRouteWithChildren = FlashcardsRoute._addFileChildren(
-  FlashcardsRouteChildren,
-)
-
 interface ApiCalendarFeedRouteChildren {
   ApiCalendarFeedLinkRoute: typeof ApiCalendarFeedLinkRoute
 }
@@ -1154,7 +1143,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,
-  FlashcardsRoute: FlashcardsRouteWithChildren,
   GradesRoute: GradesRoute,
   KnowledgeRoute: KnowledgeRoute,
   MfaChallengeRoute: MfaChallengeRoute,
@@ -1172,7 +1160,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStudyPlanRoute: ApiStudyPlanRoute,
   ApiTeacherPortalRoute: ApiTeacherPortalRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
+  FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  FlashcardsIndexRoute: FlashcardsIndexRoute,
   ApiAdaptiveLevelCheckRoute: ApiAdaptiveLevelCheckRoute,
   ApiAdaptivePracticeRoute: ApiAdaptivePracticeRoute,
   ApiAdminAdminsRoute: ApiAdminAdminsRoute,

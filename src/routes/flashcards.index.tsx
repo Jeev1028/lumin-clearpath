@@ -26,7 +26,7 @@ import {
 } from "@/lib/flashcards";
 import { undoableDelete } from "@/lib/undoable-delete";
 
-export const Route = createFileRoute("/flashcards")({
+export const Route = createFileRoute("/flashcards/")({
   head: () => ({
     meta: [
       { title: "Flashcards — ClearPath by Lumin AI" },
