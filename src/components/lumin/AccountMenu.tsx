@@ -1,7 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  Brain,
   CalendarDays,
   ClipboardList,
+  Compass,
   GraduationCap,
   HelpCircle,
   LogOut,
@@ -88,6 +90,18 @@ export function AccountMenu() {
           <Link to="/chat">
             <Sparkles className="h-4 w-4" aria-hidden />
             Lumin AI
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/knowledge">
+            <Compass className="h-4 w-4" aria-hidden />
+            Knowledge Graph
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/practice">
+            <Brain className="h-4 w-4" aria-hidden />
+            Adaptive practice
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

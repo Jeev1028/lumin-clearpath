@@ -12,6 +12,7 @@ const links = [
   { to: "/calendar", label: "Calendar" },
   { to: "/schedule", label: "Schedule" },
   { to: "/classroom", label: "Classroom" },
+  { to: "/knowledge", label: "Knowledge" },
   { to: "/chat", label: "Lumin AI" },
 ] as const;
 

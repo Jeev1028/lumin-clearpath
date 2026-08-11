@@ -16,7 +16,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
 import { Route as GradesRouteImport } from './routes/grades'
+import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
+import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ScheduleRouteImport } from './routes/schedule'
@@ -24,11 +26,14 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge-graph'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as ApiAdaptiveLevelCheckRouteImport } from './routes/api/adaptive/level-check'
+import { Route as ApiAdaptivePracticeRouteImport } from './routes/api/adaptive/practice'
 import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
 import { Route as ApiAdminGroupMembersRouteImport } from './routes/api/admin/group-members'
 import { Route as ApiAdminGroupsRouteImport } from './routes/api/admin/groups'
@@ -89,9 +94,19 @@ const GradesRoute = GradesRouteImport.update({
   path: '/grades',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowledgeRoute = KnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MfaChallengeRoute = MfaChallengeRouteImport.update({
   id: '/mfa-challenge',
   path: '/mfa-challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeRoute = PracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -129,6 +144,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKnowledgeGraphRoute = ApiKnowledgeGraphRouteImport.update({
+  id: '/api/knowledge-graph',
+  path: '/api/knowledge-graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSiteChatRoute = ApiSiteChatRouteImport.update({
   id: '/api/site-chat',
   path: '/api/site-chat',
@@ -152,6 +172,16 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
 const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   id: '/chat/$threadId',
   path: '/chat/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveLevelCheckRoute = ApiAdaptiveLevelCheckRouteImport.update({
+  id: '/api/adaptive/level-check',
+  path: '/api/adaptive/level-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptivePracticeRoute = ApiAdaptivePracticeRouteImport.update({
+  id: '/api/adaptive/practice',
+  path: '/api/adaptive/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminAdminsRoute = ApiAdminAdminsRouteImport.update({
@@ -293,7 +323,9 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
+  '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
@@ -301,11 +333,14 @@ export interface FileRoutesByFullPath {
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
+  '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
   '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
   '/api/admin/groups': typeof ApiAdminGroupsRoute
@@ -339,7 +374,9 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
+  '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
@@ -347,11 +384,14 @@ export interface FileRoutesByTo {
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
+  '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
+  '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
   '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
   '/api/admin/groups': typeof ApiAdminGroupsRoute
@@ -386,7 +426,9 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
   '/grades': typeof GradesRoute
+  '/knowledge': typeof KnowledgeRoute
   '/mfa-challenge': typeof MfaChallengeRoute
+  '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schedule': typeof ScheduleRoute
@@ -394,11 +436,14 @@ export interface FileRoutesById {
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
+  '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
+  '/api/adaptive/practice': typeof ApiAdaptivePracticeRoute
   '/api/admin/admins': typeof ApiAdminAdminsRoute
   '/api/admin/group-members': typeof ApiAdminGroupMembersRoute
   '/api/admin/groups': typeof ApiAdminGroupsRoute
@@ -434,7 +479,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/knowledge'
     | '/mfa-challenge'
+    | '/practice'
     | '/privacy'
     | '/reset-password'
     | '/schedule'
@@ -442,11 +489,14 @@ export interface FileRouteTypes {
     | '/teacher-portal'
     | '/terms'
     | '/api/chat'
+    | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/adaptive/level-check'
+    | '/api/adaptive/practice'
     | '/api/admin/admins'
     | '/api/admin/group-members'
     | '/api/admin/groups'
@@ -480,7 +530,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/knowledge'
     | '/mfa-challenge'
+    | '/practice'
     | '/privacy'
     | '/reset-password'
     | '/schedule'
@@ -488,11 +540,14 @@ export interface FileRouteTypes {
     | '/teacher-portal'
     | '/terms'
     | '/api/chat'
+    | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat'
+    | '/api/adaptive/level-check'
+    | '/api/adaptive/practice'
     | '/api/admin/admins'
     | '/api/admin/group-members'
     | '/api/admin/groups'
@@ -526,7 +581,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classroom'
     | '/grades'
+    | '/knowledge'
     | '/mfa-challenge'
+    | '/practice'
     | '/privacy'
     | '/reset-password'
     | '/schedule'
@@ -534,11 +591,14 @@ export interface FileRouteTypes {
     | '/teacher-portal'
     | '/terms'
     | '/api/chat'
+    | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/adaptive/level-check'
+    | '/api/adaptive/practice'
     | '/api/admin/admins'
     | '/api/admin/group-members'
     | '/api/admin/groups'
@@ -573,7 +633,9 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
   GradesRoute: typeof GradesRoute
+  KnowledgeRoute: typeof KnowledgeRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
+  PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScheduleRoute: typeof ScheduleRoute
@@ -581,11 +643,14 @@ export interface RootRouteChildren {
   TeacherPortalRoute: typeof TeacherPortalRoute
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiSiteChatRoute: typeof ApiSiteChatRoute
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ApiTeacherPortalRoute: typeof ApiTeacherPortalRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ApiAdaptiveLevelCheckRoute: typeof ApiAdaptiveLevelCheckRoute
+  ApiAdaptivePracticeRoute: typeof ApiAdaptivePracticeRoute
   ApiAdminAdminsRoute: typeof ApiAdminAdminsRoute
   ApiAdminGroupMembersRoute: typeof ApiAdminGroupMembersRoute
   ApiAdminGroupsRoute: typeof ApiAdminGroupsRoute
@@ -663,11 +728,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GradesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/knowledge': {
+      id: '/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mfa-challenge': {
       id: '/mfa-challenge'
       path: '/mfa-challenge'
       fullPath: '/mfa-challenge'
       preLoaderRoute: typeof MfaChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice': {
+      id: '/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof PracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -719,6 +798,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge-graph': {
+      id: '/api/knowledge-graph'
+      path: '/api/knowledge-graph'
+      fullPath: '/api/knowledge-graph'
+      preLoaderRoute: typeof ApiKnowledgeGraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/site-chat': {
       id: '/api/site-chat'
       path: '/api/site-chat'
@@ -752,6 +838,20 @@ declare module '@tanstack/react-router' {
       path: '/chat/$threadId'
       fullPath: '/chat/$threadId'
       preLoaderRoute: typeof ChatThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/level-check': {
+      id: '/api/adaptive/level-check'
+      path: '/api/adaptive/level-check'
+      fullPath: '/api/adaptive/level-check'
+      preLoaderRoute: typeof ApiAdaptiveLevelCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/practice': {
+      id: '/api/adaptive/practice'
+      path: '/api/adaptive/practice'
+      fullPath: '/api/adaptive/practice'
+      preLoaderRoute: typeof ApiAdaptivePracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/admins': {
@@ -933,7 +1033,9 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,
   GradesRoute: GradesRoute,
+  KnowledgeRoute: KnowledgeRoute,
   MfaChallengeRoute: MfaChallengeRoute,
+  PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ScheduleRoute: ScheduleRoute,
@@ -941,11 +1043,14 @@ const rootRouteChildren: RootRouteChildren = {
   TeacherPortalRoute: TeacherPortalRoute,
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiSiteChatRoute: ApiSiteChatRoute,
   ApiStudyPlanRoute: ApiStudyPlanRoute,
   ApiTeacherPortalRoute: ApiTeacherPortalRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ApiAdaptiveLevelCheckRoute: ApiAdaptiveLevelCheckRoute,
+  ApiAdaptivePracticeRoute: ApiAdaptivePracticeRoute,
   ApiAdminAdminsRoute: ApiAdminAdminsRoute,
   ApiAdminGroupMembersRoute: ApiAdminGroupMembersRoute,
   ApiAdminGroupsRoute: ApiAdminGroupsRoute,
