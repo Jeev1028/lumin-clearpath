@@ -20,13 +20,14 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-// The real ClearPath brand gradient (see --gradient-lumin in styles.css),
-// reproduced here as SVG gradient stops so the intro's book actually
-// matches the rest of the app's glowing blue/cyan look instead of flat
-// cartoon-icon colors.
-const GRADIENT_FROM = "oklch(0.66 0.145 245)";
-const GRADIENT_TO = "oklch(0.78 0.12 205)";
-const PAGE_FILL = "rgba(240, 247, 255, 0.92)";
+// The website's actual primary blue (--primary in styles.css) as a flat
+// solid fill -- not a gradient fading toward pale cyan, which read as
+// washed-out/white. The lighter accent (--accent) is used only for the
+// thin page-divider line, matching how the site uses it as a secondary
+// highlight color elsewhere.
+const COVER_BLUE = "oklch(0.66 0.145 245)";
+const DIVIDER_BLUE = "oklch(0.78 0.12 205)";
+const PAGE_WHITE = "#F7FAFF";
 
 // How far each cover rotates when closed -- purely empirical. The book's
 // own drawn geometry (both halves meeting at the spine, x=200) is what's
@@ -46,10 +47,11 @@ function releaseBootCover() {
  * crossfade between two separate drawings): each cover+pages half is its
  * own SVG <g>, hinged with a CSS rotateY around the shared spine (x=200),
  * animated by a plain transition on the `open` prop -- guaranteed visible
- * motion, the same mechanic the earlier (well-received) 3D version used,
- * just with real book-shaped artwork instead of abstract polygons. Colors
- * come from the app's actual brand gradient plus a matching glow filter,
- * rather than flat, thickly-outlined icon colors.
+ * motion. Straight-edged quadrilaterals only (no curves -- the earlier
+ * bezier "flag" shapes read as a butterfly, not a book), a solid brand
+ * blue cover (not a gradient fading toward white), white pages inset
+ * within each cover, and a light-blue divider line down the spine like a
+ * real book's page gutter.
  */
 function BookIllustration({ open, className }: { open: boolean; className?: string }) {
   const halfTransition = `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
@@ -60,29 +62,13 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
         className="h-full w-full"
         style={{
           transformStyle: "preserve-3d",
-          filter:
-            "drop-shadow(0 0 26px oklch(0.66 0.145 245 / 0.55)) drop-shadow(0 18px 30px rgba(0,0,0,0.4))",
+          filter: `drop-shadow(0 0 24px ${COVER_BLUE.replace(")", " / 0.5)")}) drop-shadow(0 18px 30px rgba(0,0,0,0.4))`,
         }}
         aria-hidden
       >
-        <defs>
-          <linearGradient id="lumin-book-cover" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={GRADIENT_FROM} />
-            <stop offset="100%" stopColor={GRADIENT_TO} />
-          </linearGradient>
-        </defs>
-
         {/* Spine -- static, always visible, fills the seam between the two
             folding halves. */}
-        <rect
-          x="192"
-          y="30"
-          width="16"
-          height="200"
-          rx="4"
-          fill="url(#lumin-book-cover)"
-          opacity="0.9"
-        />
+        <rect x="194" y="38" width="12" height="184" fill={DIVIDER_BLUE} />
 
         <g
           style={{
@@ -92,14 +78,8 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
             transition: halfTransition,
           }}
         >
-          <path
-            d="M200,60 C150,15 70,10 30,45 L30,190 C70,225 150,228 200,195 Z"
-            fill="url(#lumin-book-cover)"
-          />
-          <path
-            d="M200,76 C162,44 104,40 50,65 L50,178 C104,201 162,204 200,180 Z"
-            fill={PAGE_FILL}
-          />
+          <polygon points="200,38 32,58 32,202 200,222" fill={COVER_BLUE} />
+          <polygon points="200,58 64,74 64,186 200,202" fill={PAGE_WHITE} />
         </g>
 
         <g
@@ -110,15 +90,21 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
             transition: halfTransition,
           }}
         >
-          <path
-            d="M200,60 C250,15 330,10 370,45 L370,190 C330,225 250,228 200,195 Z"
-            fill="url(#lumin-book-cover)"
-          />
-          <path
-            d="M200,76 C238,44 296,40 350,65 L350,178 C296,201 238,204 200,180 Z"
-            fill={PAGE_FILL}
-          />
+          <polygon points="200,38 368,58 368,202 200,222" fill={COVER_BLUE} />
+          <polygon points="200,58 336,74 336,186 200,202" fill={PAGE_WHITE} />
         </g>
+
+        {/* Divider line -- drawn last so it sits on top of both pages,
+            like a book's center gutter. */}
+        <line
+          x1="200"
+          y1="46"
+          x2="200"
+          y2="214"
+          stroke={DIVIDER_BLUE}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
       </svg>
     </span>
   );
