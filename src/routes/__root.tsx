@@ -15,6 +15,7 @@ import { AccessibilityProvider } from "@/components/lumin/AccessibilityProvider"
 import { CommandPalette } from "@/components/lumin/CommandPalette";
 import { IntroScreen } from "@/components/lumin/IntroScreen";
 import { NoticeBanner } from "@/components/lumin/NoticeBanner";
+import { PullToRefresh } from "@/components/lumin/PullToRefresh";
 import { SoundSettingsProvider } from "@/components/lumin/SoundSettingsProvider";
 import { PwaRegister } from "@/components/lumin/PwaRegister";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
@@ -155,6 +156,7 @@ function RootComponent() {
           <AccessibilityProvider />
           <PwaRegister />
           <IntroScreen />
+          <PullToRefresh />
           <NoticeBanner />
           <CommandPalette />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

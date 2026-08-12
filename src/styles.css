@@ -159,6 +159,11 @@
        page background above sticky headers when running as an installed
        app (no browser chrome there to absorb the bounce). */
     overscroll-behavior-y: none;
+    /* The page itself should never pan sideways -- any element that
+       overflows horizontally (like the header's nav strip on narrow
+       phones) is responsible for scrolling *itself*, via .scroll-x-fade
+       below, not dragging the whole viewport with it. */
+    overflow-x: hidden;
   }
 
   body {
@@ -167,6 +172,7 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
+    overflow-x: hidden;
   }
 
   h1,
@@ -212,6 +218,20 @@
 
 @utility safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* A horizontally-scrollable strip (nav pills, tab bars) that contains its
+   own overflow instead of dragging the whole page sideways with it, with
+   the scrollbar itself hidden for a native tab-bar look. */
+@utility scroll-x-contain {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-x-contain::-webkit-scrollbar {
+  display: none;
 }
 
 @utility glow-orb {

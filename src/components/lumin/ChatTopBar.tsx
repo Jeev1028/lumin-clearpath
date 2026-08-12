@@ -51,26 +51,34 @@ export function ChatTopBar({
           <LuminWordmark className="scale-90" />
         </div>
 
-        <div className="flex items-center gap-3">
-          <nav className="flex items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1">
+        <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-initial">
+          <nav className="scroll-x-contain flex min-w-0 items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1">
             {links.map((link) => (
-              <Button key={link.to} asChild variant="ghost" size="sm" className="rounded-full">
+              <Button
+                key={link.to}
+                asChild
+                variant="ghost"
+                size="sm"
+                className="shrink-0 rounded-full"
+              >
                 <Link to={link.to} activeProps={{ className: "!bg-secondary/70 text-foreground" }}>
                   {link.label}
                 </Link>
               </Button>
             ))}
           </nav>
-          {session && <ReminderBell />}
-          {session && <AccountMenu />}
-          <button
-            type="button"
-            onClick={onNewThread}
-            aria-label="New conversation"
-            className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
-          >
-            <MessageSquarePlus className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            {session && <ReminderBell />}
+            {session && <AccountMenu />}
+            <button
+              type="button"
+              onClick={onNewThread}
+              aria-label="New conversation"
+              className="rounded-lg p-2 text-foreground hover:bg-secondary/60 md:hidden"
+            >
+              <MessageSquarePlus className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
     </header>

@@ -21,14 +21,19 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
  * re-mounts when the native shell's WebView does a true fresh load, since
  * in-app navigation afterward is all client-side routing.
  *
- * Skippable with a tap (which also retries audio playback, covering the
- * case where autoplay was blocked), and skipped entirely for anyone with
- * the reduced-motion accessibility preference on.
+ * Autoplay is blocked on most platforms (WKWebView especially) until a
+ * real tap happens, so the *first* tap is treated as "start the sound",
+ * not "skip" -- otherwise the chime starts and immediately gets cut off
+ * by the same tap dismissing the screen. Only a second tap (or letting
+ * the timer run out) actually dismisses it. Skipped entirely for anyone
+ * with the reduced-motion accessibility preference on.
  */
 export function IntroScreen() {
   const [visible, setVisible] = useState(false);
   const [dismissing, setDismissing] = useState(false);
+  const [audioStarted, setAudioStarted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const dismissTimerRef = useRef<number | null>(null);
   const { prefs } = useSoundSettings();
 
   useEffect(() => {
@@ -52,17 +57,31 @@ export function IntroScreen() {
     }
 
     setVisible(true);
-    if (prefs.enabled && prefs.introChime) {
-      audioRef.current?.play().catch(() => {
-        // Autoplay blocked by the platform -- the visual intro still plays
-        // silently, and tapping anywhere will retry playback.
-      });
+
+    const wantsAudio = prefs.enabled && prefs.introChime;
+    if (wantsAudio) {
+      audioRef.current
+        ?.play()
+        .then(() => setAudioStarted(true))
+        .catch(() => {
+          // Autoplay blocked -- wait for the first tap to start it instead
+          // (see handleTap) rather than silently giving up.
+        });
+    } else {
+      setAudioStarted(true); // nothing to protect, a tap can dismiss right away
     }
 
-    const timer = window.setTimeout(dismiss, INTRO_DURATION_MS);
-    return () => window.clearTimeout(timer);
+    scheduleDismiss(INTRO_DURATION_MS);
+    return () => {
+      if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function scheduleDismiss(delay: number) {
+    if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
+    dismissTimerRef.current = window.setTimeout(dismiss, delay);
+  }
 
   function dismiss() {
     setDismissing(true);
@@ -70,8 +89,16 @@ export function IntroScreen() {
   }
 
   function handleTap() {
-    if (prefs.enabled && prefs.introChime) {
-      void audioRef.current?.play().catch(() => {});
+    if (!audioStarted) {
+      // First real user gesture -- this is what's actually allowed to
+      // start audio on platforms that block autoplay. Let the chime play
+      // out its full length instead of treating this tap as "skip".
+      audioRef.current
+        ?.play()
+        .then(() => setAudioStarted(true))
+        .catch(() => setAudioStarted(true)); // still blocked -- don't trap the user here
+      scheduleDismiss(INTRO_DURATION_MS);
+      return;
     }
     dismiss();
   }
@@ -99,7 +126,7 @@ export function IntroScreen() {
         className="animate-intro-text-in absolute bottom-8 text-xs text-white/30"
         style={{ animationDelay: "1s", animationFillMode: "both" }}
       >
-        Tap to continue
+        {audioStarted ? "Tap to continue" : "Tap for sound"}
       </p>
     </div>
   );
