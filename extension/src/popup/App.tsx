@@ -1,11 +1,12 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "../lib/supabase";
 import { getOrCreateThreadId, loadThreadMessages } from "../lib/threads";
 import { signInWithGoogle } from "../lib/google-auth";
+import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "../lib/attachments";
 
 const API_ORIGIN = (import.meta.env["VITE_API_ORIGIN"] as string) || "https://luminclearpath.ca";
 const ICON_URL = chrome.runtime.getURL("icons/icon-128.png");
@@ -332,7 +333,9 @@ function ChatView({
   setPageActionBusy: (busy: boolean) => void;
 }) {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
@@ -351,11 +354,26 @@ function ChatView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
+  async function handleFilesSelected(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const { parts, errors } = await filesToAttachmentParts(fileList);
+    if (parts.length > 0) setAttachments((prev) => [...prev, ...parts]);
+    for (const message of errors) console.warn("[extension]", message);
+    if (errors.length > 0) {
+      setInput((prev) => `${prev}${prev ? " " : ""}(${errors.join(" ")})`);
+    }
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   function submit(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || isBusy) return;
-    void sendMessage({ text: trimmed });
+    if ((!trimmed && attachments.length === 0) || isBusy) return;
+    void sendMessage(attachments.length > 0 ? { text: trimmed, files: attachments } : { text: trimmed });
     setInput("");
+    setAttachments([]);
   }
 
   async function handleReadPage() {
@@ -454,14 +472,65 @@ function ChatView({
             cite what you're reading — Lumin will guide you, not do it for you.
           </p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={`message ${m.role}`}>
-            {textOf(m) || (m.role === "assistant" && isBusy ? "…" : "")}
-          </div>
-        ))}
+        {messages.map((m) => {
+          const text = textOf(m);
+          const files = m.parts.filter((part): part is FileUIPart => part.type === "file");
+          return (
+            <div key={m.id} className={`message ${m.role}`}>
+              {files.length > 0 && (
+                <div className="message-files">
+                  {files.map((f, i) => (
+                    <span key={i} className="file-chip">
+                      📎 {f.filename ?? "file"}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {text || (m.role === "assistant" && isBusy ? "…" : "")}
+            </div>
+          );
+        })}
       </div>
 
+      {attachments.length > 0 && (
+        <div className="attachments-preview">
+          {attachments.map((f, i) => (
+            <span key={i} className="attachment-chip">
+              📎 {f.filename ?? "file"}
+              <button
+                type="button"
+                onClick={() => removeAttachment(i)}
+                aria-label={`Remove ${f.filename ?? "attachment"}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="composer">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_ATTACHMENT_TYPES}
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            void handleFilesSelected(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className="attach-button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isBusy}
+          aria-label="Attach a file"
+          title="Attach a PDF, image, .txt, or .json file"
+        >
+          📎
+        </button>
         <textarea
           ref={textareaRef}
           rows={1}
@@ -476,7 +545,11 @@ function ChatView({
           }}
           disabled={isBusy}
         />
-        <button onClick={() => submit(input)} disabled={isBusy || !input.trim()} aria-label="Send">
+        <button
+          onClick={() => submit(input)}
+          disabled={isBusy || (!input.trim() && attachments.length === 0)}
+          aria-label="Send"
+        >
           ↑
         </button>
       </div>

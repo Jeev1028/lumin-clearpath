@@ -299,6 +299,71 @@ body {
   cursor: default;
 }
 
+.attach-button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.attach-button:hover {
+  border-color: var(--accent-light);
+}
+
+.attachments-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 4px 6px 4px 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.attachment-chip button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.attachment-chip button:hover {
+  color: var(--text);
+}
+
+.message-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.message.user .file-chip {
+  background: rgba(7, 16, 34, 0.15);
+}
+
 .footer-note {
   font-size: 10px;
   color: var(--muted);

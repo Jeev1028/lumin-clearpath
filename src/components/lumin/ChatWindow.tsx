@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
-import { ArrowUp, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
+import { ArrowUp, Paperclip, Sparkles, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,6 +10,7 @@ import { LuminMark } from "@/components/lumin/LuminMark";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -34,8 +35,10 @@ export function ChatWindow({
   initialInput,
 }: Props) {
   const [input, setInput] = useState(initialInput ?? "");
+  const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastAutoSpokenIdRef = useRef<string | null>(null);
   const { speak, stopSpeaking } = useSoundSettings();
@@ -102,11 +105,23 @@ export function ChatWindow({
     });
   }
 
+  async function handleFilesSelected(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const { parts, errors } = await filesToAttachmentParts(fileList);
+    if (parts.length > 0) setAttachments((prev) => [...prev, ...parts]);
+    for (const message of errors) toast.error(message);
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   function submit() {
     const text = input.trim();
-    if (!text || isBusy) return;
+    if ((!text && attachments.length === 0) || isBusy) return;
     setInput("");
-    void sendMessage({ text });
+    setAttachments([]);
+    void sendMessage(attachments.length > 0 ? { text, files: attachments } : { text });
     onActivity();
   }
 
@@ -140,7 +155,10 @@ export function ChatWindow({
             const text = message.parts
               .map((part) => (part.type === "text" ? part.text : ""))
               .join("");
-            if (!text) return null;
+            const files = message.parts.filter(
+              (part): part is FileUIPart => part.type === "file",
+            );
+            if (!text && files.length === 0) return null;
             return (
               <div
                 key={message.id}
@@ -184,9 +202,24 @@ export function ChatWindow({
                         : "border border-border/60 bg-card/70 shadow-panel",
                     )}
                   >
-                    <div className="lumin-md">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-                    </div>
+                    {files.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {files.map((file, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2.5 py-1 text-[11px] text-muted-foreground"
+                          >
+                            <Paperclip className="h-3 w-3" aria-hidden />
+                            {file.filename ?? "Attached file"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {text && (
+                      <div className="lumin-md">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -203,30 +236,76 @@ export function ChatWindow({
       </div>
 
       <div className="safe-bottom border-t border-border/60 bg-background/60 p-4">
-        <div className="mx-auto flex w-full max-w-3xl items-end gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 shadow-panel">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            placeholder="Ask Lumin about your studies…"
-            rows={1}
-            className="max-h-40 min-h-11 resize-none border-0 bg-transparent focus-visible:ring-0"
-          />
-          <Button
-            size="icon"
-            onClick={submit}
-            disabled={isBusy || !input.trim()}
-            className="bg-gradient-lumin text-primary-foreground"
-            aria-label="Send message"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
+        <div className="mx-auto w-full max-w-3xl">
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {attachments.map((file, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/70 py-1 pr-1.5 pl-2.5 text-[11px] text-muted-foreground"
+                >
+                  <Paperclip className="h-3 w-3" aria-hidden />
+                  {file.filename ?? "Attached file"}
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(i)}
+                    aria-label={`Remove ${file.filename ?? "attachment"}`}
+                    className="rounded-full p-0.5 hover:bg-background/60 hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 shadow-panel">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_ATTACHMENT_TYPES}
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void handleFilesSelected(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isBusy}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Attach a file"
+              title="Attach a PDF, image, .txt, or .json file"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder="Ask Lumin about your studies…"
+              rows={1}
+              className="max-h-40 min-h-11 resize-none border-0 bg-transparent focus-visible:ring-0"
+            />
+            <Button
+              size="icon"
+              onClick={submit}
+              disabled={isBusy || (!input.trim() && attachments.length === 0)}
+              className="bg-gradient-lumin text-primary-foreground"
+              aria-label="Send message"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <p className="mx-auto mt-3 max-w-3xl text-center text-xs text-muted-foreground">
           Lumin guides your learning and never completes assignments for you. Cite every source in
