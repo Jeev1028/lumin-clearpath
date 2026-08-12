@@ -29,10 +29,14 @@ const COVER_BLUE = "oklch(0.66 0.145 245)";
 const DIVIDER_BLUE = "oklch(0.78 0.12 205)";
 const PAGE_WHITE = "#F7FAFF";
 
-// How far each cover rotates when closed -- purely empirical. The book's
-// own drawn geometry (both halves meeting at the spine, x=200) is what's
-// actually "open"; closing is entirely this CSS rotation.
-const CLOSED_DEG = 98;
+// How far the cover swings once open -- past 90deg (edge-on) and on to
+// nearly a full flip, so it visibly sweeps away to the left rather than
+// stopping mid-turn. Negative because the hinge is on the LEFT edge (see
+// below): a negative rotateY swings the cover's right edge away and over
+// to the left, matching "opens from the right side of the screen to the
+// left" rather than two symmetric doors opening outward from a center
+// spine.
+const OPEN_SWING_DEG = -178;
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
@@ -43,18 +47,17 @@ function releaseBootCover() {
 }
 
 /**
- * A single illustrated book that genuinely folds open/closed (not a
- * crossfade between two separate drawings): each cover+pages half is its
- * own SVG <g>, hinged with a CSS rotateY around the shared spine (x=200),
- * animated by a plain transition on the `open` prop -- guaranteed visible
- * motion. Straight-edged quadrilaterals only (no curves -- the earlier
- * bezier "flag" shapes read as a butterfly, not a book), a solid brand
- * blue cover (not a gradient fading toward white), white pages inset
- * within each cover, and a light-blue divider line down the spine like a
- * real book's page gutter.
+ * A single illustrated book: a static two-page spread (always drawn, never
+ * itself animated) with one solid cover panel on top of it that's hinged
+ * on its LEFT edge and swings open via a CSS rotateY -- exactly like
+ * opening a real book resting spine-left, not two symmetric doors opening
+ * away from a center spine. Closed, the cover exactly covers the spread
+ * (so it reads as one plain solid closed book); as it swings away toward
+ * the left, the pages underneath are revealed. Straight-edged rectangles
+ * only, solid brand blue (not a gradient fading toward white), white pages
+ * inset within, and a light-blue divider line/spine strip.
  */
 function BookIllustration({ open, className }: { open: boolean; className?: string }) {
-  const halfTransition = `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
   return (
     <span className={className} style={{ perspective: "1400px" }}>
       <svg
@@ -66,50 +69,33 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
         }}
         aria-hidden
       >
-        {/* Spine -- static, always visible, fills the seam between the two
-            folding halves. */}
-        <rect x="194" y="38" width="12" height="184" fill={DIVIDER_BLUE} />
+        {/* Static two-page spread -- always drawn in its "open" shape; the
+            cover panel below is what actually animates. */}
+        <rect x="32" y="38" width="168" height="184" fill={COVER_BLUE} />
+        <rect x="200" y="38" width="168" height="184" fill={COVER_BLUE} />
+        <rect x="56" y="54" width="120" height="152" fill={PAGE_WHITE} />
+        <rect x="224" y="54" width="120" height="152" fill={PAGE_WHITE} />
+        <line x1="200" y1="38" x2="200" y2="222" stroke={DIVIDER_BLUE} strokeWidth="5" />
 
+        {/* Cover -- hinged on its left edge (matching the spine), swings
+            open toward the left. Exactly covers the spread above when
+            closed (rotateY 0deg), so the closed state reads as one plain
+            solid book. */}
         <g
           style={{
-            transformOrigin: "200px 130px",
+            transformOrigin: "32px 130px",
             transformStyle: "preserve-3d",
-            transform: `rotateY(${open ? 0 : CLOSED_DEG}deg)`,
-            transition: halfTransition,
+            transform: `rotateY(${open ? OPEN_SWING_DEG : 0}deg)`,
+            transition: `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
           }}
         >
-          <polygon points="200,38 32,58 32,202 200,222" fill={COVER_BLUE} />
-          <polygon points="200,58 64,74 64,186 200,202" fill={PAGE_WHITE} />
+          <rect x="32" y="38" width="336" height="184" fill={COVER_BLUE} />
+          <rect x="32" y="38" width="14" height="184" fill={DIVIDER_BLUE} />
         </g>
-
-        <g
-          style={{
-            transformOrigin: "200px 130px",
-            transformStyle: "preserve-3d",
-            transform: `rotateY(${open ? 0 : -CLOSED_DEG}deg)`,
-            transition: halfTransition,
-          }}
-        >
-          <polygon points="200,38 368,58 368,202 200,222" fill={COVER_BLUE} />
-          <polygon points="200,58 336,74 336,186 200,202" fill={PAGE_WHITE} />
-        </g>
-
-        {/* Divider line -- drawn last so it sits on top of both pages,
-            like a book's center gutter. */}
-        <line
-          x1="200"
-          y1="46"
-          x2="200"
-          y2="214"
-          stroke={DIVIDER_BLUE}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
       </svg>
     </span>
   );
 }
-
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: a big
