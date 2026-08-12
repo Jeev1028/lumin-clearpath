@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { isInstalledApp } from "@/lib/native-app";
@@ -10,15 +10,28 @@ const FADE_MS = 500;
 const MAX_SOUND_WAIT_MS = 6500;
 // How long before the chime actually ends the book should start opening --
 // tuned by feel rather than tied to an exact beat timestamp in the audio.
-const OPEN_LEAD_MS = 800;
+const OPEN_LEAD_MS = 900;
+const FOLD_TRANSITION_MS = 750;
+const ZOOM_TRANSITION_MS = 550;
+// The logo/text don't appear until the zoom-through is mostly finished, so
+// they don't visibly pop in while the book is still rushing forward.
+const LOGO_REVEAL_DELAY_MS = 420;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-const NAVY = "#0A1128";
-const ACCENT = "#38BDF8";
-const ACCENT_DEEP = "#1D4ED8";
-const PAGE = "#F8FAFC";
+// The real ClearPath brand gradient (see --gradient-lumin in styles.css),
+// reproduced here as SVG gradient stops so the intro's book actually
+// matches the rest of the app's glowing blue/cyan look instead of flat
+// cartoon-icon colors.
+const GRADIENT_FROM = "oklch(0.66 0.145 245)";
+const GRADIENT_TO = "oklch(0.78 0.12 205)";
+const PAGE_FILL = "rgba(240, 247, 255, 0.92)";
+
+// How far each cover rotates when closed -- purely empirical. The book's
+// own drawn geometry (both halves meeting at the spine, x=200) is what's
+// actually "open"; closing is entirely this CSS rotation.
+const CLOSED_DEG = 98;
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
@@ -28,133 +41,98 @@ function releaseBootCover() {
   document.documentElement.setAttribute("data-hide-boot-cover", "true");
 }
 
-/** A closed hardcover book, viewed straight-on: thick cover, a visible
- * spine with a couple of ridge lines, and a small folded-corner page peek
- * at the top -- reads as an actual physical book, not an abstract shape. */
-function ClosedBookIllustration({
-  className,
-  style,
-}: {
-  className?: string;
-  style?: CSSProperties;
-}) {
+/**
+ * A single illustrated book that genuinely folds open/closed (not a
+ * crossfade between two separate drawings): each cover+pages half is its
+ * own SVG <g>, hinged with a CSS rotateY around the shared spine (x=200),
+ * animated by a plain transition on the `open` prop -- guaranteed visible
+ * motion, the same mechanic the earlier (well-received) 3D version used,
+ * just with real book-shaped artwork instead of abstract polygons. Colors
+ * come from the app's actual brand gradient plus a matching glow filter,
+ * rather than flat, thickly-outlined icon colors.
+ */
+function BookIllustration({ open, className }: { open: boolean; className?: string }) {
+  const halfTransition = `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
   return (
-    <svg viewBox="0 0 200 240" className={className} style={style} aria-hidden>
-      <rect
-        x="45"
-        y="15"
-        width="130"
-        height="210"
-        rx="12"
-        fill={ACCENT}
-        stroke={NAVY}
-        strokeWidth="6"
-      />
-      <rect
-        x="45"
-        y="15"
-        width="26"
-        height="210"
-        rx="12"
-        fill={ACCENT_DEEP}
-        stroke={NAVY}
-        strokeWidth="6"
-      />
-      <line
-        x1="52"
-        y1="72"
-        x2="65"
-        y2="72"
-        stroke={NAVY}
-        strokeWidth="4"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-      <line
-        x1="52"
-        y1="122"
-        x2="65"
-        y2="122"
-        stroke={NAVY}
-        strokeWidth="4"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-      <line
-        x1="52"
-        y1="172"
-        x2="65"
-        y2="172"
-        stroke={NAVY}
-        strokeWidth="4"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-      <line
-        x1="80"
-        y1="19"
-        x2="150"
-        y2="19"
-        stroke={NAVY}
-        strokeWidth="3"
-        strokeLinecap="round"
-        opacity="0.35"
-      />
-      <path
-        d="M148,15 L178,15 L178,45 Z"
-        fill={PAGE}
-        stroke={NAVY}
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+    <span className={className} style={{ perspective: "1400px" }}>
+      <svg
+        viewBox="0 0 400 260"
+        className="h-full w-full"
+        style={{
+          transformStyle: "preserve-3d",
+          filter:
+            "drop-shadow(0 0 26px oklch(0.66 0.145 245 / 0.55)) drop-shadow(0 18px 30px rgba(0,0,0,0.4))",
+        }}
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="lumin-book-cover" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={GRADIENT_FROM} />
+            <stop offset="100%" stopColor={GRADIENT_TO} />
+          </linearGradient>
+        </defs>
 
-/** A book spread wide open: two curved covers splayed left and right, with
- * lighter "pages" visible inset within each, and a spine crease down the
- * middle -- the classic open-book silhouette. */
-function OpenBookIllustration({ className, style }: { className?: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 400 260" className={className} style={style} aria-hidden>
-      <path
-        d="M200,60 C150,15 70,10 30,45 L30,190 C70,225 150,228 200,195 Z"
-        fill={ACCENT}
-        stroke={NAVY}
-        strokeWidth="8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M200,60 C250,15 330,10 370,45 L370,190 C330,225 250,228 200,195 Z"
-        fill={ACCENT}
-        stroke={NAVY}
-        strokeWidth="8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M200,76 C162,44 104,40 50,65 L50,178 C104,201 162,204 200,180 Z"
-        fill={PAGE}
-        opacity="0.95"
-      />
-      <path
-        d="M200,76 C238,44 296,40 350,65 L350,178 C296,201 238,204 200,180 Z"
-        fill={PAGE}
-        opacity="0.95"
-      />
-      <line x1="200" y1="62" x2="200" y2="192" stroke={NAVY} strokeWidth="3" opacity="0.3" />
-    </svg>
+        {/* Spine -- static, always visible, fills the seam between the two
+            folding halves. */}
+        <rect
+          x="192"
+          y="30"
+          width="16"
+          height="200"
+          rx="4"
+          fill="url(#lumin-book-cover)"
+          opacity="0.9"
+        />
+
+        <g
+          style={{
+            transformOrigin: "200px 130px",
+            transformStyle: "preserve-3d",
+            transform: `rotateY(${open ? 0 : CLOSED_DEG}deg)`,
+            transition: halfTransition,
+          }}
+        >
+          <path
+            d="M200,60 C150,15 70,10 30,45 L30,190 C70,225 150,228 200,195 Z"
+            fill="url(#lumin-book-cover)"
+          />
+          <path
+            d="M200,76 C162,44 104,40 50,65 L50,178 C104,201 162,204 200,180 Z"
+            fill={PAGE_FILL}
+          />
+        </g>
+
+        <g
+          style={{
+            transformOrigin: "200px 130px",
+            transformStyle: "preserve-3d",
+            transform: `rotateY(${open ? 0 : -CLOSED_DEG}deg)`,
+            transition: halfTransition,
+          }}
+        >
+          <path
+            d="M200,60 C250,15 330,10 370,45 L370,190 C330,225 250,228 200,195 Z"
+            fill="url(#lumin-book-cover)"
+          />
+          <path
+            d="M200,76 C238,44 296,40 350,65 L350,178 C296,201 238,204 200,180 Z"
+            fill={PAGE_FILL}
+          />
+        </g>
+      </svg>
+    </span>
   );
 }
 
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: a big
- * illustrated closed book sits under a pulsing glow while the chime plays,
- * cross-fades into a wide open-book illustration timed to finish right
- * around when the chime ends, then the whole book scene rushes forward and
- * fades out (a brief flash sells "passing through" the pages) as the crisp
- * real logo (at its own normal size -- NOT scaled up to match the much
- * bigger book) + text cross-fades in on top, at which point the screen
+ * illustrated book sits closed under a pulsing glow while the chime plays,
+ * folds open on a hinge animation timed to finish right around when the
+ * chime ends, then the whole book scene rushes forward and fades out (a
+ * brief flash sells "passing through" the pages) as the crisp real logo (at
+ * its own normal size -- NOT scaled up to match the much bigger book) +
+ * text cross-fades in on top a beat later, at which point the screen
  * becomes tappable to continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
@@ -226,10 +204,10 @@ export function IntroScreen() {
   }, [visible]);
 
   // Step 2: once actually visible (so the <audio> element genuinely exists
-  // in the DOM), play the chime, schedule the book-opening crossfade to
-  // finish right around when the chime ends, and reveal the crisp final
-  // logo once it actually does (or immediately, if sound is off/unavailable
-  // -- the opening animation is an enhancement on top of the sound-synced
+  // in the DOM), play the chime, schedule the book-opening fold to finish
+  // right around when the chime ends, and reveal the crisp final logo once
+  // it actually does (or immediately, if sound is off/unavailable -- the
+  // opening animation is an enhancement on top of the sound-synced
   // experience, not something that needs its own no-sound fallback path).
   useEffect(() => {
     if (!visible) return;
@@ -296,21 +274,23 @@ export function IntroScreen() {
   if (!visible) return null;
 
   const bookOpen = phase !== "sound";
+  const showLogoContent = phase === "logo";
 
   return (
     <div
       role="presentation"
       onClick={handleTap}
       className={`safe-top fixed inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-[#0A1128] transition-opacity duration-500 ${
-        phase === "logo" ? "cursor-pointer" : "cursor-default"
+        showLogoContent ? "cursor-pointer" : "cursor-default"
       } ${dismissing ? "opacity-0" : "opacity-100"}`}
     >
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
 
       {/* Brief bright flash right as the book is "passed through", timed
-          to the same moment the book scene below rushes forward and the
-          logo appears -- sells the sense of emerging on the other side. */}
-      {phase === "logo" && (
+          to the same moment the book scene below rushes forward -- sells
+          the sense of emerging on the other side, just before the logo
+          itself appears a beat later. */}
+      {showLogoContent && (
         <span
           aria-hidden
           className="animate-intro-flash pointer-events-none absolute inset-0 bg-white"
@@ -328,11 +308,12 @@ export function IntroScreen() {
             than the book simply shrinking away. */}
         <span
           aria-hidden
-          className="absolute inset-0 flex items-center justify-center transition-all duration-[550ms] ease-[cubic-bezier(0.55,0,1,0.45)]"
+          className="absolute inset-0 flex items-center justify-center transition-all ease-[cubic-bezier(0.55,0,1,0.45)]"
           style={{
-            opacity: phase === "logo" ? 0 : 1,
-            transform: phase === "logo" ? "scale(2.6)" : "scale(1)",
-            pointerEvents: phase === "logo" ? "none" : undefined,
+            transitionDuration: `${ZOOM_TRANSITION_MS}ms`,
+            opacity: showLogoContent ? 0 : 1,
+            transform: showLogoContent ? "scale(2.6)" : "scale(1)",
+            pointerEvents: showLogoContent ? "none" : undefined,
           }}
         >
           <span className="relative h-full w-full">
@@ -353,46 +334,33 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
-            {/* Closed book: visible while waiting for the chime, fades and
-                settles out as the open book crossfades in on top of it. */}
-            <ClosedBookIllustration
-              className="absolute inset-0 m-auto h-full w-full max-w-[62%] transition-all duration-500 ease-out"
-              style={{
-                opacity: bookOpen ? 0 : 1,
-                transform: bookOpen ? "scale(0.9)" : "scale(1)",
-              }}
-            />
-
-            {/* Open book: fades and grows in once the chime is about to
-                finish, taking over from the closed book above. */}
-            <OpenBookIllustration
-              className="absolute inset-0 m-auto h-full w-full max-w-[85%] transition-all duration-500 ease-out"
-              style={{
-                opacity: bookOpen ? 1 : 0,
-                transform: bookOpen ? "scale(1)" : "scale(0.85)",
-              }}
-            />
+            <BookIllustration open={bookOpen} className="absolute inset-0 m-auto h-full w-full" />
           </span>
         </span>
 
         {/* Crisp final logo -- its own normal size, independent of the
-            (much bigger) book scene above. */}
-        {phase === "logo" && (
+            (much bigger) book scene above, and deliberately delayed so it
+            doesn't appear until the zoom-through above is nearly done. */}
+        {showLogoContent && (
           <span className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
             <img
               src={luminMark}
               alt="Lumin AI logo"
               className="animate-intro-in relative h-full w-full rounded-xl shadow-glow ring-1 ring-white/10"
+              style={{ animationDelay: `${LOGO_REVEAL_DELAY_MS}ms`, animationFillMode: "both" }}
             />
           </span>
         )}
       </div>
 
-      {phase === "logo" && (
+      {showLogoContent && (
         <>
           <div
             className="animate-intro-text-in text-center"
-            style={{ animationDelay: "0.15s", animationFillMode: "both" }}
+            style={{
+              animationDelay: `${LOGO_REVEAL_DELAY_MS + 150}ms`,
+              animationFillMode: "both",
+            }}
           >
             <p className="font-display text-2xl font-semibold tracking-tight text-white">
               Lumin AI
@@ -401,7 +369,10 @@ export function IntroScreen() {
           </div>
           <p
             className="animate-intro-text-in absolute bottom-8 text-xs text-white/30"
-            style={{ animationDelay: "0.6s", animationFillMode: "both" }}
+            style={{
+              animationDelay: `${LOGO_REVEAL_DELAY_MS + 600}ms`,
+              animationFillMode: "both",
+            }}
           >
             Tap to continue
           </p>
