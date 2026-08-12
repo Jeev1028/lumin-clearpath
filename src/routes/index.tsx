@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardList,
   Compass,
+  Github,
   Link2,
   ShieldCheck,
   Sparkles,
@@ -86,7 +87,7 @@ const principles = [
   {
     icon: ShieldCheck,
     title: "Work-around aware",
-    body: "\"Summarize photosynthesis into a lab report\" is still an assignment. Lumin recognises indirect requests across a whole conversation and holds the line every time.",
+    body: '"Summarize photosynthesis into a lab report" is still an assignment. Lumin recognises indirect requests across a whole conversation and holds the line every time.',
   },
 ];
 
@@ -177,9 +178,9 @@ function Index() {
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-semibold sm:text-3xl">Why would I want to use this?</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Because juggling Google Classroom, ManageBac, and a dozen reminders shouldn&apos;t
-              be the hardest part of school. These are real screenshots of the actual product —
-              not a mockup.
+              Because juggling Google Classroom, ManageBac, and a dozen reminders shouldn&apos;t be
+              the hardest part of school. These are real screenshots of the actual product — not a
+              mockup.
             </p>
           </div>
 
@@ -261,7 +262,10 @@ function Index() {
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
           <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/60 p-10 shadow-panel">
-            <div className="glow-orb pointer-events-none absolute -top-24 right-0 h-64 w-64 opacity-30" aria-hidden />
+            <div
+              className="glow-orb pointer-events-none absolute -top-24 right-0 h-64 w-64 opacity-30"
+              aria-hidden
+            />
             <h2 className="text-center text-2xl font-semibold sm:text-3xl">
               Assignments made easy
             </h2>
@@ -358,6 +362,15 @@ function Index() {
           <Link to="/privacy" className="hover:text-foreground">
             Privacy Policy
           </Link>
+          <a
+            href="https://github.com/Jeev1028/lumin-clearpath"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-foreground"
+          >
+            <Github className="h-3.5 w-3.5" aria-hidden />
+            GitHub
+          </a>
         </div>
       </footer>
     </div>
