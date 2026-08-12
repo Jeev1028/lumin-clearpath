@@ -26,9 +26,11 @@ function googleExportUrl(pageUrl: string): string | null {
   try {
     const url = new URL(pageUrl);
     if (url.hostname !== "docs.google.com") return null;
-    const docMatch = /^\/document\/d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
+    // Multi-account browsers commonly add an account-index segment, e.g.
+    // /document/u/0/d/ID/edit -- optional group below handles both forms.
+    const docMatch = /^\/document\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
     if (docMatch) return `https://docs.google.com/document/d/${docMatch[1]}/export?format=txt`;
-    const slideMatch = /^\/presentation\/d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
+    const slideMatch = /^\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
     if (slideMatch) return `https://docs.google.com/presentation/d/${slideMatch[1]}/export/txt`;
     return null;
   } catch {
@@ -69,6 +71,7 @@ async function readActivePageText(): Promise<{ title: string; url: string; text:
     }
     // Export failed (e.g. not actually signed in on that tab) -- fall
     // through to the innerText fallback below rather than returning nothing.
+    console.warn("[extension] Docs/Slides export failed, falling back to page text:", exportUrl);
   }
 
   const [result] = await chrome.scripting.executeScript({
