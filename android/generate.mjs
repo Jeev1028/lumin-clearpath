@@ -22,8 +22,8 @@ async function main() {
   // (theme colors, icons, name, etc.) via fromWebManifest above.
   twaManifest.packageId = "ca.luminclearpath.twa";
   twaManifest.launcherName = "ClearPath";
-  twaManifest.appVersionCode = 2;
-  twaManifest.appVersionName = "1.0.1";
+  twaManifest.appVersionCode = 3;
+  twaManifest.appVersionName = "1.0.2";
   twaManifest.signingKey.path = path.join(TARGET_DIR, "android.keystore");
   twaManifest.signingKey.alias = "clearpath";
   twaManifest.generatorApp = "bubblewrap-cli";
