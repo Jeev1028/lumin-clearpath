@@ -13,7 +13,21 @@ const MAX_SOUND_WAIT_MS = 6500;
 // How long before the chime actually ends the book should start opening --
 // tuned by feel rather than tied to an exact beat timestamp in the audio.
 const OPEN_LEAD_MS = 900;
-const CROSSFADE_MS = 550;
+// The closed-book photo genuinely flips open (real CSS 3D rotateY, not a
+// flat crossfade) hinged near its actual spine (~23% in from the left edge
+// of the image), rotating toward the viewer -- past 90deg so it fully
+// disappears via backfaceVisibility rather than stopping mid-turn. A subtle
+// brightness dip on the same timing sells it turning away from the light.
+const FLIP_MS = 750;
+const FLIP_DEG = 115;
+const FLIP_HINGE_X = "23%";
+// The open book sits behind the flipping cover the whole time (fixes an
+// earlier bug where it was rendered on *top* of the cover, hiding the
+// flip entirely) and is kept invisible at first, only fading in partway
+// through the flip -- so the flip itself is unmistakably the first thing
+// you see, and the pages arrive as a result of it, not simultaneously.
+const OPEN_REVEAL_DELAY_MS = 320;
+const OPEN_REVEAL_MS = 450;
 const ZOOM_TRANSITION_MS = 550;
 // The logo/text don't appear until the zoom-through is mostly finished, so
 // they don't visibly pop in while the book is still rushing forward.
@@ -33,13 +47,15 @@ function releaseBootCover() {
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: a big
- * illustrated closed-book image sits under a pulsing glow while the chime
- * plays, cross-fades into the matching open-book illustration (background
- * already removed from both, see src/assets) timed to finish right around
- * when the chime ends, then the whole book scene rushes forward and fades
- * out (a brief flash sells "passing through" the pages) as the crisp real
- * logo (at its own size, independent of the book) + text cross-fades in on
- * top a beat later, at which point the screen becomes tappable to continue.
+ * illustrated closed-book photo sits under a pulsing glow while the chime
+ * plays, then genuinely flips open (real CSS 3D rotation, hinged near its
+ * spine -- backgrounds already removed from both images, see src/assets)
+ * timed to finish right around when the chime ends, revealing the matching
+ * open-book photo underneath. The whole book scene then rushes forward and
+ * fades out (a brief flash sells "passing through" the pages) as the crisp
+ * real logo (at its own size, independent of the book) + text cross-fades
+ * in on top a beat later, at which point the screen becomes tappable to
+ * continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
  * to be exactly the right behavior for the app too: it naturally resets on
@@ -113,7 +129,7 @@ export function IntroScreen() {
   }, [visible]);
 
   // Step 2: once actually visible (so the <audio> element genuinely exists
-  // in the DOM), play the chime, schedule the book-opening crossfade to
+  // in the DOM), play the chime, schedule the book-opening flip to
   // finish right around when the chime ends, and reveal the crisp final
   // logo once it actually does (or immediately, if sound is off/unavailable
   // -- the opening animation is an enhancement on top of the sound-synced
@@ -243,29 +259,49 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
-            {/* Closed book -- fades/settles out as the open book
-                cross-fades in on top of it. */}
-            <img
-              src={introBookClosed}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
-              style={{
-                opacity: bookOpen ? 0 : 1,
-                transform: bookOpen ? "scale(0.92)" : "scale(1)",
-              }}
-            />
+            {/* Open book -- sits BEHIND the flipping cover (rendered
+                first/below in DOM order -- swapping this was the actual
+                fix for the earlier "flip happens behind image 2" bug: the
+                later element in DOM order paints on top). Starts invisible
+                and only fades in partway through the flip, once there's
+                actually something for it to be revealing. */}
             <img
               src={introBookOpen}
               alt=""
               aria-hidden
-              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
+              className="absolute inset-0 h-full w-full object-contain transition-opacity ease-out"
               style={{
-                transitionDuration: `${CROSSFADE_MS}ms`,
+                transitionDuration: `${OPEN_REVEAL_MS}ms`,
+                transitionDelay: bookOpen ? `${OPEN_REVEAL_DELAY_MS}ms` : "0ms",
                 opacity: bookOpen ? 1 : 0,
-                transform: bookOpen ? "scale(1)" : "scale(1.05)",
               }}
             />
+
+            {/* Closed book -- the real cover, hinged near its actual spine
+                and flipped open with a genuine 3D rotation (not a
+                crossfade). Rendered last/on top so it visibly covers the
+                open book while shut and visibly lifts away from in front
+                of it, rather than the flip being hidden underneath
+                anything. backfaceVisibility hidden matters here specifically
+                because this is a photo with readable text -- without it,
+                past 90deg you'd see the image mirrored/backwards instead of
+                it just disappearing as it turns away. */}
+            <span className="absolute inset-0" style={{ perspective: "1500px" }}>
+              <img
+                src={introBookClosed}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain transition-transform ease-[cubic-bezier(0.5,0,0.35,1)]"
+                style={{
+                  transitionDuration: `${FLIP_MS}ms`,
+                  transformOrigin: `${FLIP_HINGE_X} 50%`,
+                  transform: `rotateY(${bookOpen ? FLIP_DEG : 0}deg)`,
+                  backfaceVisibility: "hidden",
+                  filter: `brightness(${bookOpen ? 0.45 : 1})`,
+                  transitionProperty: "transform, filter",
+                }}
+              />
+            </span>
           </span>
         </span>
 
