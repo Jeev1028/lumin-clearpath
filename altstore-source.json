@@ -18,6 +18,13 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.2",
+          "date": "2026-08-12T00:00:00Z",
+          "localizedDescription": "Fixes native Google sign-in for real this time: Capacitor's iOS bridge wasn't registering the local sign-in plugin at all (a build-config gap, not a signing issue), so \"Continue with Google\" failed on every device regardless of how the app was sideloaded. It's registered correctly now.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/ios-v1.2.3/ClearPath-unsigned.ipa",
+          "size": 13909104
+        },
+        {
           "version": "1.1",
           "date": "2026-08-12T00:00:00Z",
           "localizedDescription": "Native Google sign-in (fixes consent-screen branding + adds an account picker) and a version bump so this build installs cleanly as a distinct update.",
