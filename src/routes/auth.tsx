@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { registerPlugin } from "@capacitor/core";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +10,19 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "@/lib/native-app";
+
+// Local iOS-only native plugin (ios/ios/App/App/NativeAuthPlugin.swift) --
+// runs the OAuth flow through ASWebAuthenticationSession, which is Apple's
+// purpose-built API for this exact "open a URL, wait for a redirect back
+// to a custom URL scheme" pattern. It intercepts the callback URL directly
+// rather than letting the browser attempt to *navigate* to a non-http(s)
+// scheme, which is what was causing "Safari cannot open the page because
+// the address is invalid" with the previous SFSafariViewController-based
+// approach (@capacitor/browser + @capacitor/app's appUrlOpen).
+interface NativeAuthPlugin {
+  authenticate(options: { url: string; callbackScheme: string }): Promise<{ url: string }>;
+}
+const NativeAuth = registerPlugin<NativeAuthPlugin>("NativeAuth");
 
 declare global {
   interface Window {
@@ -58,10 +72,9 @@ const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | un
 // Google refuses to run its Sign-In flow inside an embedded WebView (the
 // kind Capacitor uses on iOS) as an anti-phishing policy -- it either fails
 // outright or kicks the user out to the full Safari app, losing the app
-// context entirely. The fix native apps are expected to use: open the OAuth
-// URL in a proper in-app browser (SFSafariViewController via
-// @capacitor/browser, which Google DOES trust), and catch the redirect back
-// via a custom URL scheme instead of a same-origin redirect.
+// context entirely. Native apps are expected to run the OAuth flow through
+// ASWebAuthenticationSession instead (see NativeAuthPlugin), redirecting
+// back to this custom URL scheme when it completes.
 const NATIVE_OAUTH_REDIRECT = "ca.luminclearpath.ios://auth-callback";
 
 function AuthPage() {
@@ -85,68 +98,34 @@ function AuthPage() {
     void navigate({ to: needsMfa ? "/mfa-challenge" : "/home" });
   }, [loading, session, needsMfa, navigate]);
 
-  // Native app only: catch Google's redirect back into the app via the
-  // custom URL scheme after the in-app browser popup completes.
-  useEffect(() => {
-    if (!isNative) return;
-    let removeListener: (() => void) | undefined;
-    let cancelled = false;
-
-    void (async () => {
-      const [{ App: CapacitorApp }, { Browser }] = await Promise.all([
-        import("@capacitor/app"),
-        import("@capacitor/browser"),
-      ]);
-      if (cancelled) return;
-
-      const handle = await CapacitorApp.addListener("appUrlOpen", ({ url }) => {
-        void (async () => {
-          if (!url.startsWith(NATIVE_OAUTH_REDIRECT)) return;
-          try {
-            const parsed = new URL(url);
-            const code = parsed.searchParams.get("code");
-            const errorDescription = parsed.searchParams.get("error_description");
-            await Browser.close().catch(() => {});
-            if (errorDescription) {
-              toast.error(errorDescription);
-              return;
-            }
-            if (!code) return;
-            const { error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) throw error;
-            // The session-watching effect above handles routing.
-          } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Google sign-in failed. Please try again.",
-            );
-          } finally {
-            setNativeGoogleBusy(false);
-          }
-        })();
-      });
-      removeListener = () => handle.remove();
-    })();
-
-    return () => {
-      cancelled = true;
-      removeListener?.();
-    };
-  }, [isNative]);
-
   async function handleNativeGoogleSignIn() {
     setNativeGoogleBusy(true);
     try {
-      const { Browser } = await import("@capacitor/browser");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: NATIVE_OAUTH_REDIRECT, skipBrowserRedirect: true },
       });
       if (error) throw error;
       if (!data?.url) throw new Error("Could not start Google sign-in.");
-      await Browser.open({ url: data.url });
+
+      const result = await NativeAuth.authenticate({
+        url: data.url,
+        callbackScheme: "ca.luminclearpath.ios",
+      });
+      const parsed = new URL(result.url);
+      const code = parsed.searchParams.get("code");
+      const errorDescription = parsed.searchParams.get("error_description");
+      if (errorDescription) throw new Error(errorDescription);
+      if (!code) throw new Error("No authorization code received.");
+
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw exchangeError;
+      // The session-watching effect above handles routing from here.
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
+      if (message !== "cancelled") toast.error(message);
+    } finally {
       setNativeGoogleBusy(false);
-      toast.error(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
     }
   }
 
