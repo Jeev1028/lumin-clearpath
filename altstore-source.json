@@ -1,0 +1,31 @@
+{
+  "name": "ClearPath",
+  "identifier": "ca.luminclearpath.altstore-source",
+  "subtitle": "Lumin AI by ClearPath, sideloaded and self-updating",
+  "description": "Official ClearPath / Lumin AI source for AltStore and SideStore. Add this source once and updates show up here automatically -- no more manually redownloading and re-sideloading a fresh IPA every time.",
+  "iconURL": "https://raw.githubusercontent.com/Jeev1028/lumin-clearpath/main/ios/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512%402x.png",
+  "website": "https://luminclearpath.ca",
+  "tintColor": "2563EB",
+  "apps": [
+    {
+      "name": "ClearPath",
+      "bundleIdentifier": "ca.luminclearpath.ios",
+      "developerName": "Jeevin",
+      "subtitle": "Lumin AI: your academically-honest study companion",
+      "localizedDescription": "ClearPath is an educational platform built around Lumin AI, a study assistant that researches, explains and summarises -- and refuses to write your assignments for you. Includes tasks, grades, a calendar, class organisation and spaced-repetition flashcards.",
+      "iconURL": "https://raw.githubusercontent.com/Jeev1028/lumin-clearpath/main/ios/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512%402x.png",
+      "tintColor": "2563EB",
+      "category": "productivity",
+      "versions": [
+        {
+          "version": "1.1",
+          "date": "2026-08-12T00:00:00Z",
+          "localizedDescription": "Native Google sign-in (fixes consent-screen branding + adds an account picker) and a version bump so this build installs cleanly as a distinct update.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/ios-v1.1.2/ClearPath-unsigned.ipa",
+          "size": 13909096
+        }
+      ]
+    }
+  ],
+  "news": []
+}
