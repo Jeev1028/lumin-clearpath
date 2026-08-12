@@ -51,3 +51,7 @@ android/gen-key.mjs
 android/*.apk
 android/*.apk.idsig
 android/*.aab
+
+# Chrome extension dev signing key (only needed locally to keep the
+# unpacked extension ID stable across reloads -- see extension/README.md)
+extension/*.pem

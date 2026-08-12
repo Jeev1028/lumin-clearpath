@@ -4,6 +4,7 @@
   "short_name": "Lumin AI",
   "description": "Your academically-honest study companion, right in your browser. Get guidance on Google Docs, Slides, sources, and MLA citations — without anyone doing the work for you.",
   "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzaKj9iiDO4lxCFcsFxYi3Xy+SvabeRzXKxrjWtRopsad+a6jwuzYYSACnys09uf1gImtt2aaJlAz6rThS82Ch+o0XiAsKGFBz4zAu4AGjvy7EE4nPFBPdlKjZKxJIKRYDyeX2Ls5IlBLfL7WcI92cDLktwU9V0e6a3Okg5iQi49Sso/FKIuYSKBUGwSG8bbGLpsvngZ72OgL0SIXnDLl0EczqDYYKkX1q8/Loe4DMp+8J0tD46nuPhqfuRKstJBpwEcnh/W/Oid4KHMR71Wp3I0eUongjrrxNDiC9G66r4ByXOVjzZyL65CkHpCuJeh11+goeEsI7Fam83kp8K6uIwIDAQAB",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Lumin AI",
@@ -20,6 +21,6 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "identity"],
   "host_permissions": ["https://luminclearpath.ca/*", "https://*.supabase.co/*"]
 }

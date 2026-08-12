@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "../lib/supabase";
 import { getOrCreateThreadId, loadThreadMessages } from "../lib/threads";
+import { signInWithGoogle } from "../lib/google-auth";
 
 const API_ORIGIN = (import.meta.env["VITE_API_ORIGIN"] as string) || "https://luminclearpath.ca";
 const ICON_URL = chrome.runtime.getURL("icons/icon-128.png");
@@ -147,6 +148,7 @@ function SignInView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -158,6 +160,25 @@ function SignInView() {
     setBusy(false);
   }
 
+  async function handleGoogleSignIn() {
+    setGoogleBusy(true);
+    setError(null);
+    try {
+      const { idToken, nonce } = await signInWithGoogle();
+      const { error: signInError } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+        nonce,
+      });
+      if (signInError) throw new Error(signInError.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Google sign-in failed.";
+      if (message !== "cancelled") setError(message);
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+
   return (
     <div className="center-fill">
       <img src={ICON_URL} alt="" />
@@ -166,6 +187,19 @@ function SignInView() {
         Use your ClearPath account to get guided help right in your browser — on Google Docs,
         Slides, research sources, and more.
       </p>
+
+      <button
+        type="button"
+        className="primary-button"
+        style={{ width: "100%" }}
+        onClick={() => void handleGoogleSignIn()}
+        disabled={googleBusy || busy}
+      >
+        {googleBusy ? "Opening Google sign-in…" : "Continue with Google"}
+      </button>
+
+      <div className="auth-divider">or</div>
+
       <form className="auth-form" onSubmit={(e) => void handleSubmit(e)}>
         <input
           type="email"
@@ -182,7 +216,7 @@ function SignInView() {
           required
         />
         {error && <p className="error-text">{error}</p>}
-        <button type="submit" className="primary-button" disabled={busy}>
+        <button type="submit" className="primary-button" disabled={busy || googleBusy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>
