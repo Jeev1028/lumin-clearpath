@@ -14,6 +14,12 @@ const MAX_SOUND_WAIT_MS = 6500;
 // tuned by feel rather than tied to an exact beat timestamp in the audio.
 const OPEN_LEAD_MS = 900;
 const CROSSFADE_MS = 550;
+// The closed-book photo genuinely flips open (CSS 3D rotateY) rather than
+// just fading out -- hinged near its actual spine position, past 90deg
+// (so it visibly disappears via backfaceVisibility) toward the viewer,
+// matching the "opens toward you" direction settled on earlier.
+const CLOSED_FLIP_MS = 700;
+const CLOSED_FLIP_DEG = 110;
 const ZOOM_TRANSITION_MS = 550;
 // The logo/text don't appear until the zoom-through is mostly finished, so
 // they don't visibly pop in while the book is still rushing forward.
@@ -243,18 +249,29 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
-            {/* Closed book -- fades/settles out as the open book
-                cross-fades in on top of it. */}
-            <img
-              src={introBookClosed}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
-              style={{
-                opacity: bookOpen ? 0 : 1,
-                transform: bookOpen ? "scale(0.92)" : "scale(1)",
-              }}
-            />
+            {/* Closed book -- the real photo, flipped open like a page
+                turning: hinged near the book's actual spine (~24% from
+                the left edge of the image) and rotated via CSS 3D, rather
+                than a flat opacity crossfade, so there's real visible
+                "opening" motion. backfaceVisibility hidden is essential
+                here (unlike the earlier abstract-shape version) since this
+                is a photo with readable text -- without it, past 90deg
+                you'd see the image mirrored/backwards instead of just
+                disappearing. */}
+            <span className="absolute inset-0" style={{ perspective: "1400px" }}>
+              <img
+                src={introBookClosed}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain transition-transform ease-[cubic-bezier(0.3,0,0.4,1)]"
+                style={{
+                  transitionDuration: `${CLOSED_FLIP_MS}ms`,
+                  transformOrigin: "24% 50%",
+                  transform: `rotateY(${bookOpen ? CLOSED_FLIP_DEG : 0}deg)`,
+                  backfaceVisibility: "hidden",
+                }}
+              />
+            </span>
             <img
               src={introBookOpen}
               alt=""
