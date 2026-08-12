@@ -20,19 +20,29 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-// The website's actual brand blues (see --primary / --gradient-lumin in
-// styles.css) plus a dark navy outline -- matching the two supplied
-// reference sketches: solid blue cover, navy outline, white pages.
+// The website's actual primary blue (see --primary in styles.css) as a
+// flat solid fill, plus a darker shade of the same hue for the 3D
+// spine-effect shading, and a light-blue accent for the page divider.
 const COVER_BLUE = "oklch(0.66 0.145 245)";
-const NAVY = "#0A1128";
-const PAGE_WHITE = "#F7FAFF";
+const SPINE_SHADE = "oklch(0.48 0.13 245)";
+const DIVIDER_BLUE = "oklch(0.78 0.12 205)";
+
+// Layout, all in the 400x260 viewBox below. The book is two tall
+// rectangles meeting at HINGE_X: a static one on the right ("the second
+// page") and an animated one hinged at its own left edge that starts
+// exactly overlapping the static one (so closed, it reads as one plain
+// rectangle) and swings open to the left.
+const HINGE_X = 200;
+const PAGE_Y = 30;
+const PAGE_HEIGHT = 200;
+const PAGE_WIDTH = 150;
+// The 3D-effect offset for the spine lines on the cover's left edge.
+const SPINE_DX = 24;
+const SPINE_DY = 10;
 
 // How far the cover swings once open -- past 90deg (edge-on) and on to
 // nearly a full flip, so it visibly sweeps away to the left rather than
-// stopping mid-turn. Negative because the hinge is on the LEFT edge: a
-// negative rotateY swings the cover's right edge away and over to the
-// left, matching "opens from the right side of the screen to the left"
-// rather than two symmetric doors opening outward from a center spine.
+// stopping mid-turn.
 const OPEN_SWING_DEG = -178;
 
 function releaseBootCover() {
@@ -44,16 +54,21 @@ function releaseBootCover() {
 }
 
 /**
- * A single illustrated book, matching the two reference sketches directly:
- * a static straight-edged two-page spread (navy outline, white pages)
- * always sits underneath; a separate closed-book cover (sharp/straight
- * corners deliberately -- rounded ones caused problems last time -- with a
- * visible spine, ridge lines, and a folded page-corner peek) is hinged on
- * its LEFT edge and swings open via a CSS rotateY, exactly like opening a
- * real book resting spine-left. Closed, the cover fully hides the spread
- * beneath it; opening sweeps it away to the left, revealing the pages.
+ * A tall blue rectangle (the closed book) with a simple 3D depth effect on
+ * its left edge -- two diagonal lines from the top-left and bottom-left
+ * corners, connected by a third line -- that flips open on a rotateY
+ * hinge, swinging to the left like a real book's cover. A second, static
+ * rectangle (the "second page") sits underneath at the same spot and
+ * extends slightly further left than the cover's own edge specifically so
+ * it covers the 3D-effect lines' original position once the cover has
+ * swung away. A light-blue divider marks the seam between the two
+ * rectangles once open.
  */
 function BookIllustration({ open, className }: { open: boolean; className?: string }) {
+  const spineTopX = HINGE_X - SPINE_DX;
+  const spineTopY = PAGE_Y - SPINE_DY;
+  const spineBottomY = PAGE_Y + PAGE_HEIGHT - SPINE_DY;
+
   return (
     <span className={className} style={{ perspective: "1400px" }}>
       <svg
@@ -65,102 +80,49 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
         }}
         aria-hidden
       >
-        {/* Static two-page spread -- always drawn in its open shape (plain
-            straight-edged polygons, no curves); the cover panel below is
-            what actually animates on top of it. */}
-        <polygon
-          points="200,38 32,58 32,202 200,222"
+        {/* Static second page -- always there, extended left by SPINE_DX
+            so it covers the 3D-effect lines' original spot once the cover
+            (below) swings away. */}
+        <rect
+          x={spineTopX}
+          y={PAGE_Y}
+          width={PAGE_WIDTH + SPINE_DX}
+          height={PAGE_HEIGHT}
           fill={COVER_BLUE}
-          stroke={NAVY}
-          strokeWidth="7"
-          strokeLinejoin="round"
         />
-        <polygon
-          points="200,38 368,58 368,202 200,222"
-          fill={COVER_BLUE}
-          stroke={NAVY}
-          strokeWidth="7"
-          strokeLinejoin="round"
-        />
-        <polygon points="200,58 64,74 64,186 200,202" fill={PAGE_WHITE} />
-        <polygon points="200,58 336,74 336,186 200,202" fill={PAGE_WHITE} />
-        <line x1="200" y1="46" x2="200" y2="214" stroke={NAVY} strokeWidth="3" opacity="0.5" />
 
-        {/* Cover -- hinged on its left edge (matching the spine), swings
-            open toward the left. Sized to fully cover the spread above
-            when closed. Straight corners on purpose (no rx rounding). */}
+        {/* Divider -- sits at the seam between the two rectangles; hidden
+            while closed (the cover above completely covers this spot),
+            revealed once the cover swings away. */}
+        <line
+          x1={HINGE_X}
+          y1={PAGE_Y - 4}
+          x2={HINGE_X}
+          y2={PAGE_Y + PAGE_HEIGHT + 4}
+          stroke={DIVIDER_BLUE}
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+
+        {/* Cover -- hinged on its own left edge (HINGE_X), swings open
+            toward the left. Starts exactly overlapping the static page
+            above, so closed it reads as one plain rectangle. */}
         <g
           style={{
-            transformOrigin: "30px 130px",
+            transformOrigin: `${HINGE_X}px ${PAGE_Y + PAGE_HEIGHT / 2}px`,
             transformStyle: "preserve-3d",
             transform: `rotateY(${open ? OPEN_SWING_DEG : 0}deg)`,
             transition: `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
           }}
         >
-          <rect
-            x="30"
-            y="14"
-            width="340"
-            height="216"
-            fill={COVER_BLUE}
-            stroke={NAVY}
-            strokeWidth="6"
-          />
-          <rect
-            x="30"
-            y="14"
-            width="46"
-            height="216"
-            fill={COVER_BLUE}
-            stroke={NAVY}
-            strokeWidth="6"
-          />
-          <line
-            x1="42"
-            y1="76"
-            x2="64"
-            y2="76"
-            stroke={NAVY}
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.5"
-          />
-          <line
-            x1="42"
-            y1="128"
-            x2="64"
-            y2="128"
-            stroke={NAVY}
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.5"
-          />
-          <line
-            x1="42"
-            y1="180"
-            x2="64"
-            y2="180"
-            stroke={NAVY}
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.5"
-          />
-          <line
-            x1="100"
-            y1="18"
-            x2="200"
-            y2="18"
-            stroke={NAVY}
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.35"
-          />
-          <path
-            d="M260,14 L300,14 L300,50 Z"
-            fill={PAGE_WHITE}
-            stroke={NAVY}
-            strokeWidth="4"
-            strokeLinejoin="round"
+          <rect x={HINGE_X} y={PAGE_Y} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={COVER_BLUE} />
+          {/* 3D effect: the top and bottom diagonal lines are this
+              polygon's edges shared with nothing else, and the third
+              (vertical) line connects them -- three new lines total, the
+              fourth edge is just the rectangle's own existing left side. */}
+          <polygon
+            points={`${HINGE_X},${PAGE_Y} ${spineTopX},${spineTopY} ${spineTopX},${spineBottomY} ${HINGE_X},${PAGE_Y + PAGE_HEIGHT}`}
+            fill={SPINE_SHADE}
           />
         </g>
       </svg>
@@ -175,7 +137,7 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
  * folds open on a hinge animation timed to finish right around when the
  * chime ends, then the whole book scene rushes forward and fades out (a
  * brief flash sells "passing through" the pages) as the crisp real logo (at
- * its own normal size -- NOT scaled up to match the much bigger book) +
+ * its own size, sized independently of the book) +
  * text cross-fades in on top a beat later, at which point the screen
  * becomes tappable to continue.
  *
@@ -382,11 +344,12 @@ export function IntroScreen() {
           </span>
         </span>
 
-        {/* Crisp final logo -- its own normal size, independent of the
-            (much bigger) book scene above, and deliberately delayed so it
-            doesn't appear until the zoom-through above is nearly done. */}
+        {/* Crisp final logo -- sized independently of the book scene
+            above (much bigger than the original reveal size), and
+            deliberately delayed so it doesn't appear until the
+            zoom-through above is nearly done. */}
         {showLogoContent && (
-          <span className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
+          <span className="relative flex h-44 w-44 items-center justify-center sm:h-60 sm:w-60">
             <img
               src={luminMark}
               alt="Lumin AI logo"
