@@ -61,13 +61,16 @@ function releaseBootCover() {
 /**
  * A tall blue rectangle (the closed book) with a simple 3D depth effect on
  * its left edge -- two diagonal lines from the top-left and bottom-left
- * corners, connected by a third line -- that flips open on a rotateY
- * hinge, swinging to the left like a real book's cover. A second, static
- * rectangle (the "second page") sits underneath at the same spot and
- * extends slightly further left than the cover's own edge specifically so
- * it covers the 3D-effect lines' original position once the cover has
- * swung away. A light-blue divider marks the seam between the two
- * rectangles once open.
+ * corners, connected by a third line -- representing the book's static
+ * spine/binding, which never moves. The plain cover rectangle in front of
+ * it is what actually flips open, hinged at the spine, swinging to the
+ * left like a real book's front cover opening toward the reader. Because
+ * the spine stays put and the cover ends up overlapping that same spot
+ * once fully open, the cover naturally covers/hides the spine effect
+ * entirely -- there's nothing left "peeking out" once open. A second,
+ * static rectangle behind the cover (the "second page") is what's actually
+ * revealed once the cover swings away, with a light-blue divider marking
+ * the seam between it and the spine.
  */
 function BookIllustration({ open, className }: { open: boolean; className?: string }) {
   const spineTopX = HINGE_X - SPINE_DX;
@@ -85,20 +88,22 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
         }}
         aria-hidden
       >
-        {/* Static second page -- always there, extended left by SPINE_DX
-            so it covers the 3D-effect lines' original spot once the cover
-            (below) swings away. */}
-        <rect
-          x={spineTopX}
-          y={PAGE_Y}
-          width={PAGE_WIDTH + SPINE_DX}
-          height={PAGE_HEIGHT}
-          fill={COVER_BLUE}
+        {/* Static second page -- always there, revealed once the cover
+            (below) swings away from on top of it. */}
+        <rect x={HINGE_X} y={PAGE_Y} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={COVER_BLUE} />
+
+        {/* Static spine/3D-effect -- never rotates. The cover (drawn after
+            this, so it paints on top) starts directly over it when closed,
+            and ends up overlapping it again once fully open, hiding it
+            completely either way. */}
+        <polygon
+          points={`${HINGE_X},${PAGE_Y} ${spineTopX},${spineTopY} ${spineTopX},${spineBottomY} ${HINGE_X},${PAGE_Y + PAGE_HEIGHT}`}
+          fill={SPINE_SHADE}
         />
 
-        {/* Divider -- sits at the seam between the two rectangles; hidden
-            while closed (the cover above completely covers this spot),
-            revealed once the cover swings away. */}
+        {/* Divider -- sits at the seam between the spine and the second
+            page; hidden while closed (the cover completely covers this
+            spot), revealed once the cover swings away. */}
         <line
           x1={HINGE_X}
           y1={PAGE_Y - 4}
@@ -109,9 +114,10 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
           strokeLinecap="round"
         />
 
-        {/* Cover -- hinged on its own left edge (HINGE_X), swings open
-            toward the left. Starts exactly overlapping the static page
-            above, so closed it reads as one plain rectangle. */}
+        {/* Cover -- hinged at the spine (HINGE_X), swings open toward the
+            left (and toward the viewer -- see OPEN_SWING_DEG). Starts
+            exactly overlapping the static page + spine above, so closed it
+            reads as one plain rectangle with a visible 3D spine edge. */}
         <g
           style={{
             transformOrigin: `${HINGE_X}px ${PAGE_Y + PAGE_HEIGHT / 2}px`,
@@ -121,14 +127,6 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
           }}
         >
           <rect x={HINGE_X} y={PAGE_Y} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={COVER_BLUE} />
-          {/* 3D effect: the top and bottom diagonal lines are this
-              polygon's edges shared with nothing else, and the third
-              (vertical) line connects them -- three new lines total, the
-              fourth edge is just the rectangle's own existing left side. */}
-          <polygon
-            points={`${HINGE_X},${PAGE_Y} ${spineTopX},${spineTopY} ${spineTopX},${spineBottomY} ${HINGE_X},${PAGE_Y + PAGE_HEIGHT}`}
-            fill={SPINE_SHADE}
-          />
         </g>
       </svg>
     </span>
