@@ -17,6 +17,7 @@ Built and maintained by **Jeevin**, a grade 10 student, as a passion project —
 - **Notifications** — an in-app notification center, with optional sound effects and read-aloud support (fully toggleable in Settings).
 - **Command palette** — quick keyboard-driven navigation, with keyboard and mouse support built in throughout.
 - **Accounts** — email/password, or "Continue with Google."
+- **Chrome extension** — Lumin AI in a browser popup, with quick actions to read the page you're on or get MLA citation guidance for whatever source you're looking at.
 
 ## Download the app
 
@@ -26,6 +27,7 @@ The website works in any browser, but native app shells are also available so it
 | --- | --- | --- |
 | **Android** | [Latest Android release](https://github.com/Jeev1028/lumin-clearpath/releases?q=android) — download `ClearPath.apk` | Sideload it directly: download the APK to your device and open it (you may need to allow "install from unknown sources" once). |
 | **iOS / iPadOS** | [Latest iOS release](https://github.com/Jeev1028/lumin-clearpath/releases?q=ios) — download `ClearPath-unsigned.ipa` | The IPA is intentionally **unsigned** (no paid Apple Developer account is used). Sign and install it yourself with a free tool like [Sideloadly](https://sideloadly.io/) or [AltStore](https://altstore.io/), using your own free Apple ID. |
+| **Chrome extension** | Not yet on the Chrome Web Store — build it yourself (see [`extension/README.md`](extension/README.md)) | `cd extension && npm install && npm run build`, then load the `extension/dist` folder as an unpacked extension via `chrome://extensions`. |
 
 Both apps are thin native wrappers (Android [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity/), iOS [Capacitor](https://capacitorjs.com/)) that load the live site directly — they're not separate codebases with their own content.
 
@@ -57,11 +59,12 @@ npm run lint       # ESLint
 npm run format     # Prettier
 ```
 
-### Native app projects
+### Native app & extension projects
 
 - `android/` — Android Trusted Web Activity project (built locally with [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap); not built in CI).
 - `ios/` — iOS Capacitor project (built automatically on every push via [GitHub Actions](.github/workflows/ios-build.yml), producing an unsigned IPA artifact).
+- `extension/` — Chrome extension (Manifest V3); see `extension/README.md` for how to load it in Chrome. Not built in CI.
 
 ## Tech stack
 
-TanStack Start · React 19 · TypeScript · Tailwind CSS · Supabase (Postgres, Auth, Realtime) · Vercel · Capacitor (iOS) · Bubblewrap/Trusted Web Activity (Android) · Google Gemini (AI)
+TanStack Start · React 19 · TypeScript · Tailwind CSS · Supabase (Postgres, Auth, Realtime) · Vercel · Capacitor (iOS) · Bubblewrap/Trusted Web Activity (Android) · Chrome Extension Manifest V3 · Google Gemini (AI)
