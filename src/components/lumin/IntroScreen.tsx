@@ -57,6 +57,16 @@ export function IntroScreen() {
     setVisible(true);
   }, []);
 
+  // Preload the logo image as soon as the intro decides to show (during the
+  // "sound" phase, well before it's needed) so it's already cached by the
+  // time "logo" phase renders it -- otherwise the browser only starts
+  // fetching it right as the <img> mounts, causing a blank flash first.
+  useEffect(() => {
+    if (!visible) return;
+    const preloadImg = new Image();
+    preloadImg.src = luminMark;
+  }, [visible]);
+
   // Step 2: once actually visible (so the <audio> element genuinely exists
   // in the DOM), play the chime and wait for it to finish before revealing
   // the logo.
@@ -117,7 +127,10 @@ export function IntroScreen() {
       {/* Present throughout both phases so the sound-only moment still has
           something happening on screen -- a soft ambient pulse rather than
           the crisp icon, which only reveals once the chime finishes. */}
-      <span aria-hidden className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
+      <span
+        aria-hidden
+        className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32"
+      >
         <span className="glow-orb animate-glow-pulse absolute inset-0 scale-150 rounded-full" />
         {phase === "logo" && (
           <img

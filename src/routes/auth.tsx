@@ -101,6 +101,15 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(digest);
 }
 
+type NativeGoogleStage = "idle" | "opening" | "exchanging" | "signing-in";
+
+const NATIVE_GOOGLE_STAGE_LABEL: Record<NativeGoogleStage, string> = {
+  idle: "Continue with Google",
+  opening: "Opening Google sign-in…",
+  exchanging: "Finishing sign-in…",
+  "signing-in": "Signing in…",
+};
+
 function AuthPage() {
   const navigate = useNavigate();
   const { session, loading, needsMfa } = useAuth();
@@ -110,7 +119,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [isNative, setIsNative] = useState(false);
-  const [nativeGoogleBusy, setNativeGoogleBusy] = useState(false);
+  const [nativeGoogleStage, setNativeGoogleStage] = useState<NativeGoogleStage>("idle");
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,6 +139,14 @@ function AuthPage() {
   // redirect, specifically so the consent screen shows ClearPath's real,
   // verified branding instead of the Supabase project domain -- see the
   // comment above NativeAuthPlugin's declaration for the full "why".
+  //
+  // Each native call below is wrapped in its own try/catch that re-throws
+  // with a "[stage]" prefix, purely for diagnostics: a generic Capacitor
+  // "plugin is not implemented" error looks identical whether the whole
+  // plugin or just one specific method failed to register, and there's no
+  // Mac available here for a Safari remote-debugging session against the
+  // device, so the toast message itself has to carry enough detail to tell
+  // which native call actually failed.
   async function handleNativeGoogleSignIn() {
     if (!GOOGLE_IOS_CLIENT_ID) {
       toast.error(
@@ -137,7 +154,7 @@ function AuthPage() {
       );
       return;
     }
-    setNativeGoogleBusy(true);
+    setNativeGoogleStage("opening");
     try {
       const codeVerifier = randomUrlSafeString(64);
       const codeChallenge = await sha256Base64Url(codeVerifier);
@@ -162,36 +179,53 @@ function AuthPage() {
       // (Pokémon GO-style) instead of silently reusing the last one.
       authUrl.searchParams.set("prompt", "select_account");
 
-      const result = await NativeAuth.authenticate({
-        url: authUrl.toString(),
-        callbackScheme: schemePrefix,
-      });
+      let result: { url: string };
+      try {
+        result = await NativeAuth.authenticate({
+          url: authUrl.toString(),
+          callbackScheme: schemePrefix,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg === "cancelled") throw err;
+        throw new Error(`[authenticate] ${msg}`);
+      }
+
       const parsed = new URL(result.url);
       const code = parsed.searchParams.get("code");
       const errorDescription = parsed.searchParams.get("error_description");
-      if (errorDescription) throw new Error(errorDescription);
-      if (!code) throw new Error("No authorization code received.");
+      if (errorDescription) throw new Error(`[google-redirect] ${errorDescription}`);
+      if (!code) throw new Error("[google-redirect] No authorization code received.");
 
-      const { idToken } = await NativeAuth.exchangeGoogleCode({
-        code,
-        codeVerifier,
-        clientId: GOOGLE_IOS_CLIENT_ID,
-        redirectUri,
-      });
+      setNativeGoogleStage("exchanging");
+      let idToken: string;
+      try {
+        const res = await NativeAuth.exchangeGoogleCode({
+          code,
+          codeVerifier,
+          clientId: GOOGLE_IOS_CLIENT_ID,
+          redirectUri,
+        });
+        idToken = res.idToken;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`[exchangeGoogleCode] ${msg}`);
+      }
 
+      setNativeGoogleStage("signing-in");
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: idToken,
         nonce,
       });
-      if (error) throw error;
+      if (error) throw new Error(`[signInWithIdToken] ${error.message}`);
       // The session-watching effect above handles routing from here.
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
       if (message !== "cancelled") toast.error(message);
     } finally {
-      setNativeGoogleBusy(false);
+      setNativeGoogleStage("idle");
     }
   }
 
@@ -412,11 +446,11 @@ function AuthPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={nativeGoogleBusy}
+                      disabled={nativeGoogleStage !== "idle"}
                       onClick={() => void handleNativeGoogleSignIn()}
                       className="w-full border-border/70 bg-background/40 text-foreground hover:text-foreground"
                     >
-                      {nativeGoogleBusy ? "Opening Google sign-in…" : "Continue with Google"}
+                      {NATIVE_GOOGLE_STAGE_LABEL[nativeGoogleStage]}
                     </Button>
                   ) : (
                     <>
