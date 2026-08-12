@@ -36,6 +36,35 @@ jobs:
       - name: Sync Capacitor iOS project
         run: npx cap sync ios
 
+      - name: Register local (non-npm) native plugins
+        # `cap sync` regenerates App/App/capacitor.config.json's
+        # packageClassList by scanning node_modules for npm-distributed
+        # Capacitor plugins ONLY (see @capacitor/cli's
+        # util/iosplugin.js:getPluginFiles, which iterates the resolved npm
+        # plugin list, never app source files) -- so it always overwrites
+        # out any local, non-npm plugin class dropped directly into the App
+        # target (e.g. NativeAuthPlugin.swift). Capacitor's iOS bridge only
+        # ever registers classes present in that list (CapacitorBridge.swift
+        # registerPlugins() reads it via NSClassFromString -- there's no
+        # ObjC-runtime scanning fallback in current Capacitor versions), so
+        # without this step every local plugin silently fails at runtime
+        # with a generic "plugin is not implemented" error, no matter how
+        # correctly it's compiled, signed, or installed. Re-add any local
+        # plugin class names here after sync, every build.
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const path = "ios/App/App/capacitor.config.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            const localPlugins = ["NativeAuthPlugin"];
+            const list = new Set(config.packageClassList || []);
+            for (const name of localPlugins) list.add(name);
+            config.packageClassList = Array.from(list);
+            fs.writeFileSync(path, JSON.stringify(config, null, "\t") + "\n");
+          '
+          cat ios/App/App/capacitor.config.json
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
