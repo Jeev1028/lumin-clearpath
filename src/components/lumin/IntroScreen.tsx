@@ -20,22 +20,19 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-// The website's actual primary blue (--primary in styles.css) as a flat
-// solid fill -- not a gradient fading toward pale cyan, which read as
-// washed-out/white. The lighter accent (--accent) is used only for the
-// thin page-divider line, matching how the site uses it as a secondary
-// highlight color elsewhere.
+// The website's actual brand blues (see --primary / --gradient-lumin in
+// styles.css) plus a dark navy outline -- matching the two supplied
+// reference sketches: solid blue cover, navy outline, white pages.
 const COVER_BLUE = "oklch(0.66 0.145 245)";
-const DIVIDER_BLUE = "oklch(0.78 0.12 205)";
+const NAVY = "#0A1128";
 const PAGE_WHITE = "#F7FAFF";
 
 // How far the cover swings once open -- past 90deg (edge-on) and on to
 // nearly a full flip, so it visibly sweeps away to the left rather than
-// stopping mid-turn. Negative because the hinge is on the LEFT edge (see
-// below): a negative rotateY swings the cover's right edge away and over
-// to the left, matching "opens from the right side of the screen to the
-// left" rather than two symmetric doors opening outward from a center
-// spine.
+// stopping mid-turn. Negative because the hinge is on the LEFT edge: a
+// negative rotateY swings the cover's right edge away and over to the
+// left, matching "opens from the right side of the screen to the left"
+// rather than two symmetric doors opening outward from a center spine.
 const OPEN_SWING_DEG = -178;
 
 function releaseBootCover() {
@@ -47,15 +44,14 @@ function releaseBootCover() {
 }
 
 /**
- * A single illustrated book: a static two-page spread (always drawn, never
- * itself animated) with one solid cover panel on top of it that's hinged
- * on its LEFT edge and swings open via a CSS rotateY -- exactly like
- * opening a real book resting spine-left, not two symmetric doors opening
- * away from a center spine. Closed, the cover exactly covers the spread
- * (so it reads as one plain solid closed book); as it swings away toward
- * the left, the pages underneath are revealed. Straight-edged rectangles
- * only, solid brand blue (not a gradient fading toward white), white pages
- * inset within, and a light-blue divider line/spine strip.
+ * A single illustrated book, matching the two reference sketches directly:
+ * a static straight-edged two-page spread (navy outline, white pages)
+ * always sits underneath; a separate closed-book cover (sharp/straight
+ * corners deliberately -- rounded ones caused problems last time -- with a
+ * visible spine, ridge lines, and a folded page-corner peek) is hinged on
+ * its LEFT edge and swings open via a CSS rotateY, exactly like opening a
+ * real book resting spine-left. Closed, the cover fully hides the spread
+ * beneath it; opening sweeps it away to the left, revealing the pages.
  */
 function BookIllustration({ open, className }: { open: boolean; className?: string }) {
   return (
@@ -69,33 +65,109 @@ function BookIllustration({ open, className }: { open: boolean; className?: stri
         }}
         aria-hidden
       >
-        {/* Static two-page spread -- always drawn in its "open" shape; the
-            cover panel below is what actually animates. */}
-        <rect x="32" y="38" width="168" height="184" fill={COVER_BLUE} />
-        <rect x="200" y="38" width="168" height="184" fill={COVER_BLUE} />
-        <rect x="56" y="54" width="120" height="152" fill={PAGE_WHITE} />
-        <rect x="224" y="54" width="120" height="152" fill={PAGE_WHITE} />
-        <line x1="200" y1="38" x2="200" y2="222" stroke={DIVIDER_BLUE} strokeWidth="5" />
+        {/* Static two-page spread -- always drawn in its open shape (plain
+            straight-edged polygons, no curves); the cover panel below is
+            what actually animates on top of it. */}
+        <polygon
+          points="200,38 32,58 32,202 200,222"
+          fill={COVER_BLUE}
+          stroke={NAVY}
+          strokeWidth="7"
+          strokeLinejoin="round"
+        />
+        <polygon
+          points="200,38 368,58 368,202 200,222"
+          fill={COVER_BLUE}
+          stroke={NAVY}
+          strokeWidth="7"
+          strokeLinejoin="round"
+        />
+        <polygon points="200,58 64,74 64,186 200,202" fill={PAGE_WHITE} />
+        <polygon points="200,58 336,74 336,186 200,202" fill={PAGE_WHITE} />
+        <line x1="200" y1="46" x2="200" y2="214" stroke={NAVY} strokeWidth="3" opacity="0.5" />
 
         {/* Cover -- hinged on its left edge (matching the spine), swings
-            open toward the left. Exactly covers the spread above when
-            closed (rotateY 0deg), so the closed state reads as one plain
-            solid book. */}
+            open toward the left. Sized to fully cover the spread above
+            when closed. Straight corners on purpose (no rx rounding). */}
         <g
           style={{
-            transformOrigin: "32px 130px",
+            transformOrigin: "30px 130px",
             transformStyle: "preserve-3d",
             transform: `rotateY(${open ? OPEN_SWING_DEG : 0}deg)`,
             transition: `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
           }}
         >
-          <rect x="32" y="38" width="336" height="184" fill={COVER_BLUE} />
-          <rect x="32" y="38" width="14" height="184" fill={DIVIDER_BLUE} />
+          <rect
+            x="30"
+            y="14"
+            width="340"
+            height="216"
+            fill={COVER_BLUE}
+            stroke={NAVY}
+            strokeWidth="6"
+          />
+          <rect
+            x="30"
+            y="14"
+            width="46"
+            height="216"
+            fill={COVER_BLUE}
+            stroke={NAVY}
+            strokeWidth="6"
+          />
+          <line
+            x1="42"
+            y1="76"
+            x2="64"
+            y2="76"
+            stroke={NAVY}
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity="0.5"
+          />
+          <line
+            x1="42"
+            y1="128"
+            x2="64"
+            y2="128"
+            stroke={NAVY}
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity="0.5"
+          />
+          <line
+            x1="42"
+            y1="180"
+            x2="64"
+            y2="180"
+            stroke={NAVY}
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity="0.5"
+          />
+          <line
+            x1="100"
+            y1="18"
+            x2="200"
+            y2="18"
+            stroke={NAVY}
+            strokeWidth="3"
+            strokeLinecap="round"
+            opacity="0.35"
+          />
+          <path
+            d="M260,14 L300,14 L300,50 Z"
+            fill={PAGE_WHITE}
+            stroke={NAVY}
+            strokeWidth="4"
+            strokeLinejoin="round"
+          />
         </g>
       </svg>
     </span>
   );
 }
+
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: a big
