@@ -267,7 +267,9 @@ function AuthPage() {
 
       <header className="safe-top w-full">
         <div className="mx-auto max-w-6xl px-6 py-6">
-          <LuminWordmark />
+          <Link to={session ? "/home" : "/"} className="inline-block transition-transform duration-200 hover:scale-[1.02]">
+            <LuminWordmark />
+          </Link>
         </div>
       </header>
       <main id="main-content" className="flex flex-1 items-center justify-center px-6 pb-20">
