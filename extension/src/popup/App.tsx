@@ -17,25 +17,36 @@ function textOf(message: UIMessage): string {
     .trim();
 }
 
-/** Google Docs/Slides render the actual document through canvas, not
- * accessible DOM text, so plain innerText only ever grabs toolbar/menu
- * chrome there -- never the document itself. Google's own text-export
- * endpoint gives the real content instead. Returns null for anything that
- * isn't a Docs/Slides URL, so the caller can fall back to innerText. */
-function googleExportUrl(pageUrl: string): string | null {
+/** Identifies a Google Docs/Slides URL and pulls out its document id.
+ * Multi-account browsers add an account-index segment (e.g.
+ * /document/u/0/d/ID/edit), so that part is optional. Returns null for
+ * anything else, so callers can fall back to normal page handling. */
+function googleDocInfo(
+  pageUrl: string,
+): { kind: "document" | "presentation"; id: string } | null {
   try {
     const url = new URL(pageUrl);
     if (url.hostname !== "docs.google.com") return null;
-    // Multi-account browsers commonly add an account-index segment, e.g.
-    // /document/u/0/d/ID/edit -- optional group below handles both forms.
     const docMatch = /^\/document\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
-    if (docMatch) return `https://docs.google.com/document/d/${docMatch[1]}/export?format=txt`;
+    if (docMatch?.[1]) return { kind: "document", id: docMatch[1] };
     const slideMatch = /^\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
-    if (slideMatch) return `https://docs.google.com/presentation/d/${slideMatch[1]}/export/txt`;
+    if (slideMatch?.[1]) return { kind: "presentation", id: slideMatch[1] };
     return null;
   } catch {
     return null;
   }
+}
+
+function googleTextExportUrl(info: { kind: "document" | "presentation"; id: string }): string {
+  return info.kind === "document"
+    ? `https://docs.google.com/document/d/${info.id}/export?format=txt`
+    : `https://docs.google.com/presentation/d/${info.id}/export/txt`;
+}
+
+function googlePdfExportUrl(info: { kind: "document" | "presentation"; id: string }): string {
+  return info.kind === "document"
+    ? `https://docs.google.com/document/d/${info.id}/export?format=pdf`
+    : `https://docs.google.com/presentation/d/${info.id}/export/pdf`;
 }
 
 /** Grabs the active tab's best-effort readable text -- run only when the
@@ -51,8 +62,9 @@ async function readActivePageText(): Promise<{ title: string; url: string; text:
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return null;
 
-  const exportUrl = googleExportUrl(tab.url ?? "");
-  if (exportUrl) {
+  const docInfo = googleDocInfo(tab.url ?? "");
+  if (docInfo) {
+    const exportUrl = googleTextExportUrl(docInfo);
     const [exportResult] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: async (url: string) => {
@@ -81,6 +93,35 @@ async function readActivePageText(): Promise<{ title: string; url: string; text:
 
   const text = ((result?.result as string) ?? "").trim().slice(0, 6000);
   return { title: tab.title ?? "", url: tab.url ?? "", text };
+}
+
+/** Fetches a Google Docs/Slides document as a PDF and base64-encodes it --
+ * run *inside* the Docs/Slides tab itself (same trick as readActivePageText)
+ * so the export request rides along on the student's own session. The
+ * chunked byte-to-string loop avoids blowing the call stack on
+ * String.fromCharCode(...bytes) for larger documents. */
+async function fetchGoogleDocAsPdfBase64(tabId: number, pdfUrl: string): Promise<string | null> {
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async (url: string) => {
+      try {
+        const res = await fetch(url, { credentials: "include" });
+        if (!res.ok) return null;
+        const buffer = await res.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+        }
+        return btoa(binary);
+      } catch {
+        return null;
+      }
+    },
+    args: [pdfUrl],
+  });
+  return (result?.result as string | null) ?? null;
 }
 
 async function getActiveTabInfo(): Promise<{ title: string; url: string } | null> {
@@ -348,14 +389,61 @@ function ChatView({
     }
   }
 
+  async function handleAttachDocument() {
+    if (isBusy) return;
+    setPageActionBusy(true);
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const docInfo = googleDocInfo(tab?.url ?? "");
+      if (!tab?.id || !docInfo) {
+        setInput(
+          (prev) =>
+            `${prev}${prev ? " " : ""}(This only works while you have a Google Doc or Slides file open in your active tab.)`,
+        );
+        return;
+      }
+
+      const pdfUrl = googlePdfExportUrl(docInfo);
+      const base64 = await fetchGoogleDocAsPdfBase64(tab.id, pdfUrl);
+      if (!base64) {
+        setInput(
+          (prev) =>
+            `${prev}${prev ? " " : ""}(Couldn't export that ${docInfo.kind === "document" ? "doc" : "deck"} as a PDF -- make sure you're signed in to it and try again.)`,
+        );
+        return;
+      }
+
+      const filename = `${(tab.title ?? "document").replace(/\s*-\s*Google (Docs|Slides)\s*$/i, "")}.pdf`;
+      const kindLabel = docInfo.kind === "document" ? "Google Doc" : "Slides deck";
+      void sendMessage({
+        text: `I just shared my ${kindLabel} ("${filename}") as a PDF. Can you help me understand and improve it without doing the work for me?`,
+        files: [
+          {
+            type: "file",
+            mediaType: "application/pdf",
+            url: `data:application/pdf;base64,${base64}`,
+            filename,
+          },
+        ],
+      });
+    } catch (err) {
+      console.error("[extension] could not attach document", err);
+    } finally {
+      setPageActionBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="quick-actions">
         <button onClick={() => void handleReadPage()} disabled={pageActionBusy}>
           📄 Read this page
         </button>
+        <button onClick={() => void handleAttachDocument()} disabled={pageActionBusy || isBusy}>
+          📎 Attach as PDF
+        </button>
         <button onClick={() => void handleCiteSource()} disabled={pageActionBusy || isBusy}>
-          🔖 Cite this source (MLA)
+          🔖 Cite (MLA)
         </button>
       </div>
 
