@@ -5,37 +5,42 @@ import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { isNativeApp } from "@/lib/native-app";
 
 const SESSION_KEY = "clearpath:intro-seen";
-const INTRO_DURATION_MS = 4500;
 const FADE_MS = 500;
+// Safety net only -- normally the "ended" event moves things along. This
+const MAX_SOUND_WAIT_MS = 6500;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
+type Phase = "sound" | "logo";
+
 /**
- * Full-screen animated "Lumin AI" intro -- a brief branded moment (with
- * sound, where the platform's autoplay policy allows it) before the app
- * appears underneath.
+ * Full-screen animated "Lumin AI" intro. Sequence: the chime plays first
+ * against a plain dark screen (no logo yet), and only once it finishes (or
+ * fails/times out) does the logo animate in and become tappable to
+ * continue -- tapping during the sound itself does nothing on purpose.
+ *
+ * Capacitor's native WKWebView config already disables iOS's "requires a
+ * user gesture" media policy (mediaTypesRequiringUserActionForPlayback =
+ * []), so autoplay works fine inside the installed app once the <audio>
+ * element actually exists in the DOM -- the previous bug was calling
+ * .play() in the same effect as the setState that mounts it, before React
+ * had actually rendered it, so the ref was still null and nothing played.
+ * On plain web, where autoplay may still be genuinely blocked, playback
+ * failure just skips straight to the logo instead of stalling.
  *
  * On the web, it shows once per browser session (so casual visitors
  * clicking between pages aren't repeatedly interrupted). Inside the
  * installed app (iOS or Android), it replays on every cold launch instead,
- * matching how a real app's splash/intro behaves -- this component only
- * re-mounts when the native shell's WebView does a true fresh load, since
- * in-app navigation afterward is all client-side routing.
- *
- * Autoplay is blocked on most platforms (WKWebView especially) until a
- * real tap happens, so the *first* tap is treated as "start the sound",
- * not "skip" -- otherwise the chime starts and immediately gets cut off
- * by the same tap dismissing the screen. Only a second tap (or letting
- * the timer run out) actually dismisses it. Skipped entirely for anyone
- * with the reduced-motion accessibility preference on.
+ * matching how a real app's splash/intro behaves. Skipped entirely for
+ * anyone with the reduced-motion accessibility preference on.
  */
 export function IntroScreen() {
   const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<Phase>("sound");
   const [dismissing, setDismissing] = useState(false);
-  const [audioStarted, setAudioStarted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const dismissTimerRef = useRef<number | null>(null);
   const { prefs } = useSoundSettings();
 
+  // Step 1: decide whether the intro should show at all.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reducedMotion = document.documentElement.getAttribute("data-reduced-motion") === "true";
@@ -57,31 +62,43 @@ export function IntroScreen() {
     }
 
     setVisible(true);
-
-    const wantsAudio = prefs.enabled && prefs.introChime;
-    if (wantsAudio) {
-      audioRef.current
-        ?.play()
-        .then(() => setAudioStarted(true))
-        .catch(() => {
-          // Autoplay blocked -- wait for the first tap to start it instead
-          // (see handleTap) rather than silently giving up.
-        });
-    } else {
-      setAudioStarted(true); // nothing to protect, a tap can dismiss right away
-    }
-
-    scheduleDismiss(INTRO_DURATION_MS);
-    return () => {
-      if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function scheduleDismiss(delay: number) {
-    if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = window.setTimeout(dismiss, delay);
-  }
+  // Step 2: once actually visible (so the <audio> element genuinely exists
+  // in the DOM), play the chime and wait for it to finish before revealing
+  // the logo.
+  useEffect(() => {
+    if (!visible) return;
+
+    function showLogo() {
+      setPhase("logo");
+    }
+
+    if (!(prefs.enabled && prefs.introChime)) {
+      showLogo();
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) {
+      showLogo();
+      return;
+    }
+
+    audio.addEventListener("ended", showLogo);
+    audio.play().catch(() => {
+      // Autoplay blocked (can happen on plain web) -- don't leave the
+      // user staring at a blank screen waiting for sound that'll never
+      // come.
+      showLogo();
+    });
+    const fallback = window.setTimeout(showLogo, MAX_SOUND_WAIT_MS);
+
+    return () => {
+      audio.removeEventListener("ended", showLogo);
+      window.clearTimeout(fallback);
+    };
+  }, [visible, prefs.enabled, prefs.introChime]);
 
   function dismiss() {
     setDismissing(true);
@@ -89,17 +106,7 @@ export function IntroScreen() {
   }
 
   function handleTap() {
-    if (!audioStarted) {
-      // First real user gesture -- this is what's actually allowed to
-      // start audio on platforms that block autoplay. Let the chime play
-      // out its full length instead of treating this tap as "skip".
-      audioRef.current
-        ?.play()
-        .then(() => setAudioStarted(true))
-        .catch(() => setAudioStarted(true)); // still blocked -- don't trap the user here
-      scheduleDismiss(INTRO_DURATION_MS);
-      return;
-    }
+    if (phase !== "logo") return; // not skippable during the sound itself
     dismiss();
   }
 
@@ -109,25 +116,31 @@ export function IntroScreen() {
     <div
       role="presentation"
       onClick={handleTap}
-      className={`safe-top fixed inset-0 z-[200] flex cursor-pointer flex-col items-center justify-center gap-4 bg-[#0A1128] transition-opacity duration-500 ${
-        dismissing ? "opacity-0" : "opacity-100"
-      }`}
+      className={`safe-top fixed inset-0 z-[200] flex flex-col items-center justify-center gap-4 bg-[#0A1128] transition-opacity duration-500 ${
+        phase === "logo" ? "cursor-pointer" : "cursor-default"
+      } ${dismissing ? "opacity-0" : "opacity-100"}`}
     >
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
-      <LuminBookMark className="animate-intro-in h-28 w-28 sm:h-32 sm:w-32" />
-      <div
-        className="animate-intro-text-in text-center"
-        style={{ animationDelay: "0.5s", animationFillMode: "both" }}
-      >
-        <p className="font-display text-2xl font-semibold tracking-tight text-white">Lumin AI</p>
-        <p className="mt-1 text-sm text-white/50">by ClearPath</p>
-      </div>
-      <p
-        className="animate-intro-text-in absolute bottom-8 text-xs text-white/30"
-        style={{ animationDelay: "1s", animationFillMode: "both" }}
-      >
-        {audioStarted ? "Tap to continue" : "Tap for sound"}
-      </p>
+      {phase === "logo" && (
+        <>
+          <LuminBookMark className="animate-intro-in h-28 w-28 sm:h-32 sm:w-32" />
+          <div
+            className="animate-intro-text-in text-center"
+            style={{ animationDelay: "0.15s", animationFillMode: "both" }}
+          >
+            <p className="font-display text-2xl font-semibold tracking-tight text-white">
+              Lumin AI
+            </p>
+            <p className="mt-1 text-sm text-white/50">by ClearPath</p>
+          </div>
+          <p
+            className="animate-intro-text-in absolute bottom-8 text-xs text-white/30"
+            style={{ animationDelay: "0.6s", animationFillMode: "both" }}
+          >
+            Tap to continue
+          </p>
+        </>
+      )}
     </div>
   );
 }
