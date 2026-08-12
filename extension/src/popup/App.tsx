@@ -96,33 +96,40 @@ async function readActivePageText(): Promise<{ title: string; url: string; text:
   return { title: tab.title ?? "", url: tab.url ?? "", text };
 }
 
-/** Fetches a Google Docs/Slides document as a PDF and base64-encodes it --
- * run *inside* the Docs/Slides tab itself (same trick as readActivePageText)
- * so the export request rides along on the student's own session. The
- * chunked byte-to-string loop avoids blowing the call stack on
- * String.fromCharCode(...bytes) for larger documents. */
-async function fetchGoogleDocAsPdfBase64(tabId: number, pdfUrl: string): Promise<string | null> {
+/** Fetches a Google Docs/Slides document as a PDF and returns it as a data
+ * URL -- run *inside* the Docs/Slides tab itself (same trick as
+ * readActivePageText) so the export request rides along on the student's
+ * own session. Goes through a Blob + FileReader rather than manually
+ * base64-encoding the raw bytes (e.g. via String.fromCharCode(...bytes) in
+ * chunks) -- that approach can blow the call stack on larger PDFs
+ * depending on the browser's argument-count limits, which silently failed
+ * here (caught by the try/catch, surfacing as "couldn't export"). */
+async function fetchGoogleDocAsPdfDataUrl(tabId: number, pdfUrl: string): Promise<string | null> {
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     func: async (url: string) => {
       try {
         const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) return null;
-        const buffer = await res.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = "";
-        const chunkSize = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-        }
-        return btoa(binary);
-      } catch {
-        return null;
+        if (!res.ok) return `error:http-${res.status}`;
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error ?? new Error("read failed"));
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        return `error:${err instanceof Error ? err.message : "unknown"}`;
       }
     },
     args: [pdfUrl],
   });
-  return (result?.result as string | null) ?? null;
+  const dataUrl = (result?.result as string | null) ?? null;
+  if (!dataUrl || dataUrl.startsWith("error:")) {
+    console.warn("[extension] PDF export failed:", dataUrl, pdfUrl);
+    return null;
+  }
+  return dataUrl;
 }
 
 async function getActiveTabInfo(): Promise<{ title: string; url: string } | null> {
@@ -422,11 +429,11 @@ function ChatView({
       }
 
       const pdfUrl = googlePdfExportUrl(docInfo);
-      const base64 = await fetchGoogleDocAsPdfBase64(tab.id, pdfUrl);
-      if (!base64) {
+      const dataUrl = await fetchGoogleDocAsPdfDataUrl(tab.id, pdfUrl);
+      if (!dataUrl) {
         setInput(
           (prev) =>
-            `${prev}${prev ? " " : ""}(Couldn't export that ${docInfo.kind === "document" ? "doc" : "deck"} as a PDF -- make sure you're signed in to it and try again.)`,
+            `${prev}${prev ? " " : ""}(Couldn't export that ${docInfo.kind === "document" ? "doc" : "deck"} as a PDF -- make sure you're signed in to it, then check the popup's console (right-click the popup > Inspect) for details.)`,
         );
         return;
       }
@@ -439,7 +446,7 @@ function ChatView({
           {
             type: "file",
             mediaType: "application/pdf",
-            url: `data:application/pdf;base64,${base64}`,
+            url: dataUrl,
             filename,
           },
         ],
