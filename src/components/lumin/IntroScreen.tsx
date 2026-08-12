@@ -16,21 +16,26 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-// Shared silhouette for both book flaps, as CSS clip-path percentages within
-// their own box. Left flap drawn as-is; right flap is its horizontal mirror
-// (100% - x). The bottom vertex doubles as each flap's transform-origin, so
-// rotating around it swings the flap's top while its bottom tip stays
-// anchored -- like a page turning at the spine.
+// Shared silhouette for both book covers, as CSS clip-path percentages
+// within their own box. Left cover drawn as-is; right cover is its
+// horizontal mirror (100% - x). The bottom vertex doubles as each cover's
+// transform-origin, so rotating around it swings the cover's top while its
+// bottom tip stays anchored -- like a cover opening at the spine.
 const LEFT_FLAP_CLIP = "polygon(19% 27.5%, 47% 40%, 50% 75%, 24% 64%)";
 const RIGHT_FLAP_CLIP = "polygon(81% 27.5%, 53% 40%, 50% 75%, 76% 64%)";
 const FLAP_ORIGIN = "50% 75%";
 
-// How far each flap rotates when closed -- empirical, tuned to read as a
+// How far each cover rotates when closed -- empirical, tuned to read as a
 // plausible closed-book silhouette rather than derived from any specific
-// point in the (deliberately asymmetric) flap shape.
+// point in the (deliberately asymmetric) cover shape.
 const CLOSED_DEG = 105;
 
-// Each flap is drawn as a small stack of layers at increasing depth
+// The whole book scene is tilted back on its X axis so it reads as lying
+// flat on an (invisible) table viewed from in front/above, rather than
+// standing upright facing the camera.
+const TABLE_TILT_DEG = 58;
+
+// Each cover is drawn as a small stack of layers at increasing depth
 // (translateZ), rendered inside a preserve-3d group -- under perspective,
 // that stack is what actually reads as a book with real thickness/pages
 // rather than a single flat sheet turning.
@@ -60,11 +65,14 @@ function releaseBootCover() {
 
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
- * app (iOS/Android) -- never on the plain website. Sequence: a big, chunky
- * 3D closed book sits under a pulsing glow while the chime plays, opens on
- * a perspective hinge animation timed to finish right around when the
- * chime ends, then cross-fades into the crisp real logo + text, at which
- * point the screen becomes tappable to continue.
+ * app (iOS/Android) -- never on the plain website. Sequence: a big 3D book
+ * lies flat as if on an invisible table (tilted back on its X axis, not
+ * facing the camera straight-on) under a pulsing glow while the chime
+ * plays, its covers open on a hinge animation timed to finish right around
+ * when the chime ends, then the whole book scene shrinks away and
+ * cross-fades into the crisp real logo (at its own normal size -- NOT
+ * scaled up to match the much bigger book) + text, at which point the
+ * screen becomes tappable to continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
  * to be exactly the right behavior for the app too: it naturally resets on
@@ -249,58 +257,81 @@ export function IntroScreen() {
     >
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
 
-      <span
-        aria-hidden
-        className="relative flex h-48 w-48 items-center justify-center sm:h-60 sm:w-60"
-        style={{ perspective: "900px" }}
-      >
-        <span className="glow-orb animate-glow-pulse absolute inset-0 scale-150 rounded-full" />
-
-        {/* Twinkling sparkles -- purely decorative, keeps the "waiting for
-            the chime" moment from feeling static/dull. */}
-        <span
-          className="animate-intro-twinkle absolute top-[6%] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white"
-          style={{ animationDelay: "0.2s" }}
-        />
-        <span
-          className="animate-intro-twinkle absolute top-[16%] left-[30%] h-1 w-1 rounded-full bg-white"
-          style={{ animationDelay: "1s" }}
-        />
-        <span
-          className="animate-intro-twinkle absolute top-[12%] left-[68%] h-1 w-1 rounded-full bg-white"
-          style={{ animationDelay: "1.7s" }}
-        />
-
-        {/* Animated book: visible through "sound"/"opening", fades out once
-            the crisp real logo cross-fades in on top of it. */}
+      {/* Shared crossfade area: the big book scene and the normal-size
+          crisp logo occupy the same spot but are sized completely
+          independently of each other -- the book is huge, the logo stays
+          its original modest size. */}
+      <div className="relative flex h-72 w-72 items-center justify-center sm:h-96 sm:w-96">
+        {/* Big book scene -- visible through "sound"/"opening", shrinks and
+            fades away once the crisp real logo cross-fades in. */}
         <span
           aria-hidden
-          className="absolute inset-0 transition-opacity duration-500"
-          style={{ opacity: phase === "logo" ? 0 : 1, transformStyle: "preserve-3d" }}
+          className="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out"
+          style={{
+            opacity: phase === "logo" ? 0 : 1,
+            transform: phase === "logo" ? "scale(0.75)" : "scale(1)",
+            pointerEvents: phase === "logo" ? "none" : undefined,
+          }}
         >
-          {/* Spine -- the book's visible "thickness" at the hinge, static,
-              doesn't rotate with the flaps. */}
-          <span
-            className="absolute top-[24%] bottom-[22%] left-[46%] w-[8%] rounded-sm"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(226,232,240,0.9) 0%, rgba(37,99,235,0.6) 45%, rgba(8,13,32,0.9) 100%)",
-              transform: "translateZ(-16px)",
-              filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))",
-            }}
-          />
-          {renderFlap(1)}
-          {renderFlap(-1)}
+          <span className="relative h-full w-full" style={{ perspective: "1600px" }}>
+            <span className="glow-orb animate-glow-pulse absolute inset-0 scale-125 rounded-full" />
+
+            {/* Twinkling sparkles -- purely decorative, keeps the "waiting
+                for the chime" moment from feeling static/dull. */}
+            <span
+              className="animate-intro-twinkle absolute top-[10%] left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-white"
+              style={{ animationDelay: "0.2s" }}
+            />
+            <span
+              className="animate-intro-twinkle absolute top-[20%] left-[28%] h-1.5 w-1.5 rounded-full bg-white"
+              style={{ animationDelay: "1s" }}
+            />
+            <span
+              className="animate-intro-twinkle absolute top-[16%] left-[70%] h-1.5 w-1.5 rounded-full bg-white"
+              style={{ animationDelay: "1.7s" }}
+            />
+
+            {/* Tilts the whole book back so it reads as lying flat on an
+                invisible table (viewed from in front/above) instead of
+                standing upright facing the camera. */}
+            <span
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transformStyle: "preserve-3d",
+                transform: `rotateX(${TABLE_TILT_DEG}deg)`,
+              }}
+            >
+              <span className="relative h-full w-full" style={{ transformStyle: "preserve-3d" }}>
+                {/* Spine -- the book's visible "thickness" at the hinge,
+                    static, doesn't rotate with the covers. */}
+                <span
+                  className="absolute top-[24%] bottom-[22%] left-[46%] w-[8%] rounded-sm"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(226,232,240,0.9) 0%, rgba(37,99,235,0.6) 45%, rgba(8,13,32,0.9) 100%)",
+                    transform: "translateZ(-16px)",
+                    filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))",
+                  }}
+                />
+                {renderFlap(1)}
+                {renderFlap(-1)}
+              </span>
+            </span>
+          </span>
         </span>
 
+        {/* Crisp final logo -- its own normal size, independent of the
+            (much bigger) book scene above. */}
         {phase === "logo" && (
-          <img
-            src={luminMark}
-            alt="Lumin AI logo"
-            className="animate-intro-in absolute inset-0 h-full w-full rounded-xl shadow-glow ring-1 ring-white/10"
-          />
+          <span className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
+            <img
+              src={luminMark}
+              alt="Lumin AI logo"
+              className="animate-intro-in relative h-full w-full rounded-xl shadow-glow ring-1 ring-white/10"
+            />
+          </span>
         )}
-      </span>
+      </div>
 
       {phase === "logo" && (
         <>
