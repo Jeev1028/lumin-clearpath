@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { isInstalledApp } from "@/lib/native-app";
 import luminMark from "@/assets/lumin-mark.png";
 
 const SESSION_KEY = "clearpath:intro-seen";
-// Temporary: lets the two book-opening styles be compared live without a
-// rebuild. Remove this + the toggle button once a final style is chosen.
-const STYLE_KEY = "clearpath:intro-book-style";
 const FADE_MS = 500;
 // Safety net only -- normally the "ended" event moves things along.
 const MAX_SOUND_WAIT_MS = 6500;
@@ -18,24 +15,40 @@ const OPEN_TRANSITION_MS = 650;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
-type BookStyle = "flat" | "3d";
 
 // Shared silhouette for both book flaps, as CSS clip-path percentages within
-// their own box (the glow container). Left flap drawn as-is; right flap is
-// its horizontal mirror (100% - x). The bottom vertex doubles as each
-// flap's transform-origin, so rotating around it swings the flap's top
-// while its bottom tip stays anchored -- like a page turning at the spine.
+// their own box. Left flap drawn as-is; right flap is its horizontal mirror
+// (100% - x). The bottom vertex doubles as each flap's transform-origin, so
+// rotating around it swings the flap's top while its bottom tip stays
+// anchored -- like a page turning at the spine.
 const LEFT_FLAP_CLIP = "polygon(19% 27.5%, 47% 40%, 50% 75%, 24% 64%)";
 const RIGHT_FLAP_CLIP = "polygon(81% 27.5%, 53% 40%, 50% 75%, 76% 64%)";
 const FLAP_ORIGIN = "50% 75%";
 
-// How far each flap rotates when "closed" -- purely empirical, tuned to
-// read as a plausible closed-book silhouette rather than derived from any
-// specific point in the (deliberately asymmetric) flap shape. 3D needs a
-// bigger angle than flat since rotateY's foreshortening makes the same
-// angle look less "closed" than a flat 2D rotate() does.
-const FLAT_CLOSED_DEG = 58;
-const THREED_CLOSED_DEG = 105;
+// How far each flap rotates when closed -- empirical, tuned to read as a
+// plausible closed-book silhouette rather than derived from any specific
+// point in the (deliberately asymmetric) flap shape.
+const CLOSED_DEG = 105;
+
+// Each flap is drawn as a small stack of layers at increasing depth
+// (translateZ), rendered inside a preserve-3d group -- under perspective,
+// that stack is what actually reads as a book with real thickness/pages
+// rather than a single flat sheet turning.
+const FLAP_LAYERS: { z: number; background: string }[] = [
+  {
+    z: -14,
+    background: "linear-gradient(160deg, rgba(37,99,235,0.55) 0%, rgba(8,13,32,0.9) 100%)",
+  },
+  {
+    z: -7,
+    background: "linear-gradient(160deg, rgba(125,211,252,0.55) 0%, rgba(37,99,235,0.55) 100%)",
+  },
+  {
+    z: 0,
+    background:
+      "linear-gradient(160deg, rgba(255,255,255,0.95) 0%, rgba(125,211,252,0.7) 55%, rgba(37,99,235,0.4) 100%)",
+  },
+];
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
@@ -47,11 +60,11 @@ function releaseBootCover() {
 
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
- * app (iOS/Android) -- never on the plain website. Sequence: a stylized
- * closed book sits under a pulsing glow while the chime plays, opens on a
- * CSS-driven hinge animation timed to finish right around when the chime
- * ends, then cross-fades into the crisp real logo + text, at which point
- * the screen becomes tappable to continue.
+ * app (iOS/Android) -- never on the plain website. Sequence: a big, chunky
+ * 3D closed book sits under a pulsing glow while the chime plays, opens on
+ * a perspective hinge animation timed to finish right around when the
+ * chime ends, then cross-fades into the crisp real logo + text, at which
+ * point the screen becomes tappable to continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
  * to be exactly the right behavior for the app too: it naturally resets on
@@ -71,8 +84,6 @@ export function IntroScreen() {
   const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState<Phase>("sound");
   const [dismissing, setDismissing] = useState(false);
-  const [bookStyle, setBookStyle] = useState<BookStyle>("flat");
-  const [replayKey, setReplayKey] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { prefs } = useSoundSettings();
 
@@ -88,13 +99,6 @@ export function IntroScreen() {
     if (reducedMotion) {
       releaseBootCover();
       return;
-    }
-
-    try {
-      const savedStyle = localStorage.getItem(STYLE_KEY);
-      if (savedStyle === "flat" || savedStyle === "3d") setBookStyle(savedStyle);
-    } catch {
-      // ignore -- default style is fine
     }
 
     let alreadySeen = false;
@@ -186,7 +190,7 @@ export function IntroScreen() {
       if (openTimer) window.clearTimeout(openTimer);
       window.clearTimeout(fallback);
     };
-  }, [visible, prefs.enabled, prefs.introChime, replayKey]);
+  }, [visible, prefs.enabled, prefs.introChime]);
 
   function dismiss() {
     setDismissing(true);
@@ -198,43 +202,48 @@ export function IntroScreen() {
     dismiss();
   }
 
-  // Temporary comparison tooling (see STYLE_KEY comment): swaps the
-  // book-opening style and instantly replays the intro so the two can be
-  // compared side by side without a rebuild or even a page reload.
-  function handleStyleToggle(event: MouseEvent) {
-    event.stopPropagation();
-    const next: BookStyle = bookStyle === "flat" ? "3d" : "flat";
-    setBookStyle(next);
-    try {
-      localStorage.setItem(STYLE_KEY, next);
-    } catch {
-      // ignore
-    }
-    setPhase("sound");
-    setDismissing(false);
-    setReplayKey((k) => k + 1);
-  }
-
   if (!visible) return null;
 
   const bookOpen = phase !== "sound";
-  const closedDeg = bookStyle === "3d" ? THREED_CLOSED_DEG : FLAT_CLOSED_DEG;
-  function flapTransform(mirror: 1 | -1) {
-    const angle = bookOpen ? 0 : closedDeg * mirror;
-    return bookStyle === "3d" ? `rotateY(${angle}deg)` : `rotate(${angle}deg)`;
+
+  function flapGroupStyle(mirror: 1 | -1): CSSProperties {
+    const angle = bookOpen ? 0 : CLOSED_DEG * mirror;
+    return {
+      transformOrigin: FLAP_ORIGIN,
+      transformStyle: "preserve-3d",
+      transform: `rotateY(${angle}deg)`,
+      transition: `transform ${OPEN_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+    };
   }
-  const flapStyleBase: CSSProperties = {
-    transformOrigin: FLAP_ORIGIN,
-    transition: `transform ${OPEN_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-    background:
-      "linear-gradient(160deg, rgba(255,255,255,0.95) 0%, rgba(125,211,252,0.65) 55%, rgba(37,99,235,0.35) 100%)",
-  };
+
+  function renderFlap(mirror: 1 | -1) {
+    const clip = mirror === 1 ? LEFT_FLAP_CLIP : RIGHT_FLAP_CLIP;
+    return (
+      <span className="absolute inset-0" style={flapGroupStyle(mirror)}>
+        {FLAP_LAYERS.map((layer, i) => (
+          <span
+            key={i}
+            className="absolute inset-0"
+            style={{
+              clipPath: clip,
+              background: layer.background,
+              transform: `translateZ(${layer.z}px)`,
+              filter:
+                i === FLAP_LAYERS.length - 1
+                  ? "drop-shadow(0 10px 16px rgba(0,0,0,0.45))"
+                  : undefined,
+            }}
+          />
+        ))}
+      </span>
+    );
+  }
 
   return (
     <div
       role="presentation"
       onClick={handleTap}
-      className={`safe-top fixed inset-0 z-[200] flex flex-col items-center justify-center gap-4 bg-[#0A1128] transition-opacity duration-500 ${
+      className={`safe-top fixed inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-[#0A1128] transition-opacity duration-500 ${
         phase === "logo" ? "cursor-pointer" : "cursor-default"
       } ${dismissing ? "opacity-0" : "opacity-100"}`}
     >
@@ -242,23 +251,23 @@ export function IntroScreen() {
 
       <span
         aria-hidden
-        className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32"
-        style={{ perspective: bookStyle === "3d" ? "700px" : undefined }}
+        className="relative flex h-48 w-48 items-center justify-center sm:h-60 sm:w-60"
+        style={{ perspective: "900px" }}
       >
         <span className="glow-orb animate-glow-pulse absolute inset-0 scale-150 rounded-full" />
 
         {/* Twinkling sparkles -- purely decorative, keeps the "waiting for
             the chime" moment from feeling static/dull. */}
         <span
-          className="animate-intro-twinkle absolute top-[6%] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-white"
+          className="animate-intro-twinkle absolute top-[6%] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white"
           style={{ animationDelay: "0.2s" }}
         />
         <span
-          className="animate-intro-twinkle absolute top-[16%] left-[32%] h-[3px] w-[3px] rounded-full bg-white"
+          className="animate-intro-twinkle absolute top-[16%] left-[30%] h-1 w-1 rounded-full bg-white"
           style={{ animationDelay: "1s" }}
         />
         <span
-          className="animate-intro-twinkle absolute top-[12%] left-[66%] h-[3px] w-[3px] rounded-full bg-white"
+          className="animate-intro-twinkle absolute top-[12%] left-[68%] h-1 w-1 rounded-full bg-white"
           style={{ animationDelay: "1.7s" }}
         />
 
@@ -267,21 +276,21 @@ export function IntroScreen() {
         <span
           aria-hidden
           className="absolute inset-0 transition-opacity duration-500"
-          style={{
-            opacity: phase === "logo" ? 0 : 1,
-            transformStyle: bookStyle === "3d" ? "preserve-3d" : undefined,
-          }}
+          style={{ opacity: phase === "logo" ? 0 : 1, transformStyle: "preserve-3d" }}
         >
-          {/* Spine -- static, doesn't rotate with the flaps. */}
-          <span className="absolute top-[45%] bottom-[25%] left-1/2 w-px -translate-x-1/2 bg-white/40" />
+          {/* Spine -- the book's visible "thickness" at the hinge, static,
+              doesn't rotate with the flaps. */}
           <span
-            className="absolute inset-0"
-            style={{ ...flapStyleBase, clipPath: LEFT_FLAP_CLIP, transform: flapTransform(1) }}
+            className="absolute top-[24%] bottom-[22%] left-[46%] w-[8%] rounded-sm"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(226,232,240,0.9) 0%, rgba(37,99,235,0.6) 45%, rgba(8,13,32,0.9) 100%)",
+              transform: "translateZ(-16px)",
+              filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))",
+            }}
           />
-          <span
-            className="absolute inset-0"
-            style={{ ...flapStyleBase, clipPath: RIGHT_FLAP_CLIP, transform: flapTransform(-1) }}
-          />
+          {renderFlap(1)}
+          {renderFlap(-1)}
         </span>
 
         {phase === "logo" && (
@@ -312,17 +321,6 @@ export function IntroScreen() {
           </p>
         </>
       )}
-
-      {/* Temporary: lets you compare both book-opening styles live -- see
-          STYLE_KEY comment above. Remove once a final style is chosen. */}
-      <button
-        type="button"
-        onClick={handleStyleToggle}
-        className="absolute bottom-4 left-4 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] text-white/40"
-      >
-        Style: {bookStyle === "flat" ? "Flat" : "3D"} (tap to try{" "}
-        {bookStyle === "flat" ? "3D" : "flat"})
-      </button>
     </div>
   );
 }
