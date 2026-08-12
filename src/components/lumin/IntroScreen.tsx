@@ -42,8 +42,13 @@ const SPINE_DY = 10;
 
 // How far the cover swings once open -- past 90deg (edge-on) and on to
 // nearly a full flip, so it visibly sweeps away to the left rather than
-// stopping mid-turn.
-const OPEN_SWING_DEG = -178;
+// stopping mid-turn. Positive (not negative): the cover's face swings
+// toward the viewer as it opens (like lifting a real book cover to read
+// it), rather than tipping away into the screen. Flipping the sign only
+// changes that depth direction during the motion -- the final resting
+// position (swung left) is the same either way, since cos(178deg) ==
+// cos(-178deg).
+const OPEN_SWING_DEG = 178;
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
