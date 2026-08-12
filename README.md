@@ -1,30 +1,67 @@
-# Lumin ClearPath
+# ClearPath — Lumin AI
 
-Remake this lindy chatbot into a website. Lumin AI is an AI for educational purposes. The motto is "To illuminate your educational journey" hence ilLUMINate (lumin) being the name. One of the images attached is the iOS app icon. Consider this. Additionally, the website I used to use to host the lindy chatbot is https://www.luminclearpath.ca. ClearPath is the name of the educational platform I was aiming to build. Include this somehow. Take inspiration from that website while maintaining a darker blue theme for calming purposes. The other images attached are part of the flow from Lindy, and the text below is the result of the chat with specific instructions:
+**ClearPath** is an educational platform built around **Lumin AI**, a study assistant whose motto is *"To illuminate your educational journey"* (hence the name — ilLUMINate → Lumin). It's a full academic workspace, not just a chatbot: tasks, grades, a calendar, class organization, spaced-repetition flashcards, and an AI tutor that helps you *learn* the material instead of doing the work for you.
 
-Conduct research and provide valuable information, if the student asks. Make sure to provide links to the research and tell the student to cite their sources using MLA Format. However, do not provide MLA Citations for them. Instead, provide links to your source of information. However, if the student didn't ask to conduct research, follow through with their request while keeping academic honesty in mind.
+Live site: **[luminclearpath.ca](https://luminclearpath.ca)**
 
-Look out for any students that try to find a work around and indirectly get you to do work for them, like if a student were to ask you to summarize everything about photosynthesis into  a lab report. Anything like that should result in you describing your incapability of completing work for a student. Make sure to carry this on throughout every task.
+Built and maintained by **Jeevin**, a grade 10 student, as a passion project — a more honest, more capable alternative to tools like Google Classroom and ManageBac.
 
-You WILL NOT write anything FOR a student, but might instead guide them on an educational journey by summarizing information as assistance, or listing sources/extracting key information/important information from sources and providing them to a student. You WILL NOT do anything the same or similar to writing/formulating/generating something for a student OTHER THAN information analyzation/summarization. The summarization/analysis can only be in PARAGRAPH FORM. It cannot be in the form of a research paper or a lab report, or anything along those lines.
+## What it does
 
-This project was built with [Lovable](https://lovable.dev).
+- **Lumin AI chat** — an AI tutor with a strict academic-honesty policy: it will research, explain, summarize, and guide, but it will not write assignments, lab reports, or essays for you. It only ever answers in explanatory paragraph form, never in finished-deliverable form.
+- **Tasks & grades** — track assignments and see grade trends over time.
+- **Calendar** — a live calendar feed you can subscribe to from Apple Calendar, Outlook, Google Calendar, etc.
+- **Classroom / Teacher Portal** — course organization for students and teachers.
+- **Flashcard decks** — spaced-repetition study mode plus a matching game.
+- **Knowledge Graph & Adaptive Learner** — Lumin AI maps out how concepts connect and adapts to what you personally need to review.
+- **Notifications** — an in-app notification center, with optional sound effects and read-aloud support (fully toggleable in Settings).
+- **Command palette** — quick keyboard-driven navigation, with keyboard and mouse support built in throughout.
+- **Accounts** — email/password, or "Continue with Google."
 
-## Build with Lovable
+## Download the app
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/83a47371-aa97-4421-b54a-456263bd069e).
+The website works in any browser, but native app shells are also available so it installs and behaves like a normal app (own icon, own window, offline-friendly shell, push-style updates).
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+| Platform | Where to get it | Notes |
+| --- | --- | --- |
+| **Android** | [Latest Android release](https://github.com/Jeev1028/lumin-clearpath/releases?q=android) — download `ClearPath.apk` | Sideload it directly: download the APK to your device and open it (you may need to allow "install from unknown sources" once). |
+| **iOS / iPadOS** | [Latest iOS release](https://github.com/Jeev1028/lumin-clearpath/releases?q=ios) — download `ClearPath-unsigned.ipa` | The IPA is intentionally **unsigned** (no paid Apple Developer account is used). Sign and install it yourself with a free tool like [Sideloadly](https://sideloadly.io/) or [AltStore](https://altstore.io/), using your own free Apple ID. |
+
+Both apps are thin native wrappers (Android [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity/), iOS [Capacitor](https://capacitorjs.com/)) that load the live site directly — they're not separate codebases with their own content.
+
+## How updates work
+
+This matters for knowing when you actually need to redownload something:
+
+- **Everything you see and interact with day-to-day** (pages, the AI chat, flashcards, grades, styling, bug fixes, new features in the UI) lives on the website and **updates automatically** the moment it's deployed — for the browser *and* for both installed apps, since they just load the live site. You never need to reinstall for these changes.
+- **Native-only changes** (app icon, splash screen, permissions, native sign-in plumbing, anything touching the Android/iOS project files themselves) require an actual new build. When that happens, a new APK/IPA is published to [Releases](https://github.com/Jeev1028/lumin-clearpath/releases) — redownload and reinstall from there to get it. Installing a new build over an old one is a normal update (same signing key each time), it won't wipe your account or data, since everything is stored server-side.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requires Node.js and npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+git clone https://github.com/Jeev1028/lumin-clearpath.git
+cd lumin-clearpath
+npm install
 npm run dev
 ```
+
+You'll also need a `.env` file with Supabase and Google OAuth credentials — see `.env.example` if present, or ask for the relevant keys. The site is a [TanStack Start](https://tanstack.com/start) app (React 19) backed by [Supabase](https://supabase.com) (auth + database) and deployed on [Vercel](https://vercel.com).
+
+Other useful scripts:
+
+```sh
+npm run build     # production build
+npm run lint       # ESLint
+npm run format     # Prettier
+```
+
+### Native app projects
+
+- `android/` — Android Trusted Web Activity project (built locally with [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap); not built in CI).
+- `ios/` — iOS Capacitor project (built automatically on every push via [GitHub Actions](.github/workflows/ios-build.yml), producing an unsigned IPA artifact).
+
+## Tech stack
+
+TanStack Start · React 19 · TypeScript · Tailwind CSS · Supabase (Postgres, Auth, Realtime) · Vercel · Capacitor (iOS) · Bubblewrap/Trusted Web Activity (Android) · Google Gemini (AI)

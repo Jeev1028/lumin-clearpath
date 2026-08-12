@@ -38,6 +38,7 @@ supabase/.temp/
 *.sw?
 .vercel
 .env*
+!.env.example
 
 # Android TWA project (generated app wrapper)
 android/node_modules
