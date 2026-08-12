@@ -50,41 +50,67 @@ function googlePdfExportUrl(info: { kind: "document" | "presentation"; id: strin
     : `https://docs.google.com/presentation/d/${info.id}/export/pdf`;
 }
 
+/** Fetches a Google export URL directly from the extension's own context
+ * (not injected into the tab) -- this matters specifically because export
+ * downloads sometimes redirect through a different Google host to stream
+ * the file, and a page-context fetch() enforces CORS on that redirect
+ * target the same as any other cross-origin sub-request (causing an
+ * opaque "Failed to fetch"). Extension pages with docs.google.com in
+ * host_permissions are exempt from that -- and still send the student's
+ * real session cookies via credentials: "include", since cookies aren't
+ * scoped to a particular execution context, just the browser profile. */
+async function fetchWithGoogleSession(url: string): Promise<Response | null> {
+  try {
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) {
+      console.warn("[extension] Google export failed: http", res.status, url);
+      return null;
+    }
+    return res;
+  } catch (err) {
+    console.warn("[extension] Google export failed:", err, url);
+    return null;
+  }
+}
+
+async function fetchGoogleDocText(exportUrl: string): Promise<string | null> {
+  const res = await fetchWithGoogleSession(exportUrl);
+  if (!res) return null;
+  const text = (await res.text()).trim();
+  return text || null;
+}
+
+async function fetchGoogleDocAsPdfDataUrl(exportUrl: string): Promise<string | null> {
+  const res = await fetchWithGoogleSession(exportUrl);
+  if (!res) return null;
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read the exported file."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 /** Grabs the active tab's best-effort readable text -- run only when the
  * student explicitly taps "Read this page" (never automatically). For
  * Google Docs/Slides, fetches the real document text via Google's export
- * endpoint (run *inside* the Docs/Slides tab itself via executeScript, so
- * the fetch is same-origin and rides along on the student's own logged-in
- * session -- no extra permissions or credentials needed beyond the
- * activeTab access already granted by opening the popup). Everything else
- * falls back to plain innerText, which works fine for normal articles/
- * pages. */
+ * endpoint directly (see fetchWithGoogleSession above for why that's not
+ * injected into the tab). Everything else falls back to plain innerText
+ * (which does need to run inside the tab, via executeScript), which works
+ * fine for normal articles/pages. */
 async function readActivePageText(): Promise<{ title: string; url: string; text: string } | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return null;
 
   const docInfo = googleDocInfo(tab.url ?? "");
   if (docInfo) {
-    const exportUrl = googleTextExportUrl(docInfo);
-    const [exportResult] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: async (url: string) => {
-        try {
-          const res = await fetch(url, { credentials: "include" });
-          return res.ok ? await res.text() : null;
-        } catch {
-          return null;
-        }
-      },
-      args: [exportUrl],
-    });
-    const exported = ((exportResult?.result as string | null) ?? "").trim();
+    const exported = await fetchGoogleDocText(googleTextExportUrl(docInfo));
     if (exported) {
       return { title: tab.title ?? "", url: tab.url ?? "", text: exported.slice(0, 6000) };
     }
     // Export failed (e.g. not actually signed in on that tab) -- fall
     // through to the innerText fallback below rather than returning nothing.
-    console.warn("[extension] Docs/Slides export failed, falling back to page text:", exportUrl);
   }
 
   const [result] = await chrome.scripting.executeScript({
@@ -94,42 +120,6 @@ async function readActivePageText(): Promise<{ title: string; url: string; text:
 
   const text = ((result?.result as string) ?? "").trim().slice(0, 6000);
   return { title: tab.title ?? "", url: tab.url ?? "", text };
-}
-
-/** Fetches a Google Docs/Slides document as a PDF and returns it as a data
- * URL -- run *inside* the Docs/Slides tab itself (same trick as
- * readActivePageText) so the export request rides along on the student's
- * own session. Goes through a Blob + FileReader rather than manually
- * base64-encoding the raw bytes (e.g. via String.fromCharCode(...bytes) in
- * chunks) -- that approach can blow the call stack on larger PDFs
- * depending on the browser's argument-count limits, which silently failed
- * here (caught by the try/catch, surfacing as "couldn't export"). */
-async function fetchGoogleDocAsPdfDataUrl(tabId: number, pdfUrl: string): Promise<string | null> {
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: async (url: string) => {
-      try {
-        const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) return `error:http-${res.status}`;
-        const blob = await res.blob();
-        return await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error ?? new Error("read failed"));
-          reader.readAsDataURL(blob);
-        });
-      } catch (err) {
-        return `error:${err instanceof Error ? err.message : "unknown"}`;
-      }
-    },
-    args: [pdfUrl],
-  });
-  const dataUrl = (result?.result as string | null) ?? null;
-  if (!dataUrl || dataUrl.startsWith("error:")) {
-    console.warn("[extension] PDF export failed:", dataUrl, pdfUrl);
-    return null;
-  }
-  return dataUrl;
 }
 
 async function getActiveTabInfo(): Promise<{ title: string; url: string } | null> {
@@ -429,7 +419,7 @@ function ChatView({
       }
 
       const pdfUrl = googlePdfExportUrl(docInfo);
-      const dataUrl = await fetchGoogleDocAsPdfDataUrl(tab.id, pdfUrl);
+      const dataUrl = await fetchGoogleDocAsPdfDataUrl(pdfUrl);
       if (!dataUrl) {
         setInput(
           (prev) =>
