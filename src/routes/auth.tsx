@@ -12,15 +12,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "@/lib/native-app";
 
 // Local iOS-only native plugin (ios/ios/App/App/NativeAuthPlugin.swift) --
-// runs the OAuth flow through ASWebAuthenticationSession, which is Apple's
-// purpose-built API for this exact "open a URL, wait for a redirect back
-// to a custom URL scheme" pattern. It intercepts the callback URL directly
-// rather than letting the browser attempt to *navigate* to a non-http(s)
-// scheme, which is what was causing "Safari cannot open the page because
-// the address is invalid" with the previous SFSafariViewController-based
-// approach (@capacitor/browser + @capacitor/app's appUrlOpen).
+// runs Google's native OAuth 2.0 (authorization code + PKCE) flow through
+// ASWebAuthenticationSession, talking to Google directly instead of routing
+// through Supabase's server-side redirect. See handleNativeGoogleSignIn for
+// why: Supabase's signInWithOAuth() necessarily bounces through
+// <project>.supabase.co first, and Google can only show verified-domain
+// branding on its consent screen -- since nobody but Supabase can verify
+// supabase.co, that flow shows the raw Supabase domain instead of
+// ClearPath's branding. Going straight to Google avoids that hop entirely.
 interface NativeAuthPlugin {
   authenticate(options: { url: string; callbackScheme: string }): Promise<{ url: string }>;
+  exchangeGoogleCode(options: {
+    code: string;
+    codeVerifier: string;
+    clientId: string;
+    redirectUri: string;
+  }): Promise<{ idToken: string }>;
 }
 const NativeAuth = registerPlugin<NativeAuthPlugin>("NativeAuth");
 
@@ -68,14 +75,31 @@ export const Route = createFileRoute("/auth")({
 });
 
 const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | undefined;
+// A separate "iOS" application-type OAuth client (created in Google Cloud
+// Console: Credentials → Create Credentials → OAuth client ID → iOS, bundle
+// ID ca.luminclearpath.ios). Google issues iOS-type clients without a
+// secret and expects the PKCE flow used below.
+const GOOGLE_IOS_CLIENT_ID = import.meta.env["VITE_GOOGLE_IOS_CLIENT_ID"] as string | undefined;
 
-// Google refuses to run its Sign-In flow inside an embedded WebView (the
-// kind Capacitor uses on iOS) as an anti-phishing policy -- it either fails
-// outright or kicks the user out to the full Safari app, losing the app
-// context entirely. Native apps are expected to run the OAuth flow through
-// ASWebAuthenticationSession instead (see NativeAuthPlugin), redirecting
-// back to this custom URL scheme when it completes.
-const NATIVE_OAUTH_REDIRECT = "ca.luminclearpath.ios://auth-callback";
+// --- PKCE helpers (Web Crypto is available inside the WKWebView) ---------
+
+function base64UrlEncode(bytes: ArrayBuffer): string {
+  const arr = new Uint8Array(bytes);
+  let str = "";
+  for (let i = 0; i < arr.length; i++) str += String.fromCharCode(arr[i] ?? 0);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomUrlSafeString(length: number): string {
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  return base64UrlEncode(arr.buffer).slice(0, length);
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return base64UrlEncode(digest);
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -98,19 +122,49 @@ function AuthPage() {
     void navigate({ to: needsMfa ? "/mfa-challenge" : "/home" });
   }, [loading, session, needsMfa, navigate]);
 
+  // Google refuses to run its Sign-In flow inside an embedded WebView (the
+  // kind Capacitor uses on iOS) as an anti-phishing policy, so native apps
+  // run the OAuth flow through ASWebAuthenticationSession instead. This talks
+  // to Google directly (authorization code + PKCE, the standard flow for
+  // native/installed apps) rather than through Supabase's signInWithOAuth()
+  // redirect, specifically so the consent screen shows ClearPath's real,
+  // verified branding instead of the Supabase project domain -- see the
+  // comment above NativeAuthPlugin's declaration for the full "why".
   async function handleNativeGoogleSignIn() {
+    if (!GOOGLE_IOS_CLIENT_ID) {
+      toast.error(
+        "Google sign-in isn't configured for the app yet (missing VITE_GOOGLE_IOS_CLIENT_ID).",
+      );
+      return;
+    }
     setNativeGoogleBusy(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: NATIVE_OAUTH_REDIRECT, skipBrowserRedirect: true },
-      });
-      if (error) throw error;
-      if (!data?.url) throw new Error("Could not start Google sign-in.");
+      const codeVerifier = randomUrlSafeString(64);
+      const codeChallenge = await sha256Base64Url(codeVerifier);
+      const nonce = randomUrlSafeString(32);
+
+      // Google's "iOS" client type expects redirects on this specific
+      // reversed-client-id scheme -- it's how Google guarantees the scheme
+      // is unique to this exact client without needing a pre-registered
+      // redirect URI allowlist (unlike web clients).
+      const schemePrefix = `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.split(".")[0]}`;
+      const redirectUri = `${schemePrefix}:/oauth2redirect`;
+
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      authUrl.searchParams.set("client_id", GOOGLE_IOS_CLIENT_ID);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", "openid email profile");
+      authUrl.searchParams.set("code_challenge", codeChallenge);
+      authUrl.searchParams.set("code_challenge_method", "S256");
+      authUrl.searchParams.set("nonce", nonce);
+      // Surfaces Safari's other signed-in Google accounts as a picker
+      // (Pokémon GO-style) instead of silently reusing the last one.
+      authUrl.searchParams.set("prompt", "select_account");
 
       const result = await NativeAuth.authenticate({
-        url: data.url,
-        callbackScheme: "ca.luminclearpath.ios",
+        url: authUrl.toString(),
+        callbackScheme: schemePrefix,
       });
       const parsed = new URL(result.url);
       const code = parsed.searchParams.get("code");
@@ -118,11 +172,23 @@ function AuthPage() {
       if (errorDescription) throw new Error(errorDescription);
       if (!code) throw new Error("No authorization code received.");
 
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) throw exchangeError;
+      const { idToken } = await NativeAuth.exchangeGoogleCode({
+        code,
+        codeVerifier,
+        clientId: GOOGLE_IOS_CLIENT_ID,
+        redirectUri,
+      });
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+        nonce,
+      });
+      if (error) throw error;
       // The session-watching effect above handles routing from here.
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
+      const message =
+        err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
       if (message !== "cancelled") toast.error(message);
     } finally {
       setNativeGoogleBusy(false);
@@ -246,7 +312,10 @@ function AuthPage() {
 
       <header className="safe-top w-full">
         <div className="mx-auto max-w-6xl px-6 py-6">
-          <Link to={session ? "/home" : "/"} className="inline-block transition-transform duration-200 hover:scale-[1.02]">
+          <Link
+            to={session ? "/home" : "/"}
+            className="inline-block transition-transform duration-200 hover:scale-[1.02]"
+          >
             <LuminWordmark />
           </Link>
         </div>
@@ -351,7 +420,10 @@ function AuthPage() {
                     </Button>
                   ) : (
                     <>
-                      <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
+                      <div
+                        ref={googleButtonRef}
+                        className="flex w-full items-center justify-center"
+                      />
                       {!GOOGLE_CLIENT_ID && (
                         <p className="text-center text-xs text-destructive">
                           Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
