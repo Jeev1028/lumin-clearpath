@@ -33,7 +33,7 @@ const CLOSED_DEG = 105;
 // The whole book scene is tilted back on its X axis so it reads as lying
 // flat on an (invisible) table viewed from in front/above, rather than
 // standing upright facing the camera.
-const TABLE_TILT_DEG = 58;
+const TABLE_TILT_DEG = 72;
 
 // Each cover is drawn as a small stack of layers at increasing depth
 // (translateZ), rendered inside a preserve-3d group -- under perspective,
@@ -257,19 +257,31 @@ export function IntroScreen() {
     >
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
 
+      {/* Brief bright flash right as the book is "passed through", timed
+          to the same moment the book scene above rushes forward and the
+          logo appears -- sells the sense of emerging on the other side. */}
+      {phase === "logo" && (
+        <span
+          aria-hidden
+          className="animate-intro-flash pointer-events-none absolute inset-0 bg-white"
+        />
+      )}
+
       {/* Shared crossfade area: the big book scene and the normal-size
           crisp logo occupy the same spot but are sized completely
           independently of each other -- the book is huge, the logo stays
           its original modest size. */}
       <div className="relative flex h-72 w-72 items-center justify-center sm:h-96 sm:w-96">
-        {/* Big book scene -- visible through "sound"/"opening", shrinks and
-            fades away once the crisp real logo cross-fades in. */}
+        {/* Big book scene -- visible through "sound"/"opening". At "logo"
+            it rushes forward and fades out (scaling way up, not down) so
+            it reads as the camera diving through the open pages, rather
+            than the book simply shrinking away. */}
         <span
           aria-hidden
-          className="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out"
+          className="absolute inset-0 flex items-center justify-center transition-all duration-[550ms] ease-[cubic-bezier(0.55,0,1,0.45)]"
           style={{
             opacity: phase === "logo" ? 0 : 1,
-            transform: phase === "logo" ? "scale(0.75)" : "scale(1)",
+            transform: phase === "logo" ? "scale(2.6)" : "scale(1)",
             pointerEvents: phase === "logo" ? "none" : undefined,
           }}
         >

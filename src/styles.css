@@ -312,6 +312,35 @@
   }
 }
 
+@utility animate-intro-twinkle {
+  animation: lumin-intro-twinkle 2.4s ease-in-out infinite;
+}
+
+@keyframes lumin-intro-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-intro-flash {
+  animation: lumin-intro-flash 550ms ease-out forwards;
+}
+
+@keyframes lumin-intro-flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @utility lumin-md {
   & > * + * {
     margin-top: 0.85em;
