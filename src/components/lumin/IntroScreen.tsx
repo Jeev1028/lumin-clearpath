@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { isInstalledApp } from "@/lib/native-app";
 import luminMark from "@/assets/lumin-mark.png";
+import introBookClosed from "@/assets/intro-book-closed.webp";
+import introBookOpen from "@/assets/intro-book-open.webp";
 
 const SESSION_KEY = "clearpath:intro-seen";
 const FADE_MS = 500;
@@ -11,7 +13,7 @@ const MAX_SOUND_WAIT_MS = 6500;
 // How long before the chime actually ends the book should start opening --
 // tuned by feel rather than tied to an exact beat timestamp in the audio.
 const OPEN_LEAD_MS = 900;
-const FOLD_TRANSITION_MS = 750;
+const CROSSFADE_MS = 550;
 const ZOOM_TRANSITION_MS = 550;
 // The logo/text don't appear until the zoom-through is mostly finished, so
 // they don't visibly pop in while the book is still rushing forward.
@@ -19,36 +21,6 @@ const LOGO_REVEAL_DELAY_MS = 420;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
-
-// The website's actual primary blue (see --primary in styles.css) as a
-// flat solid fill, plus a darker shade of the same hue for the 3D
-// spine-effect shading, and a light-blue accent for the page divider.
-const COVER_BLUE = "oklch(0.66 0.145 245)";
-const SPINE_SHADE = "oklch(0.48 0.13 245)";
-const DIVIDER_BLUE = "oklch(0.78 0.12 205)";
-
-// Layout, all in the 400x260 viewBox below. The book is two tall
-// rectangles meeting at HINGE_X: a static one on the right ("the second
-// page") and an animated one hinged at its own left edge that starts
-// exactly overlapping the static one (so closed, it reads as one plain
-// rectangle) and swings open to the left.
-const HINGE_X = 200;
-const PAGE_Y = 30;
-const PAGE_HEIGHT = 200;
-const PAGE_WIDTH = 150;
-// The 3D-effect offset for the spine lines on the cover's left edge.
-const SPINE_DX = 24;
-const SPINE_DY = 10;
-
-// How far the cover swings once open -- past 90deg (edge-on) and on to
-// nearly a full flip, so it visibly sweeps away to the left rather than
-// stopping mid-turn. Positive (not negative): the cover's face swings
-// toward the viewer as it opens (like lifting a real book cover to read
-// it), rather than tipping away into the screen. Flipping the sign only
-// changes that depth direction during the motion -- the final resting
-// position (swung left) is the same either way, since cos(178deg) ==
-// cos(-178deg).
-const OPEN_SWING_DEG = 178;
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
@@ -59,90 +31,15 @@ function releaseBootCover() {
 }
 
 /**
- * A tall blue rectangle (the closed book) with a simple 3D depth effect on
- * its left edge -- two diagonal lines from the top-left and bottom-left
- * corners, connected by a third line -- representing the book's static
- * spine/binding, which never moves. The plain cover rectangle in front of
- * it is what actually flips open, hinged at the spine, swinging to the
- * left like a real book's front cover opening toward the reader. Because
- * the spine stays put and the cover ends up overlapping that same spot
- * once fully open, the cover naturally covers/hides the spine effect
- * entirely -- there's nothing left "peeking out" once open. A second,
- * static rectangle behind the cover (the "second page") is what's actually
- * revealed once the cover swings away, with a light-blue divider marking
- * the seam between it and the spine.
- */
-function BookIllustration({ open, className }: { open: boolean; className?: string }) {
-  const spineTopX = HINGE_X - SPINE_DX;
-  const spineTopY = PAGE_Y - SPINE_DY;
-  const spineBottomY = PAGE_Y + PAGE_HEIGHT - SPINE_DY;
-
-  return (
-    <span className={className} style={{ perspective: "1400px" }}>
-      <svg
-        viewBox="0 0 400 260"
-        className="h-full w-full"
-        style={{
-          transformStyle: "preserve-3d",
-          filter: `drop-shadow(0 0 24px ${COVER_BLUE.replace(")", " / 0.5)")}) drop-shadow(0 18px 30px rgba(0,0,0,0.4))`,
-        }}
-        aria-hidden
-      >
-        {/* Static second page -- always there, revealed once the cover
-            (below) swings away from on top of it. */}
-        <rect x={HINGE_X} y={PAGE_Y} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={COVER_BLUE} />
-
-        {/* Static spine/3D-effect -- never rotates. The cover (drawn after
-            this, so it paints on top) starts directly over it when closed,
-            and ends up overlapping it again once fully open, hiding it
-            completely either way. */}
-        <polygon
-          points={`${HINGE_X},${PAGE_Y} ${spineTopX},${spineTopY} ${spineTopX},${spineBottomY} ${HINGE_X},${PAGE_Y + PAGE_HEIGHT}`}
-          fill={SPINE_SHADE}
-        />
-
-        {/* Divider -- sits at the seam between the spine and the second
-            page; hidden while closed (the cover completely covers this
-            spot), revealed once the cover swings away. */}
-        <line
-          x1={HINGE_X}
-          y1={PAGE_Y - 4}
-          x2={HINGE_X}
-          y2={PAGE_Y + PAGE_HEIGHT + 4}
-          stroke={DIVIDER_BLUE}
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-
-        {/* Cover -- hinged at the spine (HINGE_X), swings open toward the
-            left (and toward the viewer -- see OPEN_SWING_DEG). Starts
-            exactly overlapping the static page + spine above, so closed it
-            reads as one plain rectangle with a visible 3D spine edge. */}
-        <g
-          style={{
-            transformOrigin: `${HINGE_X}px ${PAGE_Y + PAGE_HEIGHT / 2}px`,
-            transformStyle: "preserve-3d",
-            transform: `rotateY(${open ? OPEN_SWING_DEG : 0}deg)`,
-            transition: `transform ${FOLD_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-          }}
-        >
-          <rect x={HINGE_X} y={PAGE_Y} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={COVER_BLUE} />
-        </g>
-      </svg>
-    </span>
-  );
-}
-
-/**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: a big
- * illustrated book sits closed under a pulsing glow while the chime plays,
- * folds open on a hinge animation timed to finish right around when the
- * chime ends, then the whole book scene rushes forward and fades out (a
- * brief flash sells "passing through" the pages) as the crisp real logo (at
- * its own size, sized independently of the book) +
- * text cross-fades in on top a beat later, at which point the screen
- * becomes tappable to continue.
+ * illustrated closed-book image sits under a pulsing glow while the chime
+ * plays, cross-fades into the matching open-book illustration (background
+ * already removed from both, see src/assets) timed to finish right around
+ * when the chime ends, then the whole book scene rushes forward and fades
+ * out (a brief flash sells "passing through" the pages) as the crisp real
+ * logo (at its own size, independent of the book) + text cross-fades in on
+ * top a beat later, at which point the screen becomes tappable to continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
  * to be exactly the right behavior for the app too: it naturally resets on
@@ -202,21 +99,24 @@ export function IntroScreen() {
     setVisible(true);
   }, []);
 
-  // Preload the logo image as soon as the intro decides to show (during the
-  // "sound" phase, well before it's needed) so it's already cached by the
-  // time "logo" phase renders it -- otherwise the browser only starts
-  // fetching it right as the <img> mounts, causing a blank flash first.
+  // Preload the logo + both book images as soon as the intro decides to
+  // show (during the "sound" phase, well before each is needed) so they're
+  // already cached by the time each phase renders them -- otherwise the
+  // browser only starts fetching an image right as it first mounts,
+  // causing a blank flash first.
   useEffect(() => {
     if (!visible) return;
-    const preloadImg = new Image();
-    preloadImg.src = luminMark;
+    for (const src of [luminMark, introBookClosed, introBookOpen]) {
+      const preloadImg = new Image();
+      preloadImg.src = src;
+    }
   }, [visible]);
 
   // Step 2: once actually visible (so the <audio> element genuinely exists
-  // in the DOM), play the chime, schedule the book-opening fold to finish
-  // right around when the chime ends, and reveal the crisp final logo once
-  // it actually does (or immediately, if sound is off/unavailable -- the
-  // opening animation is an enhancement on top of the sound-synced
+  // in the DOM), play the chime, schedule the book-opening crossfade to
+  // finish right around when the chime ends, and reveal the crisp final
+  // logo once it actually does (or immediately, if sound is off/unavailable
+  // -- the opening animation is an enhancement on top of the sound-synced
   // experience, not something that needs its own no-sound fallback path).
   useEffect(() => {
     if (!visible) return;
@@ -309,7 +209,7 @@ export function IntroScreen() {
       {/* Shared crossfade area: the big book scene and the normal-size
           crisp logo occupy the same spot but are sized completely
           independently of each other -- the book is huge, the logo stays
-          its original modest size. */}
+          its own modest size. */}
       <div className="relative flex h-72 w-72 items-center justify-center sm:h-96 sm:w-96">
         {/* Big book scene -- visible through "sound"/"opening". At "logo"
             it rushes forward and fades out (scaling way up, not down) so
@@ -343,7 +243,29 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
-            <BookIllustration open={bookOpen} className="absolute inset-0 m-auto h-full w-full" />
+            {/* Closed book -- fades/settles out as the open book
+                cross-fades in on top of it. */}
+            <img
+              src={introBookClosed}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
+              style={{
+                opacity: bookOpen ? 0 : 1,
+                transform: bookOpen ? "scale(0.92)" : "scale(1)",
+              }}
+            />
+            <img
+              src={introBookOpen}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
+              style={{
+                transitionDuration: `${CROSSFADE_MS}ms`,
+                opacity: bookOpen ? 1 : 0,
+                transform: bookOpen ? "scale(1)" : "scale(1.05)",
+              }}
+            />
           </span>
         </span>
 
