@@ -17,16 +17,59 @@ function textOf(message: UIMessage): string {
     .trim();
 }
 
-/** Grabs the active tab's best-effort visible text -- run only when the
- * student explicitly taps "Read this page" (never automatically). Plain
- * innerText, which works fine for normal web pages/articles, but is only a
- * partial best-effort for Google Docs/Slides specifically: those render
- * through canvas, not accessible DOM text, so there may be little or
- * nothing to grab there depending on what Google exposes for
- * accessibility at the time. */
+/** Google Docs/Slides render the actual document through canvas, not
+ * accessible DOM text, so plain innerText only ever grabs toolbar/menu
+ * chrome there -- never the document itself. Google's own text-export
+ * endpoint gives the real content instead. Returns null for anything that
+ * isn't a Docs/Slides URL, so the caller can fall back to innerText. */
+function googleExportUrl(pageUrl: string): string | null {
+  try {
+    const url = new URL(pageUrl);
+    if (url.hostname !== "docs.google.com") return null;
+    const docMatch = /^\/document\/d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
+    if (docMatch) return `https://docs.google.com/document/d/${docMatch[1]}/export?format=txt`;
+    const slideMatch = /^\/presentation\/d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
+    if (slideMatch) return `https://docs.google.com/presentation/d/${slideMatch[1]}/export/txt`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Grabs the active tab's best-effort readable text -- run only when the
+ * student explicitly taps "Read this page" (never automatically). For
+ * Google Docs/Slides, fetches the real document text via Google's export
+ * endpoint (run *inside* the Docs/Slides tab itself via executeScript, so
+ * the fetch is same-origin and rides along on the student's own logged-in
+ * session -- no extra permissions or credentials needed beyond the
+ * activeTab access already granted by opening the popup). Everything else
+ * falls back to plain innerText, which works fine for normal articles/
+ * pages. */
 async function readActivePageText(): Promise<{ title: string; url: string; text: string } | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return null;
+
+  const exportUrl = googleExportUrl(tab.url ?? "");
+  if (exportUrl) {
+    const [exportResult] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (url: string) => {
+        try {
+          const res = await fetch(url, { credentials: "include" });
+          return res.ok ? await res.text() : null;
+        } catch {
+          return null;
+        }
+      },
+      args: [exportUrl],
+    });
+    const exported = ((exportResult?.result as string | null) ?? "").trim();
+    if (exported) {
+      return { title: tab.title ?? "", url: tab.url ?? "", text: exported.slice(0, 6000) };
+    }
+    // Export failed (e.g. not actually signed in on that tab) -- fall
+    // through to the innerText fallback below rather than returning nothing.
+  }
 
   const [result] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
