@@ -8,7 +8,7 @@
   "tintColor": "2563EB",
   "apps": [
     {
-      "name": "ClearPath",
+      "name": "ClearPath Public Beta",
       "bundleIdentifier": "ca.luminclearpath.ios",
       "developerName": "Jeevin",
       "subtitle": "Lumin AI: your academically-honest study companion",
