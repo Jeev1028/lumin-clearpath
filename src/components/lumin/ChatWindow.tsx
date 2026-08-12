@@ -1,12 +1,13 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { LuminMark } from "@/components/lumin/LuminMark";
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -33,8 +34,11 @@ export function ChatWindow({
   initialInput,
 }: Props) {
   const [input, setInput] = useState(initialInput ?? "");
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastAutoSpokenIdRef = useRef<string | null>(null);
+  const { speak, stopSpeaking } = useSoundSettings();
 
   const { messages, sendMessage, status } = useChat({
     id: threadId,
@@ -62,6 +66,41 @@ export function ChatWindow({
     const el = scrollContainerRef.current;
     el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
+
+  // Auto-read: when "Read Lumin's messages aloud" is on (see Sound
+  // settings), speak each new assistant reply once it finishes streaming.
+  useEffect(() => {
+    if (status !== "ready") return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant") return;
+    if (lastAutoSpokenIdRef.current === last.id) return;
+    const text = last.parts.map((part) => (part.type === "text" ? part.text : "")).join("");
+    if (!text) return;
+    lastAutoSpokenIdRef.current = last.id;
+    speak(text, {
+      auto: true,
+      onStart: () => setSpeakingId(last.id),
+      onEnd: () => setSpeakingId((current) => (current === last.id ? null : current)),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, status]);
+
+  useEffect(() => {
+    return () => stopSpeaking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleReadAloud(id: string, text: string) {
+    if (speakingId === id) {
+      stopSpeaking();
+      setSpeakingId(null);
+      return;
+    }
+    speak(text, {
+      onStart: () => setSpeakingId(id),
+      onEnd: () => setSpeakingId((current) => (current === id ? null : current)),
+    });
+  }
 
   function submit() {
     const text = input.trim();
@@ -112,9 +151,29 @@ export function ChatWindow({
               >
                 <div className={cn("max-w-[85%]", message.role === "user" ? "" : "w-full")}>
                   {message.role === "assistant" && (
-                    <div className="animate-badge-glow mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
-                      <Sparkles className="h-3 w-3" aria-hidden />
-                      Generative AI · Verify before relying on this
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="animate-badge-glow inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
+                        <Sparkles className="h-3 w-3" aria-hidden />
+                        Generative AI · Verify before relying on this
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleReadAloud(message.id, text)}
+                        aria-label={speakingId === message.id ? "Stop reading aloud" : "Read this message aloud"}
+                        title={speakingId === message.id ? "Stop reading aloud" : "Read aloud"}
+                        className={cn(
+                          "shrink-0 rounded-full border p-1.5 transition-colors",
+                          speakingId === message.id
+                            ? "border-accent bg-accent/10 text-accent"
+                            : "border-border/60 text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {speakingId === message.id ? (
+                          <VolumeX className="h-3.5 w-3.5" aria-hidden />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5" aria-hidden />
+                        )}
+                      </button>
                     </div>
                   )}
                   <div
@@ -143,7 +202,7 @@ export function ChatWindow({
         </div>
       </div>
 
-      <div className="border-t border-border/60 bg-background/60 p-4">
+      <div className="safe-bottom border-t border-border/60 bg-background/60 p-4">
         <div className="mx-auto flex w-full max-w-3xl items-end gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 shadow-panel">
           <Textarea
             ref={textareaRef}

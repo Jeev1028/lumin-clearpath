@@ -15,6 +15,7 @@ import { AccessibilityProvider } from "@/components/lumin/AccessibilityProvider"
 import { CommandPalette } from "@/components/lumin/CommandPalette";
 import { IntroScreen } from "@/components/lumin/IntroScreen";
 import { NoticeBanner } from "@/components/lumin/NoticeBanner";
+import { SoundSettingsProvider } from "@/components/lumin/SoundSettingsProvider";
 import { PwaRegister } from "@/components/lumin/PwaRegister";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
 import { Toaster } from "@/components/ui/sonner";
@@ -83,7 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Lumin AI — Illuminate your educational journey" },
       {
         name: "description",
@@ -147,17 +148,19 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <TutorialProvider>
-        <a href="#main-content" className="skip-to-content">
-          Skip to main content
-        </a>
-        <AccessibilityProvider />
-        <PwaRegister />
-        <IntroScreen />
-        <NoticeBanner />
-        <CommandPalette />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster position="top-center" />
+        <SoundSettingsProvider>
+          <a href="#main-content" className="skip-to-content">
+            Skip to main content
+          </a>
+          <AccessibilityProvider />
+          <PwaRegister />
+          <IntroScreen />
+          <NoticeBanner />
+          <CommandPalette />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster position="top-center" />
+        </SoundSettingsProvider>
       </TutorialProvider>
     </QueryClientProvider>
   );

@@ -26,7 +26,7 @@ export function SiteHeader({
   const { session } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
+    <header className="safe-top sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-2">
           {leading}

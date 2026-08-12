@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { LuminBookMark } from "@/components/lumin/LuminMark";
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
+import { isNativeApp } from "@/lib/native-app";
 
 const SESSION_KEY = "clearpath:intro-seen";
 const INTRO_DURATION_MS = 4500;
@@ -8,11 +10,16 @@ const FADE_MS = 500;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 /**
- * Full-screen animated "Lumin AI" intro, shown once per browser session --
- * a brief branded moment (with sound, where the browser's autoplay policy
- * allows it) before the app appears underneath. This is the same moment
- * mobile users get when the site is opened as the installed Android app,
- * since it's just the live site rendered full-screen there too.
+ * Full-screen animated "Lumin AI" intro -- a brief branded moment (with
+ * sound, where the platform's autoplay policy allows it) before the app
+ * appears underneath.
+ *
+ * On the web, it shows once per browser session (so casual visitors
+ * clicking between pages aren't repeatedly interrupted). Inside the
+ * installed app (iOS or Android), it replays on every cold launch instead,
+ * matching how a real app's splash/intro behaves -- this component only
+ * re-mounts when the native shell's WebView does a true fresh load, since
+ * in-app navigation afterward is all client-side routing.
  *
  * Skippable with a tap (which also retries audio playback, covering the
  * case where autoplay was blocked), and skipped entirely for anyone with
@@ -22,31 +29,35 @@ export function IntroScreen() {
   const [visible, setVisible] = useState(false);
   const [dismissing, setDismissing] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { prefs } = useSoundSettings();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reducedMotion = document.documentElement.getAttribute("data-reduced-motion") === "true";
     if (reducedMotion) return;
 
-    let alreadySeen = false;
-    try {
-      alreadySeen = sessionStorage.getItem(SESSION_KEY) === "1";
-    } catch {
-      // ignore -- worst case the intro just shows again this load
-    }
-    if (alreadySeen) return;
-
-    try {
-      sessionStorage.setItem(SESSION_KEY, "1");
-    } catch {
-      // ignore
+    if (!isNativeApp()) {
+      let alreadySeen = false;
+      try {
+        alreadySeen = sessionStorage.getItem(SESSION_KEY) === "1";
+      } catch {
+        // ignore -- worst case the intro just shows again this load
+      }
+      if (alreadySeen) return;
+      try {
+        sessionStorage.setItem(SESSION_KEY, "1");
+      } catch {
+        // ignore
+      }
     }
 
     setVisible(true);
-    audioRef.current?.play().catch(() => {
-      // Autoplay blocked by the browser -- the visual intro still plays
-      // silently, and tapping anywhere will retry playback.
-    });
+    if (prefs.enabled && prefs.introChime) {
+      audioRef.current?.play().catch(() => {
+        // Autoplay blocked by the platform -- the visual intro still plays
+        // silently, and tapping anywhere will retry playback.
+      });
+    }
 
     const timer = window.setTimeout(dismiss, INTRO_DURATION_MS);
     return () => window.clearTimeout(timer);
@@ -59,7 +70,9 @@ export function IntroScreen() {
   }
 
   function handleTap() {
-    void audioRef.current?.play().catch(() => {});
+    if (prefs.enabled && prefs.introChime) {
+      void audioRef.current?.play().catch(() => {});
+    }
     dismiss();
   }
 
@@ -69,7 +82,7 @@ export function IntroScreen() {
     <div
       role="presentation"
       onClick={handleTap}
-      className={`fixed inset-0 z-[200] flex cursor-pointer flex-col items-center justify-center gap-4 bg-[#0A1128] transition-opacity duration-500 ${
+      className={`safe-top fixed inset-0 z-[200] flex cursor-pointer flex-col items-center justify-center gap-4 bg-[#0A1128] transition-opacity duration-500 ${
         dismissing ? "opacity-0" : "opacity-100"
       }`}
     >

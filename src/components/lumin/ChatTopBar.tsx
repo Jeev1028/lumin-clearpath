@@ -31,7 +31,7 @@ export function ChatTopBar({
   const { session } = useAuth();
 
   return (
-    <header className="flex shrink-0 border-b border-border/50">
+    <header className="safe-top flex shrink-0 border-b border-border/50 bg-background/70">
       <div className="hidden w-72 shrink-0 items-center border-r border-sidebar-border bg-sidebar px-4 py-4 md:flex">
         <Link to="/" className="transition-transform duration-200 hover:scale-[1.02]">
           <LuminWordmark />

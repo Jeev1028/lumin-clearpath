@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -288,6 +289,7 @@ function StudyMode({
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
+  const { playTone } = useSoundSettings();
 
   useEffect(() => {
     setIndex(0);
@@ -299,6 +301,7 @@ function StudyMode({
 
   async function handleAnswer(knew: boolean) {
     if (!current) return;
+    if (knew) playTone("success");
     try {
       await recordReview(current, knew);
       setCards((prev) =>
@@ -396,6 +399,7 @@ function MatchGame({ cards }: { cards: Flashcard[] }) {
   const [mistakes, setMistakes] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedMs, setFinishedMs] = useState<number | null>(null);
+  const { playTone } = useSoundSettings();
 
   function startRound() {
     const round = shuffle(cards).slice(0, MATCH_ROUND_SIZE);
@@ -427,6 +431,7 @@ function MatchGame({ cards }: { cards: Flashcard[] }) {
       const first = tiles.find((t) => t.key === firstKey)!;
       const second = tiles.find((t) => t.key === secondKey)!;
       if (first.cardId === second.cardId) {
+        playTone("success");
         const nextMatched = new Set(matched).add(first.cardId);
         setTimeout(() => {
           setMatched(nextMatched);
@@ -436,6 +441,7 @@ function MatchGame({ cards }: { cards: Flashcard[] }) {
           }
         }, 400);
       } else {
+        playTone("error");
         setMistakes((m) => m + 1);
         setTimeout(() => setSelected([]), 700);
       }

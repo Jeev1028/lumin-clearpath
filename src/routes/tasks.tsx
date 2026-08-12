@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { StudyPlanner } from "@/components/lumin/StudyPlanner";
 import { TaskDetailDialog, type TaskDetailInfo } from "@/components/lumin/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ function isOverdue(task: Task): boolean {
 function TasksPage() {
   const navigate = useNavigate();
   const { user, loading, needsMfa } = useAuth();
+  const { playTone } = useSoundSettings();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
@@ -164,6 +166,7 @@ function TasksPage() {
 
   async function onStatus(id: string, status: TaskStatus) {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    if (status === "submitted") playTone("success");
     try {
       await updateTaskStatus(id, status);
     } catch {

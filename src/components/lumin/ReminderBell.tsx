@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, GraduationCap, MessageSquare, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,8 +29,10 @@ const TYPE_ICON: Record<string, typeof Sparkles> = {
 export function ReminderBell() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { playTone } = useSoundSettings();
   const { overdue, dueToday, total: taskTotal } = useTaskReminders();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const knownUnreadIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -40,7 +43,14 @@ export function ReminderBell() {
     function load() {
       listNotifications()
         .then((data) => {
-          if (!cancelled) setNotifications(data);
+          if (cancelled) return;
+          const unreadIds = new Set(data.filter((n) => !n.read_at).map((n) => n.id));
+          const known = knownUnreadIdsRef.current;
+          if (known && [...unreadIds].some((id) => !known.has(id))) {
+            playTone("notify");
+          }
+          knownUnreadIdsRef.current = unreadIds;
+          setNotifications(data);
         })
         .catch(() => {
           // non-fatal — the bell just won't show notifications this load
@@ -52,6 +62,7 @@ export function ReminderBell() {
       cancelled = true;
       window.removeEventListener("focus", load);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!user) return null;

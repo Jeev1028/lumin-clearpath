@@ -153,11 +153,20 @@
     border-color: var(--color-border);
   }
 
+  html {
+    background-color: var(--color-background);
+    /* Prevents iOS's elastic "rubber-band" overscroll from revealing raw
+       page background above sticky headers when running as an installed
+       app (no browser chrome there to absorb the bounce). */
+    overscroll-behavior-y: none;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
   }
 
   h1,
@@ -190,6 +199,19 @@
 
 @utility shadow-panel {
   box-shadow: var(--shadow-panel);
+}
+
+/* Extends an element's own background up into the iOS status bar / notch
+   area (and Android's equivalent) instead of stopping at the CSS viewport
+   edge, so a sticky top bar reads as "one solid bar" with no gap/seam
+   above it when running as an installed app. Requires viewport-fit=cover
+   on the viewport meta tag to report a non-zero inset. */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @utility glow-orb {

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { isNativeApp } from "@/lib/native-app";
 
 declare global {
   interface Window {
@@ -54,6 +55,15 @@ export const Route = createFileRoute("/auth")({
 
 const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | undefined;
 
+// Google refuses to run its Sign-In flow inside an embedded WebView (the
+// kind Capacitor uses on iOS) as an anti-phishing policy -- it either fails
+// outright or kicks the user out to the full Safari app, losing the app
+// context entirely. The fix native apps are expected to use: open the OAuth
+// URL in a proper in-app browser (SFSafariViewController via
+// @capacitor/browser, which Google DOES trust), and catch the redirect back
+// via a custom URL scheme instead of a same-origin redirect.
+const NATIVE_OAUTH_REDIRECT = "ca.luminclearpath.ios://auth-callback";
+
 function AuthPage() {
   const navigate = useNavigate();
   const { session, loading, needsMfa } = useAuth();
@@ -62,18 +72,91 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  const [nativeGoogleBusy, setNativeGoogleBusy] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsNative(isNativeApp());
+  }, []);
 
   useEffect(() => {
     if (loading || !session) return;
     void navigate({ to: needsMfa ? "/mfa-challenge" : "/home" });
   }, [loading, session, needsMfa, navigate]);
 
+  // Native app only: catch Google's redirect back into the app via the
+  // custom URL scheme after the in-app browser popup completes.
+  useEffect(() => {
+    if (!isNative) return;
+    let removeListener: (() => void) | undefined;
+    let cancelled = false;
+
+    void (async () => {
+      const [{ App: CapacitorApp }, { Browser }] = await Promise.all([
+        import("@capacitor/app"),
+        import("@capacitor/browser"),
+      ]);
+      if (cancelled) return;
+
+      const handle = await CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+        void (async () => {
+          if (!url.startsWith(NATIVE_OAUTH_REDIRECT)) return;
+          try {
+            const parsed = new URL(url);
+            const code = parsed.searchParams.get("code");
+            const errorDescription = parsed.searchParams.get("error_description");
+            await Browser.close().catch(() => {});
+            if (errorDescription) {
+              toast.error(errorDescription);
+              return;
+            }
+            if (!code) return;
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+            // The session-watching effect above handles routing.
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Google sign-in failed. Please try again.",
+            );
+          } finally {
+            setNativeGoogleBusy(false);
+          }
+        })();
+      });
+      removeListener = () => handle.remove();
+    })();
+
+    return () => {
+      cancelled = true;
+      removeListener?.();
+    };
+  }, [isNative]);
+
+  async function handleNativeGoogleSignIn() {
+    setNativeGoogleBusy(true);
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: NATIVE_OAUTH_REDIRECT, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error("Could not start Google sign-in.");
+      await Browser.open({ url: data.url });
+    } catch (err) {
+      setNativeGoogleBusy(false);
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+    }
+  }
+
   // Google Identity Services: a fully client-side sign-in that talks to Google
   // directly from this origin, so the account picker shows "ClearPath" (from
-  // the OAuth consent screen) instead of the Supabase project domain.
+  // the OAuth consent screen) instead of the Supabase project domain. Only
+  // used on the web / Android app (real Chrome) -- see isNative branch above
+  // for why the native iOS app needs a different flow entirely.
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || isNative) return;
 
     async function handleCredentialResponse(response: { credential: string }) {
       setBusy(true);
@@ -140,7 +223,7 @@ function AuthPage() {
     script.onload = init;
     document.head.appendChild(script);
     return () => window.removeEventListener("resize", renderGoogleButton);
-  }, [navigate]);
+  }, [navigate, isNative]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -182,8 +265,10 @@ function AuthPage() {
         <div className="glow-orb absolute -top-40 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 opacity-50" />
       </div>
 
-      <header className="mx-auto w-full max-w-6xl px-6 py-6">
-        <LuminWordmark />
+      <header className="safe-top w-full">
+        <div className="mx-auto max-w-6xl px-6 py-6">
+          <LuminWordmark />
+        </div>
       </header>
       <main id="main-content" className="flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card/80 p-8 shadow-panel backdrop-blur-sm">
@@ -273,11 +358,25 @@ function AuthPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
-                  {!GOOGLE_CLIENT_ID && (
-                    <p className="text-center text-xs text-destructive">
-                      Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
-                    </p>
+                  {isNative ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={nativeGoogleBusy}
+                      onClick={() => void handleNativeGoogleSignIn()}
+                      className="w-full border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                    >
+                      {nativeGoogleBusy ? "Opening Google sign-in…" : "Continue with Google"}
+                    </Button>
+                  ) : (
+                    <>
+                      <div ref={googleButtonRef} className="flex w-full items-center justify-center" />
+                      {!GOOGLE_CLIENT_ID && (
+                        <p className="text-center text-xs text-destructive">
+                          Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
+                        </p>
+                      )}
+                    </>
                   )}
                 </>
               )}

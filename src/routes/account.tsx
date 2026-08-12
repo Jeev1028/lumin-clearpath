@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AvatarCropDialog } from "@/components/lumin/AvatarCropDialog";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/account")({
 function AccountPage() {
   const navigate = useNavigate();
   const { user, loading, needsMfa } = useAuth();
+  const { prefs: soundPrefs, setPrefs: setSoundPrefs, playTone } = useSoundSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -494,6 +496,93 @@ function AccountPage() {
               onCheckedChange={(checked) => {
                 setHighContrast(checked);
                 void saveA11yPrefs({ highContrast: checked });
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+          <div>
+            <p className="text-sm font-semibold">Sound</p>
+            <p className="text-xs text-muted-foreground">
+              The intro chime, Lumin reading replies aloud, notification chimes and small UI
+              sound effects. These also apply on the ClearPath app.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm">All sounds</p>
+              <p className="text-xs text-muted-foreground">Master switch for everything below.</p>
+            </div>
+            <Switch
+              checked={soundPrefs.enabled}
+              onCheckedChange={(checked) => {
+                setSoundPrefs({ enabled: checked });
+                if (checked) playTone("click");
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Intro chime</p>
+              <p className="text-xs text-muted-foreground">
+                The short piano sound when the app opens.
+              </p>
+            </div>
+            <Switch
+              checked={soundPrefs.introChime}
+              disabled={!soundPrefs.enabled}
+              onCheckedChange={(checked) => setSoundPrefs({ introChime: checked })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Read Lumin&apos;s replies aloud</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically speaks each new chat reply. You can also tap the speaker icon on
+                any message to hear it on demand, regardless of this setting.
+              </p>
+            </div>
+            <Switch
+              checked={soundPrefs.readMessagesAloud}
+              disabled={!soundPrefs.enabled}
+              onCheckedChange={(checked) => setSoundPrefs({ readMessagesAloud: checked })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Notification sound</p>
+              <p className="text-xs text-muted-foreground">
+                A short chime when a new notification or reminder arrives.
+              </p>
+            </div>
+            <Switch
+              checked={soundPrefs.notificationSound}
+              disabled={!soundPrefs.enabled}
+              onCheckedChange={(checked) => {
+                setSoundPrefs({ notificationSound: checked });
+                if (checked) playTone("notify");
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">UI sound effects</p>
+              <p className="text-xs text-muted-foreground">
+                Small tones for things like completing a task or matching flashcards.
+              </p>
+            </div>
+            <Switch
+              checked={soundPrefs.uiEffects}
+              disabled={!soundPrefs.enabled}
+              onCheckedChange={(checked) => {
+                setSoundPrefs({ uiEffects: checked });
+                if (checked) playTone("success");
               }}
             />
           </div>
