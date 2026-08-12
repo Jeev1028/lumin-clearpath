@@ -11,49 +11,14 @@ const MAX_SOUND_WAIT_MS = 6500;
 // How long before the chime actually ends the book should start opening --
 // tuned by feel rather than tied to an exact beat timestamp in the audio.
 const OPEN_LEAD_MS = 800;
-const OPEN_TRANSITION_MS = 650;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "opening" | "logo";
 
-// Shared silhouette for both book covers, as CSS clip-path percentages
-// within their own box. Left cover drawn as-is; right cover is its
-// horizontal mirror (100% - x). The bottom vertex doubles as each cover's
-// transform-origin, so rotating around it swings the cover's top while its
-// bottom tip stays anchored -- like a cover opening at the spine.
-const LEFT_FLAP_CLIP = "polygon(19% 27.5%, 47% 40%, 50% 75%, 24% 64%)";
-const RIGHT_FLAP_CLIP = "polygon(81% 27.5%, 53% 40%, 50% 75%, 76% 64%)";
-const FLAP_ORIGIN = "50% 75%";
-
-// How far each cover rotates when closed -- empirical, tuned to read as a
-// plausible closed-book silhouette rather than derived from any specific
-// point in the (deliberately asymmetric) cover shape.
-const CLOSED_DEG = 105;
-
-// The whole book scene is tilted back on its X axis so it reads as lying
-// flat on an (invisible) table viewed from in front/above, rather than
-// standing upright facing the camera.
-const TABLE_TILT_DEG = 72;
-
-// Each cover is drawn as a small stack of layers at increasing depth
-// (translateZ), rendered inside a preserve-3d group -- under perspective,
-// that stack is what actually reads as a book with real thickness/pages
-// rather than a single flat sheet turning.
-const FLAP_LAYERS: { z: number; background: string }[] = [
-  {
-    z: -14,
-    background: "linear-gradient(160deg, rgba(37,99,235,0.55) 0%, rgba(8,13,32,0.9) 100%)",
-  },
-  {
-    z: -7,
-    background: "linear-gradient(160deg, rgba(125,211,252,0.55) 0%, rgba(37,99,235,0.55) 100%)",
-  },
-  {
-    z: 0,
-    background:
-      "linear-gradient(160deg, rgba(255,255,255,0.95) 0%, rgba(125,211,252,0.7) 55%, rgba(37,99,235,0.4) 100%)",
-  },
-];
+const NAVY = "#0A1128";
+const ACCENT = "#38BDF8";
+const ACCENT_DEEP = "#1D4ED8";
+const PAGE = "#F8FAFC";
 
 function releaseBootCover() {
   // Sets an attribute on <html> to hide the cover via CSS (styles.css)
@@ -63,16 +28,134 @@ function releaseBootCover() {
   document.documentElement.setAttribute("data-hide-boot-cover", "true");
 }
 
+/** A closed hardcover book, viewed straight-on: thick cover, a visible
+ * spine with a couple of ridge lines, and a small folded-corner page peek
+ * at the top -- reads as an actual physical book, not an abstract shape. */
+function ClosedBookIllustration({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg viewBox="0 0 200 240" className={className} style={style} aria-hidden>
+      <rect
+        x="45"
+        y="15"
+        width="130"
+        height="210"
+        rx="12"
+        fill={ACCENT}
+        stroke={NAVY}
+        strokeWidth="6"
+      />
+      <rect
+        x="45"
+        y="15"
+        width="26"
+        height="210"
+        rx="12"
+        fill={ACCENT_DEEP}
+        stroke={NAVY}
+        strokeWidth="6"
+      />
+      <line
+        x1="52"
+        y1="72"
+        x2="65"
+        y2="72"
+        stroke={NAVY}
+        strokeWidth="4"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+      <line
+        x1="52"
+        y1="122"
+        x2="65"
+        y2="122"
+        stroke={NAVY}
+        strokeWidth="4"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+      <line
+        x1="52"
+        y1="172"
+        x2="65"
+        y2="172"
+        stroke={NAVY}
+        strokeWidth="4"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+      <line
+        x1="80"
+        y1="19"
+        x2="150"
+        y2="19"
+        stroke={NAVY}
+        strokeWidth="3"
+        strokeLinecap="round"
+        opacity="0.35"
+      />
+      <path
+        d="M148,15 L178,15 L178,45 Z"
+        fill={PAGE}
+        stroke={NAVY}
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A book spread wide open: two curved covers splayed left and right, with
+ * lighter "pages" visible inset within each, and a spine crease down the
+ * middle -- the classic open-book silhouette. */
+function OpenBookIllustration({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 400 260" className={className} style={style} aria-hidden>
+      <path
+        d="M200,60 C150,15 70,10 30,45 L30,190 C70,225 150,228 200,195 Z"
+        fill={ACCENT}
+        stroke={NAVY}
+        strokeWidth="8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M200,60 C250,15 330,10 370,45 L370,190 C330,225 250,228 200,195 Z"
+        fill={ACCENT}
+        stroke={NAVY}
+        strokeWidth="8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M200,76 C162,44 104,40 50,65 L50,178 C104,201 162,204 200,180 Z"
+        fill={PAGE}
+        opacity="0.95"
+      />
+      <path
+        d="M200,76 C238,44 296,40 350,65 L350,178 C296,201 238,204 200,180 Z"
+        fill={PAGE}
+        opacity="0.95"
+      />
+      <line x1="200" y1="62" x2="200" y2="192" stroke={NAVY} strokeWidth="3" opacity="0.3" />
+    </svg>
+  );
+}
+
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
- * app (iOS/Android) -- never on the plain website. Sequence: a big 3D book
- * lies flat as if on an invisible table (tilted back on its X axis, not
- * facing the camera straight-on) under a pulsing glow while the chime
- * plays, its covers open on a hinge animation timed to finish right around
- * when the chime ends, then the whole book scene shrinks away and
- * cross-fades into the crisp real logo (at its own normal size -- NOT
- * scaled up to match the much bigger book) + text, at which point the
- * screen becomes tappable to continue.
+ * app (iOS/Android) -- never on the plain website. Sequence: a big
+ * illustrated closed book sits under a pulsing glow while the chime plays,
+ * cross-fades into a wide open-book illustration timed to finish right
+ * around when the chime ends, then the whole book scene rushes forward and
+ * fades out (a brief flash sells "passing through" the pages) as the crisp
+ * real logo (at its own normal size -- NOT scaled up to match the much
+ * bigger book) + text cross-fades in on top, at which point the screen
+ * becomes tappable to continue.
  *
  * Uses sessionStorage the same way the web previously did, which turns out
  * to be exactly the right behavior for the app too: it naturally resets on
@@ -143,7 +226,7 @@ export function IntroScreen() {
   }, [visible]);
 
   // Step 2: once actually visible (so the <audio> element genuinely exists
-  // in the DOM), play the chime, schedule the book-opening animation to
+  // in the DOM), play the chime, schedule the book-opening crossfade to
   // finish right around when the chime ends, and reveal the crisp final
   // logo once it actually does (or immediately, if sound is off/unavailable
   // -- the opening animation is an enhancement on top of the sound-synced
@@ -214,39 +297,6 @@ export function IntroScreen() {
 
   const bookOpen = phase !== "sound";
 
-  function flapGroupStyle(mirror: 1 | -1): CSSProperties {
-    const angle = bookOpen ? 0 : CLOSED_DEG * mirror;
-    return {
-      transformOrigin: FLAP_ORIGIN,
-      transformStyle: "preserve-3d",
-      transform: `rotateY(${angle}deg)`,
-      transition: `transform ${OPEN_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-    };
-  }
-
-  function renderFlap(mirror: 1 | -1) {
-    const clip = mirror === 1 ? LEFT_FLAP_CLIP : RIGHT_FLAP_CLIP;
-    return (
-      <span className="absolute inset-0" style={flapGroupStyle(mirror)}>
-        {FLAP_LAYERS.map((layer, i) => (
-          <span
-            key={i}
-            className="absolute inset-0"
-            style={{
-              clipPath: clip,
-              background: layer.background,
-              transform: `translateZ(${layer.z}px)`,
-              filter:
-                i === FLAP_LAYERS.length - 1
-                  ? "drop-shadow(0 10px 16px rgba(0,0,0,0.45))"
-                  : undefined,
-            }}
-          />
-        ))}
-      </span>
-    );
-  }
-
   return (
     <div
       role="presentation"
@@ -258,7 +308,7 @@ export function IntroScreen() {
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
 
       {/* Brief bright flash right as the book is "passed through", timed
-          to the same moment the book scene above rushes forward and the
+          to the same moment the book scene below rushes forward and the
           logo appears -- sells the sense of emerging on the other side. */}
       {phase === "logo" && (
         <span
@@ -285,7 +335,7 @@ export function IntroScreen() {
             pointerEvents: phase === "logo" ? "none" : undefined,
           }}
         >
-          <span className="relative h-full w-full" style={{ perspective: "1600px" }}>
+          <span className="relative h-full w-full">
             <span className="glow-orb animate-glow-pulse absolute inset-0 scale-125 rounded-full" />
 
             {/* Twinkling sparkles -- purely decorative, keeps the "waiting
@@ -303,32 +353,25 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
-            {/* Tilts the whole book back so it reads as lying flat on an
-                invisible table (viewed from in front/above) instead of
-                standing upright facing the camera. */}
-            <span
-              className="absolute inset-0 flex items-center justify-center"
+            {/* Closed book: visible while waiting for the chime, fades and
+                settles out as the open book crossfades in on top of it. */}
+            <ClosedBookIllustration
+              className="absolute inset-0 m-auto h-full w-full max-w-[62%] transition-all duration-500 ease-out"
               style={{
-                transformStyle: "preserve-3d",
-                transform: `rotateX(${TABLE_TILT_DEG}deg)`,
+                opacity: bookOpen ? 0 : 1,
+                transform: bookOpen ? "scale(0.9)" : "scale(1)",
               }}
-            >
-              <span className="relative h-full w-full" style={{ transformStyle: "preserve-3d" }}>
-                {/* Spine -- the book's visible "thickness" at the hinge,
-                    static, doesn't rotate with the covers. */}
-                <span
-                  className="absolute top-[24%] bottom-[22%] left-[46%] w-[8%] rounded-sm"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(226,232,240,0.9) 0%, rgba(37,99,235,0.6) 45%, rgba(8,13,32,0.9) 100%)",
-                    transform: "translateZ(-16px)",
-                    filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))",
-                  }}
-                />
-                {renderFlap(1)}
-                {renderFlap(-1)}
-              </span>
-            </span>
+            />
+
+            {/* Open book: fades and grows in once the chime is about to
+                finish, taking over from the closed book above. */}
+            <OpenBookIllustration
+              className="absolute inset-0 m-auto h-full w-full max-w-[85%] transition-all duration-500 ease-out"
+              style={{
+                opacity: bookOpen ? 1 : 0,
+                transform: bookOpen ? "scale(1)" : "scale(0.85)",
+              }}
+            />
           </span>
         </span>
 
