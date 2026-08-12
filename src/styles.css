@@ -424,6 +424,13 @@ html[data-high-contrast="true"] :focus-visible {
 
   html[data-sidebar-nav="true"] .site-header-row1 {
     flex-shrink: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  html[data-sidebar-nav="true"] .site-header-row1 > * {
+    width: 100%;
   }
 
   html[data-sidebar-nav="true"] .site-header-nav {
