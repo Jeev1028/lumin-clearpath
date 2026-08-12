@@ -447,6 +447,14 @@ html[data-high-contrast="true"] :focus-visible {
   }
 }
 
+/* Visible by default (it has to be, to cover the very first paint before
+   any JS runs) -- hidden via this attribute on <html> instead of ever being
+   removed from the DOM. See the comment on BOOT_COVER_SCRIPT in
+   __root.tsx for why removal specifically is unsafe here. */
+html[data-hide-boot-cover="true"] #native-boot-cover {
+  display: none;
+}
+
 .skip-to-content {
   position: absolute;
   left: -9999px;

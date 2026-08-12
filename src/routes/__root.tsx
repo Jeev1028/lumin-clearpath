@@ -26,26 +26,31 @@ import { Toaster } from "@/components/ui/sonner";
 // the gap between the server-rendered HTML painting (e.g. the sign-in form)
 // and IntroScreen's own effect getting a chance to run: without this, native
 // app users would briefly see whatever page they landed on flash behind the
-// intro. The matching #native-boot-cover div (rendered unconditionally, see
-// below) is what actually paints; this script only decides whether to leave
-// it up. IntroScreen itself removes the cover once it's ready to take over
-// (see its mount effect) -- this script's own removal call is just for the
-// (far more common) case where the cover isn't wanted at all, so plain web
-// visitors and native users who already saw the intro this session never
-// see so much as a flicker of it.
+// intro. The matching #native-boot-cover div (rendered unconditionally,
+// below, and ALWAYS visible by default) is what actually paints; this
+// script only decides whether to hide it early.
+//
+// Deliberately hides it via a data-* attribute on <html> (CSS-driven, see
+// styles.css) rather than ever removing/touching the div itself: that div
+// is rendered by React, and reaching in with raw DOM APIs like .remove() on
+// a node React still thinks it owns is a classic way to crash hydration --
+// React expects to find that node exactly where it left it, and having it
+// vanish out from under it broke client-side routing app-wide (every
+// <Link> silently stopped intercepting clicks, falling back to full native
+// navigations). Setting an attribute on <html> is the same safe pattern
+// AccessibilityProvider already uses elsewhere in this file's tree.
 const BOOT_COVER_SCRIPT = `
 (function () {
-  function release() {
-    var el = document.getElementById("native-boot-cover");
-    if (el) el.remove();
+  function hide() {
+    document.documentElement.setAttribute("data-hide-boot-cover", "true");
   }
   try {
     var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     var seen = false;
     try { seen = sessionStorage.getItem("clearpath:intro-seen") === "1"; } catch (e) {}
-    if (!isNative || seen) release();
+    if (!isNative || seen) hide();
   } catch (e) {
-    release();
+    hide();
   }
 })();
 `;
@@ -168,7 +173,9 @@ function RootShell({ children }: { children: ReactNode }) {
         {/* Painted immediately from the server-rendered HTML, before React
             hydrates -- see the comment on BOOT_COVER_SCRIPT above. Same
             background color as IntroScreen's own overlay so the hand-off
-            between this and the real intro is seamless. */}
+            between this and the real intro is seamless. Visible by default
+            (see styles.css) so it actually covers the very first paint;
+            hidden via the data-hide-boot-cover attribute, never removed. */}
         <div
           id="native-boot-cover"
           style={{
