@@ -114,7 +114,10 @@ export const Route = createFileRoute("/api/chat")({
           model: google("gemini-3.6-flash"),
           system: LUMIN_SYSTEM_PROMPT,
           messages: await convertToModelMessages(messages),
-          maxOutputTokens: 800,
+          // 800 was cutting off longer replies mid-sentence, especially
+          // when discussing a whole attached document/PDF (which
+          // naturally warrants a more thorough response).
+          maxOutputTokens: 2048,
           providerOptions: {
             google: {
               thinkingConfig: { thinkingLevel: "low" },
