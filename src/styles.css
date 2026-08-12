@@ -155,15 +155,6 @@
 
   html {
     background-color: var(--color-background);
-    /* Prevents iOS's elastic "rubber-band" overscroll from revealing raw
-       page background above sticky headers when running as an installed
-       app (no browser chrome there to absorb the bounce). */
-    overscroll-behavior-y: none;
-    /* The page itself should never pan sideways -- any element that
-       overflows horizontally (like the header's nav strip on narrow
-       phones) is responsible for scrolling *itself*, via .scroll-x-fade
-       below, not dragging the whole viewport with it. */
-    overflow-x: hidden;
   }
 
   body {
@@ -171,7 +162,13 @@
     color: var(--color-foreground);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
-    overscroll-behavior-y: none;
+    /* The page itself should never pan sideways -- any element that
+       overflows horizontally (like the header's nav strip on narrow
+       phones) is responsible for scrolling *itself*, via .scroll-x-contain
+       below, not dragging the whole viewport with it. Deliberately only
+       set on body, not html -- Safari uses <html>'s overflow to decide
+       the document's actual scroll root, and constraining it there has a
+       history of breaking scroll entirely in WebKit. */
     overflow-x: hidden;
   }
 

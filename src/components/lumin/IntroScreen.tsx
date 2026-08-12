@@ -1,37 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 
-import { LuminBookMark } from "@/components/lumin/LuminMark";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
-import { isNativeApp } from "@/lib/native-app";
+import { isInstalledApp } from "@/lib/native-app";
+import luminMark from "@/assets/lumin-mark.png";
 
 const SESSION_KEY = "clearpath:intro-seen";
 const FADE_MS = 500;
-// Safety net only -- normally the "ended" event moves things along. This
+// Safety net only -- normally the "ended" event moves things along.
 const MAX_SOUND_WAIT_MS = 6500;
 const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "logo";
 
 /**
- * Full-screen animated "Lumin AI" intro. Sequence: the chime plays first
- * against a plain dark screen (no logo yet), and only once it finishes (or
- * fails/times out) does the logo animate in and become tappable to
- * continue -- tapping during the sound itself does nothing on purpose.
+ * Full-screen animated "Lumin AI" intro, shown only inside the installed
+ * app (iOS/Android) -- never on the plain website. Sequence: the chime
+ * plays first against a softly pulsing glow (not a blank screen), and once
+ * it finishes (or fails/times out) the crisp logo + text reveal on top and
+ * the screen becomes tappable to continue -- tapping during the sound
+ * itself does nothing on purpose.
  *
- * Capacitor's native WKWebView config already disables iOS's "requires a
- * user gesture" media policy (mediaTypesRequiringUserActionForPlayback =
- * []), so autoplay works fine inside the installed app once the <audio>
- * element actually exists in the DOM -- the previous bug was calling
- * .play() in the same effect as the setState that mounts it, before React
- * had actually rendered it, so the ref was still null and nothing played.
- * On plain web, where autoplay may still be genuinely blocked, playback
- * failure just skips straight to the logo instead of stalling.
- *
- * On the web, it shows once per browser session (so casual visitors
- * clicking between pages aren't repeatedly interrupted). Inside the
- * installed app (iOS or Android), it replays on every cold launch instead,
- * matching how a real app's splash/intro behaves. Skipped entirely for
- * anyone with the reduced-motion accessibility preference on.
+ * Uses sessionStorage the same way the web previously did, which turns out
+ * to be exactly the right behavior for the app too: it naturally resets on
+ * a true cold launch (new WebView process = fresh session storage) but
+ * survives an in-app reload (e.g. pull-to-refresh) or simply backgrounding
+ * and returning, so the intro only replays when the app actually restarts.
  */
 export function IntroScreen() {
   const [visible, setVisible] = useState(false);
@@ -43,22 +36,22 @@ export function IntroScreen() {
   // Step 1: decide whether the intro should show at all.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!isInstalledApp()) return; // never on the plain website
+
     const reducedMotion = document.documentElement.getAttribute("data-reduced-motion") === "true";
     if (reducedMotion) return;
 
-    if (!isNativeApp()) {
-      let alreadySeen = false;
-      try {
-        alreadySeen = sessionStorage.getItem(SESSION_KEY) === "1";
-      } catch {
-        // ignore -- worst case the intro just shows again this load
-      }
-      if (alreadySeen) return;
-      try {
-        sessionStorage.setItem(SESSION_KEY, "1");
-      } catch {
-        // ignore
-      }
+    let alreadySeen = false;
+    try {
+      alreadySeen = sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      // ignore -- worst case the intro just shows again this load
+    }
+    if (alreadySeen) return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // ignore
     }
 
     setVisible(true);
@@ -87,9 +80,8 @@ export function IntroScreen() {
 
     audio.addEventListener("ended", showLogo);
     audio.play().catch(() => {
-      // Autoplay blocked (can happen on plain web) -- don't leave the
-      // user staring at a blank screen waiting for sound that'll never
-      // come.
+      // Autoplay blocked -- don't leave the user staring at a screen
+      // waiting for sound that'll never come.
       showLogo();
     });
     const fallback = window.setTimeout(showLogo, MAX_SOUND_WAIT_MS);
@@ -121,9 +113,23 @@ export function IntroScreen() {
       } ${dismissing ? "opacity-0" : "opacity-100"}`}
     >
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
+
+      {/* Present throughout both phases so the sound-only moment still has
+          something happening on screen -- a soft ambient pulse rather than
+          the crisp icon, which only reveals once the chime finishes. */}
+      <span aria-hidden className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
+        <span className="glow-orb animate-glow-pulse absolute inset-0 scale-150 rounded-full" />
+        {phase === "logo" && (
+          <img
+            src={luminMark}
+            alt="Lumin AI logo"
+            className="animate-intro-in relative h-full w-full rounded-xl shadow-glow ring-1 ring-white/10"
+          />
+        )}
+      </span>
+
       {phase === "logo" && (
         <>
-          <LuminBookMark className="animate-intro-in h-28 w-28 sm:h-32 sm:w-32" />
           <div
             className="animate-intro-text-in text-center"
             style={{ animationDelay: "0.15s", animationFillMode: "both" }}
