@@ -50,40 +50,86 @@ function googlePdfExportUrl(info: { kind: "document" | "presentation"; id: strin
     : `https://docs.google.com/presentation/d/${info.id}/export/pdf`;
 }
 
-/** Fetches a Google export URL directly from the extension's own context
- * (not injected into the tab) -- this matters specifically because export
- * downloads sometimes redirect through a different Google host to stream
- * the file, and a page-context fetch() enforces CORS on that redirect
- * target the same as any other cross-origin sub-request (causing an
- * opaque "Failed to fetch"). Extension pages with docs.google.com in
- * host_permissions are exempt from that -- and still send the student's
- * real session cookies via credentials: "include", since cookies aren't
- * scoped to a particular execution context, just the browser profile. */
-async function fetchWithGoogleSession(url: string): Promise<Response | null> {
+/** Google's export endpoint often 302s to a per-file CDN host (e.g.
+ * "doc-xx-xx-docstext.googleusercontent.com") to actually stream larger
+ * files, with the access token baked into that redirect URL itself rather
+ * than requiring cookies there. That's normally invisible -- but a
+ * credentialed fetch() (needed on the *first* hop, to identify the signed-
+ * in student) automatically carries "credentials: include" through the
+ * whole redirect chain, and that CDN host responds with a wildcard
+ * "Access-Control-Allow-Origin: *", which the fetch spec explicitly
+ * forbids combining with credentials (for good reason -- a wildcard +
+ * credentials would leak credentialed responses to literally anyone).
+ * There's no way to change the credentials mode mid-redirect with fetch().
+ *
+ * chrome.webRequest.onBeforeRedirect observes the *actual network event*
+ * independent of how fetch() itself handles/rejects it, so it can capture
+ * that CDN redirect URL. The first (credentialed) request is then
+ * expected to fail once it reaches the CDN leg -- that's fine, it's only
+ * there to make the browser perform the request and trigger the redirect.
+ * The CDN URL is then fetched separately and uncredentialed (its token
+ * already grants access, no cookies needed), which the wildcard header is
+ * perfectly valid for. */
+function captureGoogleExportRedirect(exportUrl: string, timeoutMs = 15000): Promise<string | null> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value: string | null) => {
+      if (done) return;
+      done = true;
+      chrome.webRequest.onBeforeRedirect.removeListener(listener);
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const listener = (details: chrome.webRequest.WebRedirectionResponseDetails) => {
+      if (details.url === exportUrl) finish(details.redirectUrl);
+    };
+    chrome.webRequest.onBeforeRedirect.addListener(listener, { urls: ["https://docs.google.com/*"] });
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    fetch(exportUrl, { credentials: "include" }).catch(() => {
+      // Expected once the (still-credentialed) request reaches the CDN
+      // leg -- the redirect itself was already captured above by then.
+    });
+  });
+}
+
+async function fetchGoogleExportBlob(exportUrl: string): Promise<Blob | null> {
   try {
-    const res = await fetch(url, { credentials: "include" });
+    // Small exports are sometimes served straight from docs.google.com
+    // with no redirect at all -- try that first since it's simplest.
+    const direct = await fetch(exportUrl, { credentials: "include" });
+    if (direct.ok) return await direct.blob();
+  } catch {
+    // Falls through to the redirect-capture path below.
+  }
+
+  const cdnUrl = await captureGoogleExportRedirect(exportUrl);
+  if (!cdnUrl) {
+    console.warn("[extension] Google export failed: no redirect captured for", exportUrl);
+    return null;
+  }
+  try {
+    const res = await fetch(cdnUrl, { credentials: "omit" });
     if (!res.ok) {
-      console.warn("[extension] Google export failed: http", res.status, url);
+      console.warn("[extension] Google export CDN fetch failed: http", res.status, cdnUrl);
       return null;
     }
-    return res;
+    return await res.blob();
   } catch (err) {
-    console.warn("[extension] Google export failed:", err, url);
+    console.warn("[extension] Google export CDN fetch failed:", err, cdnUrl);
     return null;
   }
 }
 
 async function fetchGoogleDocText(exportUrl: string): Promise<string | null> {
-  const res = await fetchWithGoogleSession(exportUrl);
-  if (!res) return null;
-  const text = (await res.text()).trim();
+  const blob = await fetchGoogleExportBlob(exportUrl);
+  if (!blob) return null;
+  const text = (await blob.text()).trim();
   return text || null;
 }
 
 async function fetchGoogleDocAsPdfDataUrl(exportUrl: string): Promise<string | null> {
-  const res = await fetchWithGoogleSession(exportUrl);
-  if (!res) return null;
-  const blob = await res.blob();
+  const blob = await fetchGoogleExportBlob(exportUrl);
+  if (!blob) return null;
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);

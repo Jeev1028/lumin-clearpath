@@ -21,7 +21,7 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage", "activeTab", "scripting", "identity"],
+  "permissions": ["storage", "activeTab", "scripting", "identity", "webRequest"],
   "host_permissions": [
     "https://luminclearpath.ca/*",
     "https://*.supabase.co/*",
