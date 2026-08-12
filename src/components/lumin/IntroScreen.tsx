@@ -12,6 +12,10 @@ const AUDIO_SRC = "/audio/lumin-intro.mp3";
 
 type Phase = "sound" | "logo";
 
+function releaseBootCover() {
+  document.getElementById("native-boot-cover")?.remove();
+}
+
 /**
  * Full-screen animated "Lumin AI" intro, shown only inside the installed
  * app (iOS/Android) -- never on the plain website. Sequence: the chime
@@ -25,6 +29,14 @@ type Phase = "sound" | "logo";
  * a true cold launch (new WebView process = fresh session storage) but
  * survives an in-app reload (e.g. pull-to-refresh) or simply backgrounding
  * and returning, so the intro only replays when the app actually restarts.
+ *
+ * Note this component's own "should it show" decision only runs after React
+ * mounts -- which is *after* the server-rendered page (e.g. the sign-in
+ * form) has already painted, so on its own this would flash that page for a
+ * moment on every cold launch. __root.tsx's raw #native-boot-cover div
+ * covers that gap (it's plain HTML, painted before any JS runs at all);
+ * this component is responsible for releasing it the instant it's ready to
+ * take over, on every code path below, not just the "show intro" one.
  */
 export function IntroScreen() {
   const [visible, setVisible] = useState(false);
@@ -36,10 +48,16 @@ export function IntroScreen() {
   // Step 1: decide whether the intro should show at all.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isInstalledApp()) return; // never on the plain website
+    if (!isInstalledApp()) {
+      releaseBootCover(); // plain website -- never wanted a cover at all
+      return;
+    }
 
     const reducedMotion = document.documentElement.getAttribute("data-reduced-motion") === "true";
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      releaseBootCover();
+      return;
+    }
 
     let alreadySeen = false;
     try {
@@ -47,13 +65,20 @@ export function IntroScreen() {
     } catch {
       // ignore -- worst case the intro just shows again this load
     }
-    if (alreadySeen) return;
+    if (alreadySeen) {
+      releaseBootCover();
+      return;
+    }
     try {
       sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
       // ignore
     }
 
+    // This component's own overlay is about to render on this same update,
+    // so handing off from the raw cover to it right here is seamless (both
+    // are the same solid navy background).
+    releaseBootCover();
     setVisible(true);
   }, []);
 

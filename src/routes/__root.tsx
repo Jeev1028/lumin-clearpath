@@ -21,6 +21,35 @@ import { PwaRegister } from "@/components/lumin/PwaRegister";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
 import { Toaster } from "@/components/ui/sonner";
 
+// Inline (unminified is fine -- it's tiny) script that runs synchronously as
+// soon as it's parsed, before React ever mounts. It exists purely to close
+// the gap between the server-rendered HTML painting (e.g. the sign-in form)
+// and IntroScreen's own effect getting a chance to run: without this, native
+// app users would briefly see whatever page they landed on flash behind the
+// intro. The matching #native-boot-cover div (rendered unconditionally, see
+// below) is what actually paints; this script only decides whether to leave
+// it up. IntroScreen itself removes the cover once it's ready to take over
+// (see its mount effect) -- this script's own removal call is just for the
+// (far more common) case where the cover isn't wanted at all, so plain web
+// visitors and native users who already saw the intro this session never
+// see so much as a flicker of it.
+const BOOT_COVER_SCRIPT = `
+(function () {
+  function release() {
+    var el = document.getElementById("native-boot-cover");
+    if (el) el.remove();
+  }
+  try {
+    var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    var seen = false;
+    try { seen = sessionStorage.getItem("clearpath:intro-seen") === "1"; } catch (e) {}
+    if (!isNative || seen) release();
+  } catch (e) {
+    release();
+  }
+})();
+`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -136,6 +165,20 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        {/* Painted immediately from the server-rendered HTML, before React
+            hydrates -- see the comment on BOOT_COVER_SCRIPT above. Same
+            background color as IntroScreen's own overlay so the hand-off
+            between this and the real intro is seamless. */}
+        <div
+          id="native-boot-cover"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            backgroundColor: "#0A1128",
+          }}
+        />
+        <script dangerouslySetInnerHTML={{ __html: BOOT_COVER_SCRIPT }} />
         {children}
         <Scripts />
       </body>
