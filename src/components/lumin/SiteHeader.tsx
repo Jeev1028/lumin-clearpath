@@ -19,6 +19,17 @@ const links = [
   { to: "/chat", label: "Lumin AI" },
 ] as const;
 
+// Class names below (site-header, site-header-inner, site-header-row1,
+// site-header-nav) exist purely as CSS hooks for the "sidebar navigation"
+// accessibility setting (styles.css, gated behind the
+// html[data-sidebar-nav="true"] attribute + a min-width/landscape media
+// query) -- they don't carry any styling on their own, Tailwind utility
+// classes still do all the normal top-bar styling. This lets every page
+// using SiteHeader switch to a left sidebar layout for free, without each
+// route needing its own sidebar-aware markup: the CSS repositions this
+// header to a fixed left column and reflows its children to stack
+// vertically, and separately gives #main-content (present on every page
+// that renders SiteHeader) a matching left margin.
 export function SiteHeader({
   leading,
   trailing,
@@ -26,9 +37,9 @@ export function SiteHeader({
   const { session } = useAuth();
 
   return (
-    <header className="safe-top sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-6 py-4">
-        <div className="flex items-center justify-between gap-3">
+    <header className="site-header safe-top sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
+      <div className="site-header-inner mx-auto max-w-6xl px-6 py-4">
+        <div className="site-header-row1 flex items-center justify-between gap-3">
           <div className="flex min-w-0 shrink items-center gap-2">
             {leading}
             <Link
@@ -70,10 +81,18 @@ export function SiteHeader({
             work with (rather than being squeezed to a sliver next to the
             logo/account icons) -- on narrow phones this scrolls
             horizontally within itself; on desktop it's wide enough that
-            every link just fits with no scrolling needed. */}
-        <nav className="scroll-x-contain mt-3 flex items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1">
+            every link just fits with no scrolling needed. In sidebar mode
+            (see the class comment above) this becomes a vertical stack
+            instead. */}
+        <nav className="site-header-nav scroll-x-contain mt-3 flex items-center gap-1 rounded-full border border-border/60 bg-card/40 p-1">
           {links.map((link) => (
-            <Button key={link.to} asChild variant="ghost" size="sm" className="shrink-0 rounded-full">
+            <Button
+              key={link.to}
+              asChild
+              variant="ghost"
+              size="sm"
+              className="shrink-0 rounded-full"
+            >
               <Link to={link.to} activeProps={{ className: "!bg-secondary/70 text-foreground" }}>
                 {link.label}
               </Link>

@@ -50,6 +50,7 @@ function AccountPage() {
   const [textSize, setTextSize] = useState<TextSize>("default");
   const [reducedMotion, setReducedMotion] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
+  const [sidebarNav, setSidebarNav] = useState(false);
   const [savingA11yPref, setSavingA11yPref] = useState(false);
 
   const [mfaFactors, setMfaFactors] = useState<Factor[]>([]);
@@ -85,6 +86,7 @@ function AccountPage() {
     setTextSize((meta["a11y_text_size"] as TextSize) || "default");
     setReducedMotion(Boolean(meta["a11y_reduced_motion"]));
     setHighContrast(Boolean(meta["a11y_high_contrast"]));
+    setSidebarNav(Boolean(meta["a11y_sidebar_nav"]));
     void loadFactors();
   }, [loading, user, needsMfa, navigate]);
 
@@ -92,7 +94,9 @@ function AccountPage() {
     const { data, error } = await supabase.auth.mfa.listFactors();
     if (error) return;
     setMfaFactors(data.all);
-    const hasVerifiedTotp = data.all.some((f) => f.factor_type === "totp" && f.status === "verified");
+    const hasVerifiedTotp = data.all.some(
+      (f) => f.factor_type === "totp" && f.status === "verified",
+    );
     if (hasVerifiedTotp) await loadBackupStatus();
   }
 
@@ -154,6 +158,7 @@ function AccountPage() {
     textSize?: TextSize;
     reducedMotion?: boolean;
     highContrast?: boolean;
+    sidebarNav?: boolean;
   }) {
     setSavingA11yPref(true);
     try {
@@ -162,6 +167,7 @@ function AccountPage() {
           a11y_text_size: next.textSize ?? textSize,
           a11y_reduced_motion: next.reducedMotion ?? reducedMotion,
           a11y_high_contrast: next.highContrast ?? highContrast,
+          a11y_sidebar_nav: next.sidebarNav ?? sidebarNav,
         },
       });
       if (error) throw error;
@@ -173,6 +179,8 @@ function AccountPage() {
         html.setAttribute("data-reduced-motion", String(next.reducedMotion));
       if (next.highContrast !== undefined)
         html.setAttribute("data-high-contrast", String(next.highContrast));
+      if (next.sidebarNav !== undefined)
+        html.setAttribute("data-sidebar-nav", String(next.sidebarNav));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save that preference.");
     } finally {
@@ -499,14 +507,33 @@ function AccountPage() {
               }}
             />
           </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Sidebar navigation</p>
+              <p className="text-xs text-muted-foreground">
+                On wide screens (a web browser window) or a device turned sideways, show navigation
+                as a sidebar instead of a top bar. Stays a top bar on narrow portrait screens either
+                way.
+              </p>
+            </div>
+            <Switch
+              checked={sidebarNav}
+              disabled={savingA11yPref}
+              onCheckedChange={(checked) => {
+                setSidebarNav(checked);
+                void saveA11yPrefs({ sidebarNav: checked });
+              }}
+            />
+          </div>
         </div>
 
         <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
           <div>
             <p className="text-sm font-semibold">Sound</p>
             <p className="text-xs text-muted-foreground">
-              The intro chime, Lumin reading replies aloud, notification chimes and small UI
-              sound effects. These also apply on the ClearPath app.
+              The intro chime, Lumin reading replies aloud, notification chimes and small UI sound
+              effects. These also apply on the ClearPath app.
             </p>
           </div>
 
@@ -542,8 +569,8 @@ function AccountPage() {
             <div>
               <p className="text-sm">Read Lumin&apos;s replies aloud</p>
               <p className="text-xs text-muted-foreground">
-                Automatically speaks each new chat reply. You can also tap the speaker icon on
-                any message to hear it on demand, regardless of this setting.
+                Automatically speaks each new chat reply. You can also tap the speaker icon on any
+                message to hear it on demand, regardless of this setting.
               </p>
             </div>
             <Switch
@@ -633,7 +660,10 @@ function AccountPage() {
           </div>
 
           {enrollData && (
-            <form onSubmit={handleVerifyEnroll} className="mt-6 space-y-4 border-t border-border/60 pt-6">
+            <form
+              onSubmit={handleVerifyEnroll}
+              className="mt-6 space-y-4 border-t border-border/60 pt-6"
+            >
               <p className="text-sm text-muted-foreground">
                 Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password,
                 etc.), or enter the code manually. Then confirm it below.

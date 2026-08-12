@@ -135,7 +135,7 @@ function Index() {
 
       <SiteHeader />
 
-      <main>
+      <main id="main-content">
         <section className="mx-auto max-w-3xl px-6 pt-20 pb-24 text-center">
           <LuminMark className="animate-float mx-auto mb-8 h-24 w-24 sm:h-28 sm:w-28" />
           <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-1.5 text-xs tracking-widest text-muted-foreground uppercase">

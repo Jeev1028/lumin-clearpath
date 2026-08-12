@@ -28,6 +28,7 @@ import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiCalendarFeedRouteImport } from './routes/api/calendar-feed'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiGoogleOauthExchangeRouteImport } from './routes/api/google-oauth-exchange'
 import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge-graph'
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
@@ -158,6 +159,11 @@ const ApiCalendarFeedRoute = ApiCalendarFeedRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoogleOauthExchangeRoute = ApiGoogleOauthExchangeRouteImport.update({
+  id: '/api/google-oauth-exchange',
+  path: '/api/google-oauth-exchange',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiKnowledgeGraphRoute = ApiKnowledgeGraphRouteImport.update({
@@ -371,6 +377,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
   '/api/knowledge-graph': typeof ApiKnowledgeGraphRoute
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
@@ -545,6 +554,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/calendar-feed'
     | '/api/chat'
+    | '/api/google-oauth-exchange'
     | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/calendar-feed'
     | '/api/chat'
+    | '/api/google-oauth-exchange'
     | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
@@ -659,6 +670,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/calendar-feed'
     | '/api/chat'
+    | '/api/google-oauth-exchange'
     | '/api/knowledge-graph'
     | '/api/site-chat'
     | '/api/study-plan'
@@ -717,6 +729,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiCalendarFeedRoute: typeof ApiCalendarFeedRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
+  ApiGoogleOauthExchangeRoute: typeof ApiGoogleOauthExchangeRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiSiteChatRoute: typeof ApiSiteChatRoute
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
@@ -887,6 +900,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-oauth-exchange': {
+      id: '/api/google-oauth-exchange'
+      path: '/api/google-oauth-exchange'
+      fullPath: '/api/google-oauth-exchange'
+      preLoaderRoute: typeof ApiGoogleOauthExchangeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/knowledge-graph': {
@@ -1176,6 +1196,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiCalendarFeedRoute: ApiCalendarFeedRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
+  ApiGoogleOauthExchangeRoute: ApiGoogleOauthExchangeRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiSiteChatRoute: ApiSiteChatRoute,
   ApiStudyPlanRoute: ApiStudyPlanRoute,

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { registerPlugin } from "@capacitor/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { LuminWordmark } from "@/components/lumin/LuminMark";
@@ -31,34 +31,6 @@ interface NativeAuthPlugin {
 }
 const NativeAuth = registerPlugin<NativeAuthPlugin>("NativeAuth");
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: { credential: string }) => void;
-            use_fedcm_for_prompt?: boolean;
-          }) => void;
-          renderButton: (
-            parent: HTMLElement,
-            options: {
-              type?: "standard" | "icon";
-              theme?: "outline" | "filled_blue" | "filled_black";
-              size?: "large" | "medium" | "small";
-              text?: "signin_with" | "signup_with" | "continue_with" | "signin";
-              shape?: "rectangular" | "pill" | "circle" | "square";
-              logo_alignment?: "left" | "center";
-              width?: string | number;
-            },
-          ) => void;
-        };
-      };
-    };
-  }
-}
-
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
@@ -81,7 +53,13 @@ const GOOGLE_CLIENT_ID = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | un
 // secret and expects the PKCE flow used below.
 const GOOGLE_IOS_CLIENT_ID = import.meta.env["VITE_GOOGLE_IOS_CLIENT_ID"] as string | undefined;
 
-// --- PKCE helpers (Web Crypto is available inside the WKWebView) ---------
+// sessionStorage key holding the in-flight web/Android PKCE state while the
+// page is away at accounts.google.com -- read back once Google redirects to
+// redirectUri (this same /auth page) with ?code=...
+const GOOGLE_PKCE_KEY = "clearpath:google-pkce";
+
+// --- PKCE helpers (Web Crypto is available in every browser and in the
+// WKWebView Capacitor uses on iOS) ------------------------------------------
 
 function base64UrlEncode(bytes: ArrayBuffer): string {
   const arr = new Uint8Array(bytes);
@@ -101,9 +79,9 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(digest);
 }
 
-type NativeGoogleStage = "idle" | "opening" | "exchanging" | "signing-in";
+type GoogleStage = "idle" | "opening" | "exchanging" | "signing-in";
 
-const NATIVE_GOOGLE_STAGE_LABEL: Record<NativeGoogleStage, string> = {
+const GOOGLE_STAGE_LABEL: Record<GoogleStage, string> = {
   idle: "Continue with Google",
   opening: "Opening Google sign-in…",
   exchanging: "Finishing sign-in…",
@@ -119,8 +97,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [isNative, setIsNative] = useState(false);
-  const [nativeGoogleStage, setNativeGoogleStage] = useState<NativeGoogleStage>("idle");
-  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const [googleStage, setGoogleStage] = useState<GoogleStage>("idle");
 
   useEffect(() => {
     setIsNative(isNativeApp());
@@ -154,7 +131,7 @@ function AuthPage() {
       );
       return;
     }
-    setNativeGoogleStage("opening");
+    setGoogleStage("opening");
     try {
       const codeVerifier = randomUrlSafeString(64);
       const codeChallenge = await sha256Base64Url(codeVerifier);
@@ -197,7 +174,7 @@ function AuthPage() {
       if (errorDescription) throw new Error(`[google-redirect] ${errorDescription}`);
       if (!code) throw new Error("[google-redirect] No authorization code received.");
 
-      setNativeGoogleStage("exchanging");
+      setGoogleStage("exchanging");
       let idToken: string;
       try {
         const res = await NativeAuth.exchangeGoogleCode({
@@ -212,7 +189,7 @@ function AuthPage() {
         throw new Error(`[exchangeGoogleCode] ${msg}`);
       }
 
-      setNativeGoogleStage("signing-in");
+      setGoogleStage("signing-in");
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: idToken,
@@ -225,84 +202,133 @@ function AuthPage() {
         err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
       if (message !== "cancelled") toast.error(message);
     } finally {
-      setNativeGoogleStage("idle");
+      setGoogleStage("idle");
     }
   }
 
-  // Google Identity Services: a fully client-side sign-in that talks to Google
-  // directly from this origin, so the account picker shows "ClearPath" (from
-  // the OAuth consent screen) instead of the Supabase project domain. Only
-  // used on the web / Android app (real Chrome) -- see isNative branch above
-  // for why the native iOS app needs a different flow entirely.
+  // Web / Android: a full OAuth 2.0 authorization-code (+ PKCE) redirect,
+  // the same kind of flow as the native one above -- NOT Google Identity
+  // Services' lightweight "Sign In" widget/button, which used to be used
+  // here. That widget is built on Google's newer FedCM/Identity APIs, which
+  // are deliberately designed to show the *calling site's own domain*
+  // rather than the OAuth consent screen's configured "Application name" on
+  // its account-chooser screen, as an anti-phishing measure -- there's no
+  // config that changes that, it's simply how that specific API behaves.
+  // The full consent-screen flow doesn't have that restriction, which is
+  // why native already used it and why this switches web/Android to match:
+  // both now show "Lumin ClearPath" (the real app name) instead of
+  // "luminclearpath.ca" (the raw domain) on Google's account picker.
+  //
+  // Unlike the native flow, this exchanges the code for an ID token via a
+  // server route (see src/routes/api/google-oauth-exchange.ts) rather than
+  // doing it directly from the browser: the web OAuth client has a real
+  // client secret (unlike the iOS one), so there's no reason to expose that
+  // to the browser when a server round-trip avoids it entirely.
+  async function handleWebGoogleSignIn() {
+    if (!GOOGLE_CLIENT_ID) {
+      toast.error("Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).");
+      return;
+    }
+    setGoogleStage("opening");
+    try {
+      const codeVerifier = randomUrlSafeString(64);
+      const codeChallenge = await sha256Base64Url(codeVerifier);
+      const nonce = randomUrlSafeString(32);
+      const state = randomUrlSafeString(24);
+      const redirectUri = `${window.location.origin}/auth`;
+
+      sessionStorage.setItem(
+        GOOGLE_PKCE_KEY,
+        JSON.stringify({ codeVerifier, nonce, state, redirectUri }),
+      );
+
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", "openid email profile");
+      authUrl.searchParams.set("code_challenge", codeChallenge);
+      authUrl.searchParams.set("code_challenge_method", "S256");
+      authUrl.searchParams.set("nonce", nonce);
+      authUrl.searchParams.set("state", state);
+      // Surfaces Google's other signed-in accounts in this browser as a
+      // picker instead of silently reusing whichever was used last.
+      authUrl.searchParams.set("prompt", "select_account");
+
+      window.location.href = authUrl.toString();
+      // Execution effectively stops here -- the page is navigating away.
+    } catch (err) {
+      setGoogleStage("idle");
+      toast.error(err instanceof Error ? err.message : "Could not start Google sign-in.");
+    }
+  }
+
+  // Catches the redirect back from handleWebGoogleSignIn above (Google
+  // appends ?code=...&state=... to redirectUri, which is this same page).
+  // Native sign-in never touches the URL like this, so this is safe to run
+  // unconditionally regardless of isNative.
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || isNative) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const errorDescription = params.get("error_description");
+    const returnedState = params.get("state");
+    if (!code && !errorDescription) return;
 
-    async function handleCredentialResponse(response: { credential: string }) {
-      setBusy(true);
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: response.credential,
-      });
-      if (error) {
-        setBusy(false);
-        toast.error("Google sign-in failed. Please try again.");
-        return;
+    // Strip the query string immediately so a page reload can't try to
+    // reuse an already-spent (or stale) authorization code.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    (async () => {
+      setGoogleStage("exchanging");
+      try {
+        if (errorDescription) throw new Error(errorDescription);
+
+        const raw = sessionStorage.getItem(GOOGLE_PKCE_KEY);
+        sessionStorage.removeItem(GOOGLE_PKCE_KEY);
+        if (!raw) throw new Error("Your sign-in session expired — please try again.");
+        const stored = JSON.parse(raw) as {
+          codeVerifier: string;
+          nonce: string;
+          state: string;
+          redirectUri: string;
+        };
+        if (!returnedState || returnedState !== stored.state) {
+          throw new Error("Could not verify this sign-in — please try again.");
+        }
+        if (!code) throw new Error("No authorization code received.");
+
+        const res = await fetch("/api/google-oauth-exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            codeVerifier: stored.codeVerifier,
+            redirectUri: stored.redirectUri,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || "Could not complete Google sign-in.");
+        }
+        const { idToken } = (await res.json()) as { idToken: string };
+
+        setGoogleStage("signing-in");
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken,
+          nonce: stored.nonce,
+        });
+        if (error) throw new Error(error.message);
+        // The session-watching effect above handles routing from here.
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Google sign-in failed. Please try again.",
+        );
+      } finally {
+        setGoogleStage("idle");
       }
-      // The session-watching effect above handles routing (including to
-      // the MFA challenge if this account has 2FA enabled).
-    }
-
-    // Google's button needs a fixed pixel width — measure the actual
-    // container so it never overflows narrower phone screens, and
-    // re-measure on resize/orientation change.
-    function renderGoogleButton() {
-      if (!window.google || !googleButtonRef.current) return;
-      const available = googleButtonRef.current.offsetWidth || 360;
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "filled_black",
-        size: "large",
-        shape: "pill",
-        text: "continue_with",
-        logo_alignment: "left",
-        width: Math.min(360, available),
-      });
-    }
-
-    function init() {
-      if (!window.google || !googleButtonRef.current) return;
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID!,
-        callback: (response) => void handleCredentialResponse(response),
-        use_fedcm_for_prompt: true,
-      });
-      renderGoogleButton();
-    }
-
-    window.addEventListener("resize", renderGoogleButton);
-
-    if (window.google) {
-      init();
-      return () => window.removeEventListener("resize", renderGoogleButton);
-    }
-
-    const existing = document.getElementById("google-identity-script");
-    if (existing) {
-      existing.addEventListener("load", init);
-      return () => {
-        existing.removeEventListener("load", init);
-        window.removeEventListener("resize", renderGoogleButton);
-      };
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-identity-script";
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = init;
-    document.head.appendChild(script);
-    return () => window.removeEventListener("resize", renderGoogleButton);
-  }, [navigate, isNative]);
+    })();
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -442,28 +468,21 @@ function AuthPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  {isNative ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={nativeGoogleStage !== "idle"}
-                      onClick={() => void handleNativeGoogleSignIn()}
-                      className="w-full border-border/70 bg-background/40 text-foreground hover:text-foreground"
-                    >
-                      {NATIVE_GOOGLE_STAGE_LABEL[nativeGoogleStage]}
-                    </Button>
-                  ) : (
-                    <>
-                      <div
-                        ref={googleButtonRef}
-                        className="flex w-full items-center justify-center"
-                      />
-                      {!GOOGLE_CLIENT_ID && (
-                        <p className="text-center text-xs text-destructive">
-                          Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
-                        </p>
-                      )}
-                    </>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={googleStage !== "idle"}
+                    onClick={() =>
+                      void (isNative ? handleNativeGoogleSignIn() : handleWebGoogleSignIn())
+                    }
+                    className="w-full border-border/70 bg-background/40 text-foreground hover:text-foreground"
+                  >
+                    {GOOGLE_STAGE_LABEL[googleStage]}
+                  </Button>
+                  {!isNative && !GOOGLE_CLIENT_ID && (
+                    <p className="text-center text-xs text-destructive">
+                      Google sign-in is not configured (missing VITE_GOOGLE_CLIENT_ID).
+                    </p>
                   )}
                 </>
               )}
