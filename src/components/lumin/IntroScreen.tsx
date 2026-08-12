@@ -249,15 +249,33 @@ export function IntroScreen() {
               style={{ animationDelay: "1.7s" }}
             />
 
+            {/* Open book -- sits behind the closed-book photo (below),
+                revealed as that flips away. Rendered first/behind in DOM
+                order deliberately -- it must paint underneath the closed
+                book's flip, not on top of it, or the flip is invisible. */}
+            <img
+              src={introBookOpen}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
+              style={{
+                transitionDuration: `${CROSSFADE_MS}ms`,
+                opacity: bookOpen ? 1 : 0,
+                transform: bookOpen ? "scale(1)" : "scale(1.05)",
+              }}
+            />
+
             {/* Closed book -- the real photo, flipped open like a page
                 turning: hinged near the book's actual spine (~24% from
                 the left edge of the image) and rotated via CSS 3D, rather
                 than a flat opacity crossfade, so there's real visible
-                "opening" motion. backfaceVisibility hidden is essential
-                here (unlike the earlier abstract-shape version) since this
-                is a photo with readable text -- without it, past 90deg
-                you'd see the image mirrored/backwards instead of just
-                disappearing. */}
+                "opening" motion. Rendered last/on top so it actually
+                covers the open book while closed, and visibly flips away
+                from in front of it rather than being hidden underneath it.
+                backfaceVisibility hidden is essential here (unlike the
+                earlier abstract-shape version) since this is a photo with
+                readable text -- without it, past 90deg you'd see the image
+                mirrored/backwards instead of just disappearing. */}
             <span className="absolute inset-0" style={{ perspective: "1400px" }}>
               <img
                 src={introBookClosed}
@@ -272,17 +290,6 @@ export function IntroScreen() {
                 }}
               />
             </span>
-            <img
-              src={introBookOpen}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-out"
-              style={{
-                transitionDuration: `${CROSSFADE_MS}ms`,
-                opacity: bookOpen ? 1 : 0,
-                transform: bookOpen ? "scale(1)" : "scale(1.05)",
-              }}
-            />
           </span>
         </span>
 
