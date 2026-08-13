@@ -55,3 +55,7 @@ android/*.aab
 # Chrome extension dev signing key (only needed locally to keep the
 # unpacked extension ID stable across reloads -- see extension/README.md)
 extension/*.pem
+
+# Claude Code local settings (can contain locally-approved permission rules
+# that echo sensitive values, e.g. an exported token) -- never share these.
+.claude/settings.local.json
