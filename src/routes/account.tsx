@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AvatarCropDialog } from "@/components/lumin/AvatarCropDialog";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { useTheme } from "@/components/lumin/ThemeProvider";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
+import { THEMES } from "@/lib/themes";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TextSize } from "@/components/lumin/AccessibilityProvider";
 
@@ -37,6 +40,7 @@ function AccountPage() {
   const navigate = useNavigate();
   const { user, loading, needsMfa } = useAuth();
   const { prefs: soundPrefs, setPrefs: setSoundPrefs, playTone } = useSoundSettings();
+  const { theme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -441,6 +445,43 @@ function AccountPage() {
             disabled={savingDigestPref}
             onCheckedChange={(checked) => void handleToggleEmailDigest(checked)}
           />
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
+          <div>
+            <p className="text-sm font-semibold">Appearance</p>
+            <p className="text-xs text-muted-foreground">
+              Recolor the whole platform. Applies everywhere you're signed in, including the
+              app.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTheme(t.id);
+                  playTone("click");
+                }}
+                aria-pressed={theme === t.id}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors",
+                  theme === t.id
+                    ? "border-accent bg-accent/10"
+                    : "border-border/60 hover:border-border",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="h-8 w-8 rounded-full border border-white/10"
+                  style={{ background: `linear-gradient(135deg, ${t.primary}, ${t.accent})` }}
+                />
+                <span className="text-xs font-medium">{t.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">

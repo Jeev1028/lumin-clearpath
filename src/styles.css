@@ -113,6 +113,94 @@
   --shadow-panel: 0 20px 50px -30px oklch(0.05 0.03 258 / 0.9);
 }
 
+/*
+ * Alternate color themes (see src/lib/themes.ts, ThemeProvider). Applied
+ * via a data-theme attribute on <html>. "midnight" is just the :root
+ * values above with no override needed -- these blocks only override the
+ * accent-carrying properties (primary/accent/ring/charts/gradients/glow),
+ * deliberately leaving background/card/border/text colors untouched so
+ * every theme keeps the same tested contrast and legibility.
+ */
+[data-theme="emerald"] {
+  --primary: oklch(0.66 0.145 155);
+  --accent: oklch(0.78 0.12 175);
+  --ring: oklch(0.66 0.145 155);
+  --chart-1: oklch(0.66 0.145 155);
+  --chart-2: oklch(0.78 0.12 175);
+  --chart-3: oklch(0.55 0.13 185);
+  --chart-4: oklch(0.72 0.1 130);
+  --chart-5: oklch(0.45 0.11 200);
+  --sidebar-primary: oklch(0.66 0.145 155);
+  --sidebar-ring: oklch(0.66 0.145 155);
+  --gradient-lumin: linear-gradient(135deg, oklch(0.66 0.145 155), oklch(0.78 0.12 175));
+  --gradient-deep: radial-gradient(
+    120% 100% at 50% 0%,
+    oklch(0.28 0.09 155) 0%,
+    oklch(0.16 0.045 258) 60%
+  );
+  --shadow-glow: 0 24px 70px -30px oklch(0.66 0.145 155 / 0.65);
+}
+
+[data-theme="amethyst"] {
+  --primary: oklch(0.66 0.145 300);
+  --accent: oklch(0.78 0.12 325);
+  --ring: oklch(0.66 0.145 300);
+  --chart-1: oklch(0.66 0.145 300);
+  --chart-2: oklch(0.78 0.12 325);
+  --chart-3: oklch(0.55 0.13 280);
+  --chart-4: oklch(0.72 0.1 340);
+  --chart-5: oklch(0.45 0.11 310);
+  --sidebar-primary: oklch(0.66 0.145 300);
+  --sidebar-ring: oklch(0.66 0.145 300);
+  --gradient-lumin: linear-gradient(135deg, oklch(0.66 0.145 300), oklch(0.78 0.12 325));
+  --gradient-deep: radial-gradient(
+    120% 100% at 50% 0%,
+    oklch(0.28 0.09 300) 0%,
+    oklch(0.16 0.045 258) 60%
+  );
+  --shadow-glow: 0 24px 70px -30px oklch(0.66 0.145 300 / 0.65);
+}
+
+[data-theme="sunset"] {
+  --primary: oklch(0.66 0.145 45);
+  --accent: oklch(0.78 0.12 25);
+  --ring: oklch(0.66 0.145 45);
+  --chart-1: oklch(0.66 0.145 45);
+  --chart-2: oklch(0.78 0.12 25);
+  --chart-3: oklch(0.55 0.13 60);
+  --chart-4: oklch(0.72 0.1 15);
+  --chart-5: oklch(0.45 0.11 35);
+  --sidebar-primary: oklch(0.66 0.145 45);
+  --sidebar-ring: oklch(0.66 0.145 45);
+  --gradient-lumin: linear-gradient(135deg, oklch(0.66 0.145 45), oklch(0.78 0.12 25));
+  --gradient-deep: radial-gradient(
+    120% 100% at 50% 0%,
+    oklch(0.28 0.09 45) 0%,
+    oklch(0.16 0.045 258) 60%
+  );
+  --shadow-glow: 0 24px 70px -30px oklch(0.66 0.145 45 / 0.65);
+}
+
+[data-theme="rose"] {
+  --primary: oklch(0.66 0.145 15);
+  --accent: oklch(0.78 0.12 350);
+  --ring: oklch(0.66 0.145 15);
+  --chart-1: oklch(0.66 0.145 15);
+  --chart-2: oklch(0.78 0.12 350);
+  --chart-3: oklch(0.55 0.13 0);
+  --chart-4: oklch(0.72 0.1 330);
+  --chart-5: oklch(0.45 0.11 355);
+  --sidebar-primary: oklch(0.66 0.145 15);
+  --sidebar-ring: oklch(0.66 0.145 15);
+  --gradient-lumin: linear-gradient(135deg, oklch(0.66 0.145 15), oklch(0.78 0.12 350));
+  --gradient-deep: radial-gradient(
+    120% 100% at 50% 0%,
+    oklch(0.28 0.09 15) 0%,
+    oklch(0.16 0.045 258) 60%
+  );
+  --shadow-glow: 0 24px 70px -30px oklch(0.66 0.145 15 / 0.65);
+}
+
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);

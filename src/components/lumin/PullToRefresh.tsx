@@ -27,6 +27,29 @@ function getScrollableAncestor(target: EventTarget | null): HTMLElement | null {
   return null;
 }
 
+/** True if the touch started inside a horizontally-scrollable strip (e.g.
+ * the top nav's scroll-x-contain row). Swiping one of those sideways was
+ * getting misread as a pull-to-refresh attempt -- any touch that starts at
+ * the top of the page and moves at all downward (near-unavoidable in a
+ * real diagonal finger swipe) began the pull indicator, and a big enough
+ * vertical wobble could even trigger a full refresh mid-swipe. Bailing out
+ * entirely for touches starting on a horizontal scroller sidesteps that
+ * regardless of how the rest of the gesture moves. */
+function startsInHorizontalScroller(target: EventTarget | null): boolean {
+  let node = target instanceof HTMLElement ? target : null;
+  while (node && node !== document.body) {
+    const style = window.getComputedStyle(node);
+    if (
+      (style.overflowX === "auto" || style.overflowX === "scroll") &&
+      node.scrollWidth > node.clientWidth + 1
+    ) {
+      return true;
+    }
+    node = node.parentElement;
+  }
+  return false;
+}
+
 function currentScrollTop(container: HTMLElement | null): number {
   return container ? container.scrollTop : window.scrollY;
 }
@@ -64,6 +87,7 @@ export function PullToRefresh() {
   const [distance, setDistance] = useState(0);
   const [triggered, setTriggeredState] = useState(false);
   const startYRef = useRef<number | null>(null);
+  const startXRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
   const triggeredRef = useRef(false);
 
@@ -81,30 +105,39 @@ export function PullToRefresh() {
 
     function onTouchStart(e: TouchEvent) {
       if (e.touches.length !== 1) return;
+      if (startsInHorizontalScroller(e.target)) return;
       const container = getScrollableAncestor(e.target);
       if (currentScrollTop(container) > 0) return;
       containerRef.current = container;
       startYRef.current = e.touches[0]!.clientY;
+      startXRef.current = e.touches[0]!.clientX;
     }
 
     function onTouchMove(e: TouchEvent) {
-      if (startYRef.current === null) return;
-      const delta = e.touches[0]!.clientY - startYRef.current;
-      if (delta <= 0 || currentScrollTop(containerRef.current) > 0) {
+      if (startYRef.current === null || startXRef.current === null) return;
+      const deltaY = e.touches[0]!.clientY - startYRef.current;
+      const deltaX = e.touches[0]!.clientX - startXRef.current;
+      // Only treat this as a pull-to-refresh gesture once it's clearly
+      // moving down more than sideways -- an ordinary horizontal swipe
+      // (e.g. a diagonal flick while scrolling the nav) shouldn't count
+      // just because it also drifted down a little.
+      if (deltaY <= 0 || deltaY <= Math.abs(deltaX) || currentScrollTop(containerRef.current) > 0) {
         startYRef.current = null;
+        startXRef.current = null;
         setPulling(false);
         setDistance(0);
         setTriggered(false);
         return;
       }
       setPulling(true);
-      const clamped = Math.min(delta, PULL_MAX_PX);
+      const clamped = Math.min(deltaY, PULL_MAX_PX);
       setDistance(clamped);
       setTriggered(clamped >= PULL_TRIGGER_PX);
     }
 
     function reset() {
       startYRef.current = null;
+      startXRef.current = null;
       containerRef.current = null;
       setPulling(false);
       setDistance(0);

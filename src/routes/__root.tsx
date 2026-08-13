@@ -19,6 +19,7 @@ import { NoticeBanner } from "@/components/lumin/NoticeBanner";
 import { PullToRefresh } from "@/components/lumin/PullToRefresh";
 import { SoundSettingsProvider } from "@/components/lumin/SoundSettingsProvider";
 import { PwaRegister } from "@/components/lumin/PwaRegister";
+import { ThemeProvider } from "@/components/lumin/ThemeProvider";
 import { TutorialProvider } from "@/components/lumin/WelcomeTutorial";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -53,6 +54,20 @@ const BOOT_COVER_SCRIPT = `
   } catch (e) {
     hide();
   }
+})();
+`;
+
+// Applies the user's chosen color theme (see src/lib/themes.ts,
+// ThemeProvider) before the stylesheet's own CSS rules ever get a
+// chance to paint the default theme -- same reasoning as
+// BOOT_COVER_SCRIPT above, just for theme color instead of the intro
+// screen. The localStorage key here must match THEME_STORAGE_KEY.
+const THEME_BOOT_SCRIPT = `
+(function () {
+  try {
+    var t = localStorage.getItem("clearpath:theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
 })();
 `;
 
@@ -168,6 +183,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -210,22 +226,24 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TutorialProvider>
-        <SoundSettingsProvider>
-          <a href="#main-content" className="skip-to-content">
-            Skip to main content
-          </a>
-          <AccessibilityProvider />
-          <PwaRegister />
-          <IntroScreen />
-          <PullToRefresh />
-          <NoticeBanner />
-          <CommandPalette />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet key={refreshKey} />
-          <Toaster position="top-center" />
-        </SoundSettingsProvider>
-      </TutorialProvider>
+      <ThemeProvider>
+        <TutorialProvider>
+          <SoundSettingsProvider>
+            <a href="#main-content" className="skip-to-content">
+              Skip to main content
+            </a>
+            <AccessibilityProvider />
+            <PwaRegister />
+            <IntroScreen />
+            <PullToRefresh />
+            <NoticeBanner />
+            <CommandPalette />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet key={refreshKey} />
+            <Toaster position="top-center" />
+          </SoundSettingsProvider>
+        </TutorialProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
