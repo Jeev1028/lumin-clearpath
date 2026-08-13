@@ -18,6 +18,13 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.3",
+          "date": "2026-08-13T00:00:00Z",
+          "localizedDescription": "Added microphone permissions so Lumin AI's voice-to-text works in the native app, not just the website. The app also now remembers the page you were on and resumes there on a fresh launch instead of always restarting at the sign-in screen -- iOS often fully kills a backgrounded app under memory pressure, so this makes reopening the app feel like refreshing a browser tab rather than restarting from scratch.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/ios-v1.3.4/ClearPath-unsigned.ipa",
+          "size": 13911875
+        },
+        {
           "version": "1.2",
           "date": "2026-08-12T00:00:00Z",
           "localizedDescription": "Fixes native Google sign-in for real this time: Capacitor's iOS bridge wasn't registering the local sign-in plugin at all (a build-config gap, not a signing issue), so \"Continue with Google\" failed on every device regardless of how the app was sideloaded. It's registered correctly now.",
