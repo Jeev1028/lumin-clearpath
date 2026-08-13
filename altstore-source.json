@@ -18,6 +18,13 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.5",
+          "date": "2026-08-13T00:00:00Z",
+          "localizedDescription": "Stability fix: v1.3/1.4 added a custom view controller that tried to resume the last-visited page on a fresh launch, but it caused the app to freeze on a blank launch screen in real-world testing. Reverted back to the stock Capacitor setup. The microphone permissions (v1.3) and the keyboard-covering-composer fix (v1.4) are unaffected and remain in place.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/ios-v1.5.6/ClearPath-unsigned.ipa",
+          "size": 13909258
+        },
+        {
           "version": "1.4",
           "date": "2026-08-13T00:00:00Z",
           "localizedDescription": "Fixed the on-screen keyboard covering the chat composer/input box. @capacitor/keyboard was configured with \"resize: body\", which only adjusts page CSS rather than actually resizing the webview -- switched to \"resize: native\" so the website's existing keyboard-avoidance logic (which already worked correctly in Safari) now works the same way inside the app.",
@@ -27,7 +34,7 @@
         {
           "version": "1.3",
           "date": "2026-08-13T00:00:00Z",
-          "localizedDescription": "Added microphone permissions so Lumin AI's voice-to-text works in the native app, not just the website. The app also now remembers the page you were on and resumes there on a fresh launch instead of always restarting at the sign-in screen -- iOS often fully kills a backgrounded app under memory pressure, so this makes reopening the app feel like refreshing a browser tab rather than restarting from scratch.",
+          "localizedDescription": "Added microphone permissions so Lumin AI's voice-to-text works in the native app, not just the website.",
           "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/ios-v1.3.4/ClearPath-unsigned.ipa",
           "size": 13911875
         },
