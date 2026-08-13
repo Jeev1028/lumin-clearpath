@@ -1,3 +1,4 @@
+import { useRouter } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -30,15 +31,25 @@ function currentScrollTop(container: HTMLElement | null): number {
 
 /**
  * Pull-down-to-refresh -- the standard mobile-app "reload this screen"
- * gesture. Reloads the whole app on release past the trigger distance,
- * which is the simplest reliable way to force a fresh load of everything
- * without wiring up per-page refetch logic across dozens of routes.
+ * gesture. Re-fetches the current route's data on release past the trigger
+ * distance, via the router (not a hard `window.location.reload()`):
+ * a full browser-level reload re-requests the page from the server, which
+ * briefly renders the signed-out SSR shell before client-side auth
+ * re-hydrates (a visible "flash" of the sign-in screen), fully resets any
+ * in-memory app/navigation state, and -- inside some app-wrapper contexts
+ * (e.g. a home-screen web clip that isn't in full standalone mode) -- can
+ * cause iOS to drop out of "app" chrome and show ordinary browser UI
+ * (URL bar, back button) instead. `router.invalidate()` re-runs the active
+ * route's loaders and re-renders with fresh data while staying inside the
+ * SPA, on the same page, still signed in, with no chrome change at all --
+ * an actual "reload this page" instead of "restart the whole app".
  *
  * Only active inside the installed app (iOS/Android), not on the regular
  * website -- a random web visitor overscrolling a long page shouldn't get
- * a surprise full reload.
+ * a surprise refresh.
  */
 export function PullToRefresh() {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [distance, setDistance] = useState(0);
@@ -93,7 +104,8 @@ export function PullToRefresh() {
 
     function onTouchEnd() {
       if (triggeredRef.current) {
-        window.location.reload();
+        reset();
+        void router.invalidate();
         return;
       }
       reset();
@@ -109,7 +121,7 @@ export function PullToRefresh() {
       document.removeEventListener("touchend", onTouchEnd);
       document.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [enabled]);
+  }, [enabled, router]);
 
   if (!enabled || !pulling) return null;
 
