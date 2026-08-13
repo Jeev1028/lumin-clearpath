@@ -45,12 +45,12 @@ const STEPS = [
   {
     icon: BellRing,
     title: "Stay in the loop",
-    body: "The bell in the header shows tasks due soon, and school-wide notices show as a banner (with an optional email). Turn on a daily email digest anytime in Account settings.",
+    body: "The bell in the header shows tasks due soon, and school-wide notices show as a banner (with an optional email). Turn on a daily email digest anytime in Settings.",
   },
   {
     icon: ShieldCheck,
     title: "Keep your account secure",
-    body: "Add two-factor authentication and backup codes in Account settings for extra protection. You can replay this tour anytime from the account menu.",
+    body: "Add two-factor authentication and backup codes in Settings for extra protection. You can replay this tour anytime from the account menu.",
   },
 ] as const;
 

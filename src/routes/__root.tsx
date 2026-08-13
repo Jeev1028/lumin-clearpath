@@ -57,16 +57,19 @@ const BOOT_COVER_SCRIPT = `
 })();
 `;
 
-// Applies the user's chosen color theme (see src/lib/themes.ts,
-// ThemeProvider) before the stylesheet's own CSS rules ever get a
-// chance to paint the default theme -- same reasoning as
-// BOOT_COVER_SCRIPT above, just for theme color instead of the intro
-// screen. The localStorage key here must match THEME_STORAGE_KEY.
+// Applies the user's chosen color theme and light/dark mode (see
+// src/lib/themes.ts, ThemeProvider) before the stylesheet's own CSS
+// rules ever get a chance to paint the defaults -- same reasoning as
+// BOOT_COVER_SCRIPT above, just for theme/mode instead of the intro
+// screen. The localStorage keys here must match THEME_STORAGE_KEY and
+// MODE_STORAGE_KEY.
 const THEME_BOOT_SCRIPT = `
 (function () {
   try {
     var t = localStorage.getItem("clearpath:theme");
     if (t) document.documentElement.setAttribute("data-theme", t);
+    var m = localStorage.getItem("clearpath:theme-mode");
+    if (m) document.documentElement.setAttribute("data-mode", m);
   } catch (e) {}
 })();
 `;

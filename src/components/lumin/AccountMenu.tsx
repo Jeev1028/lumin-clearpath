@@ -123,7 +123,7 @@ export function AccountMenu() {
         <DropdownMenuItem asChild className="cursor-pointer gap-2">
           <Link to="/account">
             <Settings className="h-4 w-4" aria-hidden />
-            Account settings
+            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={openTutorial} className="cursor-pointer gap-2">

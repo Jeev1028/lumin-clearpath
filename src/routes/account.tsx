@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Factor } from "@supabase/supabase-js";
-import { ShieldCheck, ShieldOff } from "lucide-react";
+import { Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +29,7 @@ import type { TextSize } from "@/components/lumin/AccessibilityProvider";
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
-      { title: "Account settings — ClearPath" },
+      { title: "Settings — ClearPath" },
       { name: "description", content: "Manage your ClearPath profile." },
     ],
   }),
@@ -40,7 +40,7 @@ function AccountPage() {
   const navigate = useNavigate();
   const { user, loading, needsMfa } = useAuth();
   const { prefs: soundPrefs, setPrefs: setSoundPrefs, playTone } = useSoundSettings();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, mode, setMode } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -361,7 +361,7 @@ function AccountPage() {
     <div className="min-h-screen bg-deep">
       <SiteHeader />
       <main id="main-content" className="mx-auto max-w-2xl px-6 pb-24">
-        <h1 className="mt-10 text-3xl font-bold">Account settings</h1>
+        <h1 className="mt-10 text-3xl font-bold">Settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Manage your profile picture and personal details.
         </p>
@@ -449,14 +449,54 @@ function AccountPage() {
 
         <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
           <div>
-            <p className="text-sm font-semibold">Appearance</p>
+            <p className="text-sm font-semibold">Detail</p>
             <p className="text-xs text-muted-foreground">
-              Recolor the whole platform. Applies everywhere you're signed in, including the
-              app.
+              Fully customize how Lumin looks -- light or dark, and a color theme. Applies
+              everywhere you're signed in, including the app.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm">Mode</p>
+            <div className="inline-flex rounded-full border border-border/60 bg-background/40 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("dark");
+                  playTone("click");
+                }}
+                aria-pressed={mode === "dark"}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  mode === "dark"
+                    ? "bg-secondary/80 text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Moon className="h-3.5 w-3.5" aria-hidden />
+                Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("light");
+                  playTone("click");
+                }}
+                aria-pressed={mode === "light"}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  mode === "light"
+                    ? "bg-secondary/80 text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Sun className="h-3.5 w-3.5" aria-hidden />
+                Light
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-4 sm:grid-cols-5">
             {THEMES.map((t) => (
               <button
                 key={t.id}

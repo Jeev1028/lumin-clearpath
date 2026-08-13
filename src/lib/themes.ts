@@ -55,3 +55,32 @@ export const THEME_STORAGE_KEY = "clearpath:theme";
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === "string" && THEMES.some((t) => t.id === value);
 }
+
+/** Light/dark mode -- orthogonal to the color theme above. "dark" is the
+ * original look (every color theme was designed dark-first). */
+export type ThemeMode = "dark" | "light";
+
+export const DEFAULT_MODE: ThemeMode = "dark";
+export const MODE_STORAGE_KEY = "clearpath:theme-mode";
+
+export function isThemeMode(value: unknown): value is ThemeMode {
+  return value === "dark" || value === "light";
+}
+
+/**
+ * The Lumin mark is a raster image (a rendered blue glow, not drawn with
+ * CSS), so it can't pick up the theme's oklch colors directly. Instead each
+ * theme gets an approximate CSS hue-rotate() amount to shift the image's
+ * baked-in blue toward that theme's accent color. This is a visual
+ * approximation (hue-rotate operates on the image's actual pixels, not the
+ * same color math as the oklch design tokens), tuned by eye rather than
+ * computed exactly -- if a future logo redesign changes the source image's
+ * base hue, these will need re-tuning too.
+ */
+export const THEME_LOGO_HUE_ROTATE: Record<ThemeId, number> = {
+  midnight: 0,
+  emerald: -60,
+  amethyst: 70,
+  sunset: 180,
+  rose: 145,
+};

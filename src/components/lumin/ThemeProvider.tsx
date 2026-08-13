@@ -2,7 +2,16 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { DEFAULT_THEME, isThemeId, THEME_STORAGE_KEY, type ThemeId } from "@/lib/themes";
+import {
+  DEFAULT_MODE,
+  DEFAULT_THEME,
+  isThemeId,
+  isThemeMode,
+  MODE_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  type ThemeId,
+  type ThemeMode,
+} from "@/lib/themes";
 
 function readLocalTheme(): ThemeId {
   try {
@@ -10,6 +19,15 @@ function readLocalTheme(): ThemeId {
     return isThemeId(raw) ? raw : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
+  }
+}
+
+function readLocalMode(): ThemeMode {
+  try {
+    const raw = localStorage.getItem(MODE_STORAGE_KEY);
+    return isThemeMode(raw) ? raw : DEFAULT_MODE;
+  } catch {
+    return DEFAULT_MODE;
   }
 }
 
@@ -21,13 +39,27 @@ function persistLocalTheme(theme: ThemeId) {
   }
 }
 
+function persistLocalMode(mode: ThemeMode) {
+  try {
+    localStorage.setItem(MODE_STORAGE_KEY, mode);
+  } catch {
+    // ignore
+  }
+}
+
 function applyTheme(theme: ThemeId) {
   document.documentElement.setAttribute("data-theme", theme);
+}
+
+function applyMode(mode: ThemeMode) {
+  document.documentElement.setAttribute("data-mode", mode);
 }
 
 type ThemeContextValue = {
   theme: ThemeId;
   setTheme: (theme: ThemeId) => void;
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -37,6 +69,8 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 const FALLBACK: ThemeContextValue = {
   theme: DEFAULT_THEME,
   setTheme: (theme) => applyTheme(theme),
+  mode: DEFAULT_MODE,
+  setMode: (mode) => applyMode(mode),
 };
 
 export function useTheme(): ThemeContextValue {
@@ -44,31 +78,41 @@ export function useTheme(): ThemeContextValue {
 }
 
 /**
- * Applies the color theme (data-theme on <html>, see the theme blocks in
- * styles.css) and persists the choice -- locally always, and to the
- * signed-in user's account metadata once known, mirroring
+ * Applies the color theme and light/dark mode (data-theme / data-mode on
+ * <html>, see styles.css) and persists both choices -- locally always, and
+ * to the signed-in user's account metadata once known, mirroring
  * SoundSettingsProvider's pattern. The very first paint is handled by an
  * inline boot script in __root.tsx instead of this effect, so switching
- * themes never causes a flash of the default theme before hydration.
+ * themes/modes never causes a flash of the default before hydration.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [theme, setThemeState] = useState<ThemeId>(DEFAULT_THEME);
+  const [mode, setModeState] = useState<ThemeMode>(DEFAULT_MODE);
 
   useEffect(() => {
-    const local = readLocalTheme();
-    setThemeState(local);
-    applyTheme(local);
+    const localTheme = readLocalTheme();
+    const localMode = readLocalMode();
+    setThemeState(localTheme);
+    setModeState(localMode);
+    applyTheme(localTheme);
+    applyMode(localMode);
   }, []);
 
   useEffect(() => {
     if (loading || !user) return;
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-    const fromMeta = meta["theme"];
-    if (isThemeId(fromMeta) && fromMeta !== readLocalTheme()) {
-      setThemeState(fromMeta);
-      applyTheme(fromMeta);
-      persistLocalTheme(fromMeta);
+    const fromMetaTheme = meta["theme"];
+    if (isThemeId(fromMetaTheme) && fromMetaTheme !== readLocalTheme()) {
+      setThemeState(fromMetaTheme);
+      applyTheme(fromMetaTheme);
+      persistLocalTheme(fromMetaTheme);
+    }
+    const fromMetaMode = meta["theme_mode"];
+    if (isThemeMode(fromMetaMode) && fromMetaMode !== readLocalMode()) {
+      setModeState(fromMetaMode);
+      applyMode(fromMetaMode);
+      persistLocalMode(fromMetaMode);
     }
   }, [loading, user]);
 
@@ -81,5 +125,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  function setMode(next: ThemeMode) {
+    setModeState(next);
+    applyMode(next);
+    persistLocalMode(next);
+    if (user) {
+      void supabase.auth.updateUser({ data: { theme_mode: next } });
+    }
+  }
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, mode, setMode }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }

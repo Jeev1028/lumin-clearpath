@@ -201,6 +201,44 @@
   --shadow-glow: 0 24px 70px -30px oklch(0.66 0.145 15 / 0.65);
 }
 
+/*
+ * Light mode (see src/lib/themes.ts, ThemeProvider) -- orthogonal to the
+ * color theme blocks above. Only overrides the neutral/chrome colors
+ * (background, card, text, borders, the ambient background gradient and
+ * panel shadow); primary/accent/ring/chart/gradient-lumin/shadow-glow
+ * stay whatever the active color theme set them to, in either mode. This
+ * block is deliberately last in the cascade (same 0,1,0 specificity as
+ * the [data-theme] blocks above -- source order decides the winner), so
+ * light mode's flat neutral --gradient-deep always wins over any
+ * theme's tinted one: a strong colored ambient glow reads as a mistake
+ * on a light background, so every theme shares one safe light gradient.
+ */
+[data-mode="light"] {
+  --background: oklch(0.98 0.006 258);
+  --foreground: oklch(0.24 0.03 258);
+  --card: oklch(0.995 0.003 258);
+  --card-foreground: oklch(0.24 0.03 258);
+  --popover: oklch(0.995 0.003 258);
+  --popover-foreground: oklch(0.24 0.03 258);
+  --secondary: oklch(0.94 0.008 258);
+  --secondary-foreground: oklch(0.26 0.03 258);
+  --muted: oklch(0.95 0.007 258);
+  --muted-foreground: oklch(0.48 0.02 258);
+  --border: oklch(0.88 0.012 258);
+  --input: oklch(0.88 0.012 258);
+  --sidebar: oklch(0.97 0.006 258);
+  --sidebar-foreground: oklch(0.24 0.03 258);
+  --sidebar-accent: oklch(0.93 0.01 258);
+  --sidebar-accent-foreground: oklch(0.24 0.03 258);
+  --sidebar-border: oklch(0.88 0.012 258);
+  --gradient-deep: radial-gradient(
+    120% 100% at 50% 0%,
+    oklch(0.995 0.01 258) 0%,
+    oklch(0.97 0.006 258) 60%
+  );
+  --shadow-panel: 0 12px 30px -18px oklch(0.4 0.03 258 / 0.22);
+}
+
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -320,7 +358,10 @@
 }
 
 @utility glow-orb {
-  background: radial-gradient(circle, oklch(0.66 0.145 245 / 0.55) 0%, transparent 70%);
+  /* Was hardcoded to Midnight's blue (hue 245) -- color-mix() lets it
+     follow --primary, so the glow behind the Lumin mark actually matches
+     whichever color theme is active instead of always being blue. */
+  background: radial-gradient(circle, color-mix(in oklch, var(--primary) 55%, transparent) 0%, transparent 70%);
   filter: blur(60px);
 }
 
