@@ -11,18 +11,46 @@ import { cn } from "@/lib/utils";
  * compensating hue-rotate, the standard trick for adapting a
  * light-lines-on-dark-glow image to a light background).
  *
- * Deliberately does NOT add a drop-shadow glow here (an earlier version
- * did): drop-shadow traces the image's actual alpha shape, and the source
- * image's baked-in glow isn't a perfectly round circle -- it produced a
- * visible flat edge instead of a soft round one. The separate .glow-orb
- * background (a proper CSS radial-gradient circle, see below and
- * styles.css) already provides the theme-colored glow correctly.
+ * The source image's own baked-in glow isn't a perfectly round circle --
+ * it has a visible flat edge at the top instead of curving smoothly, which
+ * regenerating the asset would be the real fix for, but that requires the
+ * image-gen API (currently out of quota). A small blur softens that edge
+ * into something that reads as an intentional soft glow instead of a
+ * visible seam, in every mode/theme.
  */
 function useLuminMarkFilter(): string {
   const { theme, mode } = useTheme();
   const delta = THEME_LOGO_HUE_ROTATE[theme];
-  if (mode === "light") return `invert(1) hue-rotate(${180 + delta}deg)`;
-  return delta === 0 ? "none" : `hue-rotate(${delta}deg)`;
+  const softenEdge = "blur(1.5px)";
+  if (mode === "light") return `invert(1) hue-rotate(${180 + delta}deg) ${softenEdge}`;
+  return delta === 0 ? softenEdge : `hue-rotate(${delta}deg) ${softenEdge}`;
+}
+
+/**
+ * An extra round, theme-colored glow layered *on top of* the image (screen
+ * blend, so it only ever brightens, never darkens or tints the white
+ * line-art) to further fill in that same flat top edge -- verified against
+ * several alternatives (plain blur alone, blend modes, overlay behind
+ * instead of in front) via rendered screenshots before picking this one.
+ * Dark mode only: the same overlay against a light background washed out
+ * and made the outline read as blurry rather than crisp, so light mode
+ * relies on the blur above alone.
+ */
+function GlowFillOverlay() {
+  const { mode } = useTheme();
+  if (mode !== "dark") return null;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 rounded-full"
+      style={{
+        background:
+          "radial-gradient(circle, color-mix(in oklch, var(--primary) 90%, transparent) 0%, color-mix(in oklch, var(--primary) 50%, transparent) 35%, transparent 68%)",
+        filter: "blur(10px)",
+        mixBlendMode: "screen",
+      }}
+    />
+  );
 }
 
 export function LuminMark({
@@ -34,7 +62,12 @@ export function LuminMark({
 }) {
   const filter = useLuminMarkFilter();
   return (
-    <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
+    <span
+      className={cn(
+        "relative isolate inline-flex shrink-0 items-center justify-center",
+        className,
+      )}
+    >
       {glow && (
         <span
           aria-hidden
@@ -47,6 +80,7 @@ export function LuminMark({
         className="relative h-full w-full object-contain"
         style={{ filter }}
       />
+      {glow && <GlowFillOverlay />}
     </span>
   );
 }
@@ -60,7 +94,12 @@ export function LuminMark({
 export function LuminBookMark({ className }: { className?: string }) {
   const filter = useLuminMarkFilter();
   return (
-    <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
+    <span
+      className={cn(
+        "relative isolate inline-flex shrink-0 items-center justify-center",
+        className,
+      )}
+    >
       <span
         aria-hidden
         className="glow-orb animate-glow-pulse absolute inset-0 -z-10 scale-125 rounded-full"
@@ -71,6 +110,7 @@ export function LuminBookMark({ className }: { className?: string }) {
         className="relative h-full w-full object-contain"
         style={{ filter }}
       />
+      <GlowFillOverlay />
     </span>
   );
 }
