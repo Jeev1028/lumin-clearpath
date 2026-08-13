@@ -6,21 +6,23 @@ import { cn } from "@/lib/utils";
 /**
  * The mark is a raster image (a rendered blue glow, not drawn with CSS), so
  * it can't read the theme's oklch colors directly. This computes a CSS
- * filter chain that recolors it to roughly match the active color theme
- * (hue-rotate -- see THEME_LOGO_HUE_ROTATE) and flips it for light mode
- * (invert + a compensating hue-rotate, the standard trick for adapting a
- * light-lines-on-dark-glow image to a light background), then adds a
- * theme-colored glow via drop-shadow (which follows the image's actual
- * alpha shape, unlike a box-shadow which would just be a rectangle).
+ * hue-rotate() to shift it to roughly match the active color theme (see
+ * THEME_LOGO_HUE_ROTATE), and flips it for light mode (invert + a
+ * compensating hue-rotate, the standard trick for adapting a
+ * light-lines-on-dark-glow image to a light background).
+ *
+ * Deliberately does NOT add a drop-shadow glow here (an earlier version
+ * did): drop-shadow traces the image's actual alpha shape, and the source
+ * image's baked-in glow isn't a perfectly round circle -- it produced a
+ * visible flat edge instead of a soft round one. The separate .glow-orb
+ * background (a proper CSS radial-gradient circle, see below and
+ * styles.css) already provides the theme-colored glow correctly.
  */
 function useLuminMarkFilter(): string {
   const { theme, mode } = useTheme();
   const delta = THEME_LOGO_HUE_ROTATE[theme];
-  const glow = "drop-shadow(0 0 20px color-mix(in oklch, var(--primary) 55%, transparent))";
-  if (mode === "light") {
-    return `invert(1) hue-rotate(${180 + delta}deg) ${glow}`;
-  }
-  return delta === 0 ? glow : `hue-rotate(${delta}deg) ${glow}`;
+  if (mode === "light") return `invert(1) hue-rotate(${180 + delta}deg)`;
+  return delta === 0 ? "none" : `hue-rotate(${delta}deg)`;
 }
 
 export function LuminMark({
