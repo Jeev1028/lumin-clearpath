@@ -78,7 +78,7 @@ function ChatThreadPage() {
   if (loading || !user || !session || messagesQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-deep">
-        <LuminMark className="h-14 w-14 animate-pulse" />
+        <LuminMark className="h-44 w-44 animate-pulse sm:h-60 sm:w-60" />
       </div>
     );
   }
