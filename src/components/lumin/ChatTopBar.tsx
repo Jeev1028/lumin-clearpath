@@ -45,7 +45,13 @@ export function ChatTopBar({
         </Link>
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 bg-background/70 px-4 py-3 backdrop-blur-md md:flex-row md:items-center md:justify-end md:gap-4 md:px-6 md:py-4">
+      {/* min-w-0 here is load-bearing: without it, this flex-1 item's
+          automatic minimum width is based on its un-shrunk children (the
+          8-link nav below), which pushes the whole header wider than the
+          screen instead of letting the nav scroll internally -- the exact
+          bug that made the nav look like only 3-4 links existed on
+          mobile even after they were all added back. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-3 bg-background/70 px-4 py-3 backdrop-blur-md md:flex-row md:items-center md:justify-end md:gap-4 md:px-6 md:py-4">
         {/* Mobile-only row: hamburger + wordmark + the icon cluster. The
             nav gets its own full-width row below (like SiteHeader's
             site-header-nav row) instead of squeezing into this same row,
