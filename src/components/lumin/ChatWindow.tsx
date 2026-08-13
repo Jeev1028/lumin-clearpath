@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
-import { ArrowUp, Paperclip, Sparkles, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowUp, Mic, Paperclip, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,6 +10,7 @@ import { LuminMark } from "@/components/lumin/LuminMark";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
 import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export function ChatWindow({
   const [input, setInput] = useState(initialInput ?? "");
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -56,6 +58,20 @@ export function ChatWindow({
   });
 
   const isBusy = status === "submitted" || status === "streaming";
+
+  // Voice-to-text: dictate into the composer instead of typing. Only
+  // rendered/enabled where the browser actually supports it (see
+  // isSpeechToTextSupported) -- Chrome/Edge everywhere, Safari 14.5+
+  // (including iOS/iPadOS).
+  const { listening, toggle: toggleListening } = useSpeechToText({
+    onFinalResult: (text) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      setInput((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${trimmed}` : prev + trimmed));
+    },
+    onInterimResult: setInterimTranscript,
+    onError: (message) => toast.error(message),
+  });
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -119,6 +135,7 @@ export function ChatWindow({
   function submit() {
     const text = input.trim();
     if ((!text && attachments.length === 0) || isBusy) return;
+    if (listening) toggleListening();
     setInput("");
     setAttachments([]);
     void sendMessage(attachments.length > 0 ? { text, files: attachments } : { text });
@@ -258,6 +275,12 @@ export function ChatWindow({
               ))}
             </div>
           )}
+          {listening && (
+            <div className="mb-2 flex items-center gap-2 rounded-full border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs text-red-300">
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-400" />
+              <span className="truncate">{interimTranscript || "Listening…"}</span>
+            </div>
+          )}
           <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 shadow-panel">
             <input
               ref={fileInputRef}
@@ -282,6 +305,28 @@ export function ChatWindow({
             >
               <Paperclip className="h-4 w-4" />
             </Button>
+            {isSpeechToTextSupported && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={toggleListening}
+                disabled={isBusy}
+                className={
+                  listening
+                    ? "shrink-0 text-red-400 hover:text-red-300"
+                    : "shrink-0 text-muted-foreground hover:text-foreground"
+                }
+                aria-label={listening ? "Stop voice input" : "Start voice input"}
+                title={listening ? "Stop voice input" : "Speak instead of typing"}
+              >
+                {listening ? (
+                  <Square className="h-4 w-4 fill-current" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Textarea
               ref={textareaRef}
               value={input}

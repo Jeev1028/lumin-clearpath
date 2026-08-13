@@ -9,6 +9,7 @@ import { ChatWindow } from "@/components/lumin/ChatWindow";
 import { LuminMark } from "@/components/lumin/LuminMark";
 import { ThreadSidebar } from "@/components/lumin/ThreadSidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useKeyboardSafeHeight } from "@/hooks/useKeyboardSafeHeight";
 import { supabase } from "@/integrations/supabase/client";
 import { createThread, deleteThread, listMessages, listThreads } from "@/lib/threads";
 
@@ -33,6 +34,7 @@ function ChatThreadPage() {
   const queryClient = useQueryClient();
   const { session, user, loading, needsMfa } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const keyboardSafeHeight = useKeyboardSafeHeight();
 
   useEffect(() => {
     if (loading) return;
@@ -122,7 +124,15 @@ function ChatThreadPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div
+      className="flex flex-col overflow-hidden"
+      // See useKeyboardSafeHeight: on iOS, h-screen/100vh doesn't shrink
+      // when the on-screen keyboard opens, so it just covers the composer
+      // and part of the message history instead of the layout reflowing
+      // above it. Falls back to a plain 100vh until the real visual
+      // viewport height is known (or on browsers without the API).
+      style={{ height: keyboardSafeHeight ? `${keyboardSafeHeight}px` : "100vh" }}
+    >
       {/* Chat-specific top bar: the logo cap matches the sidebar's own
           styling (reads as part of it), while nav + account stay
           consistent with the rest of the site. */}
