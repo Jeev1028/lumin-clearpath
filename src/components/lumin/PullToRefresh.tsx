@@ -1,8 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { isInstalledApp } from "@/lib/native-app";
+import { REFRESH_EVENT } from "@/lib/refresh-events";
 
 const PULL_TRIGGER_PX = 80;
 const PULL_MAX_PX = 120;
@@ -31,18 +33,24 @@ function currentScrollTop(container: HTMLElement | null): number {
 
 /**
  * Pull-down-to-refresh -- the standard mobile-app "reload this screen"
- * gesture. Re-fetches the current route's data on release past the trigger
- * distance, via the router (not a hard `window.location.reload()`):
- * a full browser-level reload re-requests the page from the server, which
- * briefly renders the signed-out SSR shell before client-side auth
- * re-hydrates (a visible "flash" of the sign-in screen), fully resets any
- * in-memory app/navigation state, and -- inside some app-wrapper contexts
- * (e.g. a home-screen web clip that isn't in full standalone mode) -- can
- * cause iOS to drop out of "app" chrome and show ordinary browser UI
- * (URL bar, back button) instead. `router.invalidate()` re-runs the active
- * route's loaders and re-renders with fresh data while staying inside the
- * SPA, on the same page, still signed in, with no chrome change at all --
- * an actual "reload this page" instead of "restart the whole app".
+ * gesture. Re-fetches the current page's data on release past the trigger
+ * distance, WITHOUT a hard `window.location.reload()`: a full browser-level
+ * reload re-requests the page from the server, which briefly renders the
+ * signed-out SSR shell before client-side auth re-hydrates (a visible
+ * "flash" of the sign-in screen), fully resets in-memory app state, and --
+ * inside some app-wrapper contexts (e.g. a home-screen web clip not in full
+ * standalone mode) -- can make iOS drop out of "app" chrome and show
+ * ordinary browser UI (URL bar, back button) instead.
+ *
+ * Most pages in this app fetch their own data with a plain `useEffect` in
+ * the route component (not TanStack Router loaders, not React Query --
+ * `router.invalidate()` alone has nothing to re-run for those), so getting
+ * an actual refresh of on-screen data requires forcing those components to
+ * remount: this dispatches a REFRESH_EVENT that the root layout listens
+ * for to bump a `key` on <Outlet />, which unmounts and remounts the
+ * current route's component tree, re-running every mount-time data fetch.
+ * `router.invalidate()` and a React Query cache invalidation run too, for
+ * the few places that do use loaders/useQuery (e.g. the chat page).
  *
  * Only active inside the installed app (iOS/Android), not on the regular
  * website -- a random web visitor overscrolling a long page shouldn't get
@@ -50,6 +58,7 @@ function currentScrollTop(container: HTMLElement | null): number {
  */
 export function PullToRefresh() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [distance, setDistance] = useState(0);
@@ -105,7 +114,9 @@ export function PullToRefresh() {
     function onTouchEnd() {
       if (triggeredRef.current) {
         reset();
+        window.dispatchEvent(new Event(REFRESH_EVENT));
         void router.invalidate();
+        void queryClient.invalidateQueries();
         return;
       }
       reset();
@@ -121,7 +132,7 @@ export function PullToRefresh() {
       document.removeEventListener("touchend", onTouchEnd);
       document.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [enabled, router]);
+  }, [enabled, router, queryClient]);
 
   if (!enabled || !pulling) return null;
 

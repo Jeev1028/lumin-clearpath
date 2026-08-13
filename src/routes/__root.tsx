@@ -7,10 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { REFRESH_EVENT } from "../lib/refresh-events";
 import { AccessibilityProvider } from "@/components/lumin/AccessibilityProvider";
 import { CommandPalette } from "@/components/lumin/CommandPalette";
 import { IntroScreen } from "@/components/lumin/IntroScreen";
@@ -195,6 +196,17 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Bumped by PullToRefresh (via REFRESH_EVENT) to force the current
+  // route's component tree to unmount/remount, re-running every
+  // mount-time data fetch -- most pages fetch with a plain useEffect,
+  // not a router loader or React Query, so nothing else actually
+  // re-pulls fresh data for them.
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const bump = () => setRefreshKey((k) => k + 1);
+    window.addEventListener(REFRESH_EVENT, bump);
+    return () => window.removeEventListener(REFRESH_EVENT, bump);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -210,7 +222,7 @@ function RootComponent() {
           <NoticeBanner />
           <CommandPalette />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <Outlet key={refreshKey} />
           <Toaster position="top-center" />
         </SoundSettingsProvider>
       </TutorialProvider>
