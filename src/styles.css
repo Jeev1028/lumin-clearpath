@@ -362,7 +362,15 @@
      follow --primary, so the glow behind the Lumin mark actually matches
      whichever color theme is active instead of always being blue. */
   background: radial-gradient(circle, color-mix(in oklch, var(--primary) 55%, transparent) 0%, transparent 70%);
-  filter: blur(60px);
+  /* Was blur(60px) -- a blur that large visually spreads well beyond the
+     icon's own box (blur bleeds outside an element's box, uncontained by
+     its own size), which got cut off in the top nav specifically: the
+     header sits flush against the very top of the screen (sticky top-0),
+     so there's no room above the icon for a 60px glow to fully fade out
+     before hitting the edge of the viewport itself -- not a clipping bug,
+     just not enough space anywhere the header can offer. A smaller blur
+     keeps the glow fully contained in every context it's used. */
+  filter: blur(22px);
 }
 
 @utility animate-glow-pulse {
