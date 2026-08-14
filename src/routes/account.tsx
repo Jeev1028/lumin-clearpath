@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Factor } from "@supabase/supabase-js";
-import { Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
+import { Moon, ShieldCheck, ShieldOff, Sun, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -39,7 +39,14 @@ export const Route = createFileRoute("/account")({
 function AccountPage() {
   const navigate = useNavigate();
   const { user, loading, needsMfa } = useAuth();
-  const { prefs: soundPrefs, setPrefs: setSoundPrefs, playTone } = useSoundSettings();
+  const {
+    prefs: soundPrefs,
+    setPrefs: setSoundPrefs,
+    playTone,
+    speak,
+    voices,
+    recommendedVoiceURI,
+  } = useSoundSettings();
   const { theme, setTheme, mode, setMode } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
@@ -659,6 +666,57 @@ function AccountPage() {
               disabled={!soundPrefs.enabled}
               onCheckedChange={(checked) => setSoundPrefs({ readMessagesAloud: checked })}
             />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Voice</p>
+              <p className="text-xs text-muted-foreground">
+                Which voice reads replies aloud. &quot;Auto&quot; picks the best-sounding free voice
+                your browser offers.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={soundPrefs.voiceURI ?? "auto"}
+                disabled={!soundPrefs.enabled}
+                onValueChange={(value) => setSoundPrefs({ voiceURI: value === "auto" ? null : value })}
+              >
+                <SelectTrigger id="read-aloud-voice" className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (recommended)</SelectItem>
+                  {[...voices]
+                    .sort((a, b) => {
+                      const lang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
+                      const aMatch = a.lang.startsWith(lang.slice(0, 2));
+                      const bMatch = b.lang.startsWith(lang.slice(0, 2));
+                      if (aMatch !== bMatch) return aMatch ? -1 : 1;
+                      return a.name.localeCompare(b.name);
+                    })
+                    .map((v) => (
+                      <SelectItem key={v.voiceURI} value={v.voiceURI}>
+                        {v.name}
+                        {v.voiceURI === recommendedVoiceURI ? " — recommended" : ""} ({v.lang})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={!soundPrefs.enabled}
+                onClick={() =>
+                  speak("Hi, I'm Lumin AI. This is what I sound like when I read replies aloud.")
+                }
+                aria-label="Preview voice"
+                title="Preview voice"
+              >
+                <Volume2 className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">

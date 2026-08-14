@@ -20,6 +20,11 @@ export type SoundPrefs = {
   notificationSound: boolean;
   /** Small UI click/success/error tones (tasks, flashcards, etc). */
   uiEffects: boolean;
+  /** Preferred read-aloud voice, matched by SpeechSynthesisVoice.voiceURI.
+   * `null` means "auto" -- always pick the best-sounding voice available in
+   * the browser (see pickBestVoice below) rather than locking to one that
+   * might not exist on every device. */
+  voiceURI: string | null;
 };
 
 export const DEFAULT_SOUND_PREFS: SoundPrefs = {
@@ -28,6 +33,7 @@ export const DEFAULT_SOUND_PREFS: SoundPrefs = {
   readMessagesAloud: false,
   notificationSound: true,
   uiEffects: true,
+  voiceURI: null,
 };
 
 const STORAGE_KEY = "clearpath:sound-prefs";
@@ -61,6 +67,42 @@ const TONE_NOTES: Record<ToneKind, number[]> = {
   notify: [784, 988],
 };
 
+/**
+ * Every browser ships its own set of free, unlimited (no API key, no quota)
+ * speechSynthesis voices, but quality varies wildly -- the classic offenders
+ * are the old local SAPI voices (e.g. "Microsoft David/Zira Desktop" on
+ * Windows), which sound flat and robotic. Browsers also usually expose much
+ * better-sounding voices for free: Chrome's network "Google ..." voices,
+ * Edge's "... Online (Natural)" voices, and macOS/iOS's "Enhanced"/"Premium"
+ * Siri voices. This scores the available voices so we can default to the
+ * best-sounding one automatically instead of whatever the OS picks first.
+ */
+function scoreVoice(voice: SpeechSynthesisVoice, preferredLang: string): number {
+  const name = voice.name.toLowerCase();
+  const langMatches = voice.lang.toLowerCase().startsWith(preferredLang.toLowerCase().slice(0, 2));
+  let score = 0;
+  if (langMatches) score += 10;
+  if (voice.lang.toLowerCase() === preferredLang.toLowerCase()) score += 5;
+  if (name.includes("natural")) score += 60;
+  if (name.includes("neural")) score += 55;
+  if (name.includes("premium")) score += 45;
+  if (name.includes("enhanced")) score += 40;
+  if (name.includes("online")) score += 15;
+  if (name.includes("google")) score += 30;
+  // Older, robotic local SAPI voices -- deprioritize even if nothing else matches.
+  if (name.includes("desktop")) score -= 15;
+  if (/\b(david|zira|mark)\b/.test(name)) score -= 15;
+  return score;
+}
+
+function pickBestVoice(
+  voices: SpeechSynthesisVoice[],
+  preferredLang: string,
+): SpeechSynthesisVoice | undefined {
+  if (voices.length === 0) return undefined;
+  return [...voices].sort((a, b) => scoreVoice(b, preferredLang) - scoreVoice(a, preferredLang))[0];
+}
+
 type SpeakOptions = {
   /** Auto-read (triggered by a new message arriving) respects the
    * readMessagesAloud toggle; a manual tap-to-read only respects the
@@ -76,6 +118,10 @@ type SoundSettingsContextValue = {
   playTone: (kind: ToneKind) => void;
   speak: (text: string, opts?: SpeakOptions) => void;
   stopSpeaking: () => void;
+  /** All read-aloud voices the current browser offers, for a settings picker. */
+  voices: SpeechSynthesisVoice[];
+  /** The voiceURI that "Auto" currently resolves to, so the UI can label it. */
+  recommendedVoiceURI: string | null;
 };
 
 const SoundSettingsContext = createContext<SoundSettingsContextValue | null>(null);
@@ -88,6 +134,8 @@ const FALLBACK: SoundSettingsContextValue = {
   playTone: () => {},
   speak: () => {},
   stopSpeaking: () => {},
+  voices: [],
+  recommendedVoiceURI: null,
 };
 
 export function useSoundSettings(): SoundSettingsContextValue {
@@ -97,6 +145,7 @@ export function useSoundSettings(): SoundSettingsContextValue {
 export function SoundSettingsProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [prefs, setPrefsState] = useState<SoundPrefs>(DEFAULT_SOUND_PREFS);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -119,6 +168,17 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     setPrefsState(merged);
     persistLocalPrefs(merged);
   }, [loading, user]);
+
+  // Voice lists load async (and can arrive late / change) in most browsers.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    function loadVoices() {
+      setVoices(window.speechSynthesis.getVoices());
+    }
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   // Browsers (WKWebView especially) block audio/speech until a genuine user
   // gesture happens. Warm up the AudioContext on the very first tap/keypress
@@ -188,6 +248,15 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     try {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
+      const available = window.speechSynthesis.getVoices();
+      const preferredLang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
+      const chosen =
+        (prefs.voiceURI && available.find((v) => v.voiceURI === prefs.voiceURI)) ||
+        pickBestVoice(available, preferredLang);
+      if (chosen) {
+        utter.voice = chosen;
+        utter.lang = chosen.lang;
+      }
       utter.rate = 1;
       utter.onstart = () => opts.onStart?.();
       utter.onend = () => opts.onEnd?.();
@@ -207,8 +276,14 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const recommendedVoiceURI =
+    pickBestVoice(voices, (typeof navigator !== "undefined" && navigator.language) || "en-US")
+      ?.voiceURI ?? null;
+
   return (
-    <SoundSettingsContext.Provider value={{ prefs, setPrefs, playTone, speak, stopSpeaking }}>
+    <SoundSettingsContext.Provider
+      value={{ prefs, setPrefs, playTone, speak, stopSpeaking, voices, recommendedVoiceURI }}
+    >
       {children}
     </SoundSettingsContext.Provider>
   );
