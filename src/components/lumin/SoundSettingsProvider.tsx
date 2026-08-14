@@ -103,6 +103,65 @@ function pickBestVoice(
   return [...voices].sort((a, b) => scoreVoice(b, preferredLang) - scoreVoice(a, preferredLang))[0];
 }
 
+/**
+ * speechSynthesis reads raw text -- it has no idea what markdown is, and
+ * (in most engines) only pauses on punctuation it recognizes as a clause or
+ * sentence break. Lumin's replies are markdown and lean on em/en dashes for
+ * asides ("this -- not that"), which most voices just glide straight
+ * through since a bare dash isn't a pause cue. This strips the markdown
+ * formatting down to plain words and swaps anything meant to read as a
+ * pause (dashes, paragraph breaks, list items) for real sentence
+ * punctuation the voice will actually pause on.
+ */
+function sanitizeForSpeech(raw: string): string {
+  let text = raw;
+
+  // Fenced/inline code -- read the content, drop the backticks/fences.
+  text = text.replace(/```[\s\S]*?```/g, (block) => block.replace(/```[a-z]*\n?/gi, ""));
+  text = text.replace(/`([^`]+)`/g, "$1");
+
+  // Images/links -- read the visible label, not the markup or URL.
+  text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+  text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+
+  // Headings, blockquotes, horizontal rules, table pipes.
+  text = text.replace(/^#{1,6}\s+/gm, "");
+  text = text.replace(/^>\s?/gm, "");
+  text = text.replace(/^\s*([-*_]\s*){3,}$/gm, "");
+  text = text.replace(/\|/g, ", ");
+
+  // Bold/italic emphasis markers (keep the wrapped text).
+  text = text.replace(/(\*\*\*|___)(.*?)\1/g, "$2");
+  text = text.replace(/(\*\*|__)(.*?)\1/g, "$2");
+  text = text.replace(/(?<![a-zA-Z0-9])(\*|_)(.*?)\1(?![a-zA-Z0-9])/g, "$2");
+
+  // List markers -- drop the bullet/number, the item text still gets a
+  // pause from the newline handling below.
+  text = text.replace(/^\s*[-*+]\s+/gm, "");
+  text = text.replace(/^\s*\d+[.)]\s+/gm, "");
+
+  // Dashes used as a spoken pause/aside -- em dash, en dash, or a
+  // double-hyphen / spaced hyphen standing in for one -- become a comma,
+  // which every voice actually pauses on. (Hyphens with no surrounding
+  // space, like "well-known" or "10-20", are left alone -- those aren't
+  // meant to be a pause.)
+  text = text.replace(/\s*[–—]\s*/g, ", ");
+  text = text.replace(/\s+--\s+/g, ", ");
+  text = text.replace(/(\S)\s+-\s+(\S)/g, "$1, $2");
+
+  // Paragraph/line breaks -> a firmer pause than a comma.
+  text = text.replace(/\n{2,}/g, ". ");
+  text = text.replace(/\n/g, ". ");
+
+  // Clean up whitespace/punctuation left behind by the swaps above.
+  text = text.replace(/[ \t]{2,}/g, " ");
+  text = text.replace(/,(\s*,)+/g, ",");
+  text = text.replace(/\.(\s*\.)+/g, ".");
+  text = text.replace(/,\s*\./g, ".");
+  text = text.replace(/:\s*\./g, ":");
+  return text.trim();
+}
+
 type SpeakOptions = {
   /** Auto-read (triggered by a new message arriving) respects the
    * readMessagesAloud toggle; a manual tap-to-read only respects the
@@ -245,9 +304,11 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     if (!prefs.enabled) return;
     if (opts.auto && !prefs.readMessagesAloud) return;
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const cleaned = sanitizeForSpeech(text);
+    if (!cleaned) return;
     try {
       window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
+      const utter = new SpeechSynthesisUtterance(cleaned);
       const available = window.speechSynthesis.getVoices();
       const preferredLang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
       const chosen =
