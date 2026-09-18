@@ -1,0 +1,36 @@
+{
+  "name": "clearpath-windows",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Electron wrapper for ClearPath -- loads the live site (luminclearpath.ca/auth) rather than bundling built web assets, mirroring the Android TWA's and iOS Capacitor shell's 'render the live site' approach.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ca.luminclearpath.windows",
+    "productName": "ClearPath",
+    "files": [
+      "main.js",
+      "icons/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}
