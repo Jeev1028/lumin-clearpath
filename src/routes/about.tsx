@@ -85,7 +85,7 @@ function AboutPage() {
               of a plain overflow-y-auto div -- gives this its own thin,
               theme-colored thumb instead of the browser's default (often
               stark white/gray) scrollbar. */}
-          <ScrollArea className="max-h-[65vh] rounded-3xl border border-border/70 bg-card/70 shadow-panel backdrop-blur-sm">
+          <ScrollArea className="h-[65vh] rounded-3xl border border-border/70 bg-card/70 shadow-panel backdrop-blur-sm">
             <div className="lumin-md p-6 text-sm leading-relaxed text-foreground/90 sm:p-8 sm:text-base">
               <p>
                 ClearPath is a passion project: a study platform built by a grade 10 student,
