@@ -39,7 +39,7 @@ function AboutPage() {
 
       <blockquote className="border-l-2 border-accent/50 pl-4 text-foreground/90 italic">
         I built ClearPath because I was tired of juggling five different apps just to keep track of
-        my own schoolwork — and every AI tool I tried either refused to help or just did the
+        my own schoolwork, and every AI tool I tried either refused to help or just did the
         assignment for me. I wanted something in between: a tutor that actually teaches you, instead
         of one that either shuts you out or does your thinking for you. It's still very much a work
         in progress, built and maintained in spare time, but I'm proud of it, and I'm glad you're
@@ -56,11 +56,11 @@ function AboutPage() {
       <h2 className="text-xl font-semibold">What Lumin AI actually does</h2>
       <p>
         Lumin AI explains concepts, asks guiding questions, points you to real sources, and gives
-        feedback on work you've already done — all without writing it for you. It won't produce an
+        feedback on work you've already done, all without writing it for you. It won't produce an
         essay, a lab report, or a ready-to-submit outline, and it won't hand you a finished answer
-        to a math problem or a name for your school project — it walks you through the method or the
-        way to think about it instead, so the thinking stays yours. You can read the full detail of
-        how it's expected to behave in our{" "}
+        to a math problem or a name for your school project. Instead, it walks you through the
+        method or the way to think about it, so the thinking stays yours. You can read the full
+        detail of how it's expected to behave in our{" "}
         <Link to="/terms" className="underline underline-offset-4">
           Terms of Service
         </Link>
