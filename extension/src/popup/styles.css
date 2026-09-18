@@ -172,6 +172,134 @@ body {
   margin: 0;
 }
 
+.thread-switcher {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.thread-switcher-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.thread-switcher-trigger:hover {
+  background: var(--card);
+}
+
+.thread-switcher-trigger:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.thread-switcher-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.thread-switcher-chevron {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.thread-switcher-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.thread-switcher-new {
+  flex-shrink: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+.thread-switcher-new:hover {
+  background: var(--card);
+}
+
+.thread-switcher-new:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.thread-switcher-list {
+  overflow-y: auto;
+}
+
+.thread-switcher-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 9px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.thread-switcher-item:hover {
+  background: var(--card);
+}
+
+.thread-switcher-item:disabled {
+  cursor: default;
+}
+
+.thread-switcher-item.active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.thread-switcher-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-switcher-item-time {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
 .quick-actions {
   display: flex;
   flex-wrap: wrap;

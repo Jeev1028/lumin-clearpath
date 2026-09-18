@@ -10,6 +10,7 @@ import { LuminMark } from "@/components/lumin/LuminMark";
 import { useSoundSettings } from "@/components/lumin/SoundSettingsProvider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
 import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,11 @@ export function ChatWindow({
 }: Props) {
   const [input, setInput] = useState(initialInput ?? "");
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
+  // On mobile, Return/Enter on the on-screen keyboard should insert a
+  // newline like it does everywhere else -- students send the message with
+  // the send button instead. Desktop keeps the usual Enter-to-send, with
+  // Shift+Enter for a newline.
+  const isMobile = useIsMobile();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -172,17 +178,12 @@ export function ChatWindow({
             const text = message.parts
               .map((part) => (part.type === "text" ? part.text : ""))
               .join("");
-            const files = message.parts.filter(
-              (part): part is FileUIPart => part.type === "file",
-            );
+            const files = message.parts.filter((part): part is FileUIPart => part.type === "file");
             if (!text && files.length === 0) return null;
             return (
               <div
                 key={message.id}
-                className={cn(
-                  "flex",
-                  message.role === "user" ? "justify-end" : "justify-start",
-                )}
+                className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}
               >
                 <div className={cn("max-w-[85%]", message.role === "user" ? "" : "w-full")}>
                   {message.role === "assistant" && (
@@ -194,7 +195,11 @@ export function ChatWindow({
                       <button
                         type="button"
                         onClick={() => handleReadAloud(message.id, text)}
-                        aria-label={speakingId === message.id ? "Stop reading aloud" : "Read this message aloud"}
+                        aria-label={
+                          speakingId === message.id
+                            ? "Stop reading aloud"
+                            : "Read this message aloud"
+                        }
                         title={speakingId === message.id ? "Stop reading aloud" : "Read aloud"}
                         className={cn(
                           "shrink-0 rounded-full border p-1.5 transition-colors",
@@ -332,6 +337,7 @@ export function ChatWindow({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
+                if (isMobile) return;
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   submit();

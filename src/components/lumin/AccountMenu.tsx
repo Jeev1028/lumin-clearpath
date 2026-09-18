@@ -6,6 +6,7 @@ import {
   Compass,
   GraduationCap,
   HelpCircle,
+  Info,
   Layers,
   LogOut,
   Settings,
@@ -129,6 +130,12 @@ export function AccountMenu() {
         <DropdownMenuItem onClick={openTutorial} className="cursor-pointer gap-2">
           <HelpCircle className="h-4 w-4" aria-hidden />
           Take the tour
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link to="/about">
+            <Info className="h-4 w-4" aria-hidden />
+            About
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => void handleSignOut()}

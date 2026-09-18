@@ -11,7 +11,14 @@ import { ThreadSidebar } from "@/components/lumin/ThreadSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeyboardSafeHeight } from "@/hooks/useKeyboardSafeHeight";
 import { supabase } from "@/integrations/supabase/client";
-import { createThread, deleteThread, listMessages, listThreads } from "@/lib/threads";
+import {
+  createThread,
+  deleteThread,
+  exportThreadTranscript,
+  listMessages,
+  listThreads,
+  type Thread,
+} from "@/lib/threads";
 
 export const Route = createFileRoute("/chat/$threadId")({
   head: () => ({
@@ -118,6 +125,14 @@ function ChatThreadPage() {
     }
   }
 
+  async function handleExportThread(thread: Thread) {
+    try {
+      await exportThreadTranscript(thread);
+    } catch {
+      toast.error("Could not export that conversation.");
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     await navigate({ to: "/" });
@@ -148,6 +163,7 @@ function ChatThreadPage() {
             activeId={threadId}
             onNewThread={handleNewThread}
             onDeleteThread={handleDeleteThread}
+            onExportThread={handleExportThread}
             onSignOut={handleSignOut}
             showBranding={false}
           />
@@ -178,6 +194,7 @@ function ChatThreadPage() {
               activeId={threadId}
               onNewThread={handleNewThread}
               onDeleteThread={handleDeleteThread}
+              onExportThread={handleExportThread}
               onSignOut={handleSignOut}
               onNavigate={() => setSidebarOpen(false)}
             />

@@ -356,6 +356,9 @@ function Index() {
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
         <p>ClearPath · Lumin AI · To illuminate your educational journey</p>
         <div className="mt-3 flex items-center justify-center gap-4">
+          <Link to="/about" className="hover:text-foreground">
+            About
+          </Link>
           <Link to="/terms" className="hover:text-foreground">
             Terms of Service
           </Link>

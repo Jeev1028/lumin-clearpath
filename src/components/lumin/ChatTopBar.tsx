@@ -19,6 +19,7 @@ const links = [
   { to: "/knowledge", label: "Knowledge" },
   { to: "/flashcards", label: "Flashcards" },
   { to: "/chat", label: "Lumin AI" },
+  { to: "/about", label: "About" },
 ] as const;
 
 /**

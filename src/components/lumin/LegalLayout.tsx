@@ -9,7 +9,7 @@ export function LegalLayout({
   children,
 }: {
   title: string;
-  effectiveDate: string;
+  effectiveDate?: string;
   children: ReactNode;
 }) {
   return (
@@ -23,6 +23,9 @@ export function LegalLayout({
           <LuminWordmark />
         </Link>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+          <Link to="/about" className="hover:text-foreground">
+            About
+          </Link>
           <Link to="/terms" className="hover:text-foreground">
             Terms
           </Link>
@@ -35,7 +38,9 @@ export function LegalLayout({
       <main className="mx-auto max-w-4xl px-6 pb-24">
         <div className="rounded-3xl border border-border/70 bg-card/70 p-8 shadow-panel backdrop-blur-sm sm:p-12">
           <h1 className="text-3xl font-bold sm:text-4xl">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Effective date: {effectiveDate}</p>
+          {effectiveDate && (
+            <p className="mt-2 text-sm text-muted-foreground">Effective date: {effectiveDate}</p>
+          )}
           <div className="lumin-md mt-8 text-sm leading-relaxed text-foreground/90 sm:text-base">
             {children}
           </div>

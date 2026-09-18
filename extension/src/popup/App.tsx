@@ -4,7 +4,14 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "../lib/supabase";
-import { getOrCreateThreadId, loadThreadMessages } from "../lib/threads";
+import {
+  createThread,
+  listThreads,
+  loadThreadMessages,
+  resolveInitialThread,
+  setActiveThreadId,
+  type Thread,
+} from "../lib/threads";
 import { signInWithGoogle } from "../lib/google-auth";
 import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "../lib/attachments";
 
@@ -22,9 +29,7 @@ function textOf(message: UIMessage): string {
  * Multi-account browsers add an account-index segment (e.g.
  * /document/u/0/d/ID/edit), so that part is optional. Returns null for
  * anything else, so callers can fall back to normal page handling. */
-function googleDocInfo(
-  pageUrl: string,
-): { kind: "document" | "presentation"; id: string } | null {
+function googleDocInfo(pageUrl: string): { kind: "document" | "presentation"; id: string } | null {
   try {
     const url = new URL(pageUrl);
     if (url.hostname !== "docs.google.com") return null;
@@ -115,7 +120,9 @@ function fetchGoogleExportBlob(exportUrl: string, timeoutMs = 20000): Promise<Bl
         });
     };
 
-    chrome.webRequest.onBeforeRedirect.addListener(listener, { urls: ["https://docs.google.com/*"] });
+    chrome.webRequest.onBeforeRedirect.addListener(listener, {
+      urls: ["https://docs.google.com/*"],
+    });
     const timer = setTimeout(() => finish(null), timeoutMs);
 
     fetch(exportUrl, { credentials: "include" })
@@ -188,9 +195,11 @@ async function getActiveTabInfo(): Promise<{ title: string; url: string } | null
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = still loading
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [switcherBusy, setSwitcherBusy] = useState(false);
   const [pageActionBusy, setPageActionBusy] = useState(false);
 
   useEffect(() => {
@@ -201,6 +210,7 @@ export function App() {
 
   useEffect(() => {
     if (!session?.user) {
+      setThreads([]);
       setThreadId(null);
       setInitialMessages([]);
       return;
@@ -209,10 +219,11 @@ export function App() {
     setThreadLoading(true);
     (async () => {
       try {
-        const id = await getOrCreateThreadId(session.user.id);
-        const messages = await loadThreadMessages(id);
+        const { threads: loaded, activeId } = await resolveInitialThread(session.user.id);
+        const messages = await loadThreadMessages(activeId);
         if (cancelled) return;
-        setThreadId(id);
+        setThreads(loaded);
+        setThreadId(activeId);
         setInitialMessages(messages);
       } catch (err) {
         console.error("[extension] failed to load conversation", err);
@@ -224,6 +235,49 @@ export function App() {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  // Refreshes the thread list (titles + ordering) after activity -- a
+  // thread title is derived server-side from its first message, and its
+  // updated_at bumps on every reply, so the switcher needs a re-fetch to
+  // reflect that rather than staying stuck on whatever it loaded initially.
+  async function refreshThreads() {
+    if (!session?.user) return;
+    try {
+      setThreads(await listThreads(session.user.id));
+    } catch (err) {
+      console.error("[extension] failed to refresh conversation list", err);
+    }
+  }
+
+  async function handleSelectThread(id: string) {
+    if (id === threadId || switcherBusy) return;
+    setSwitcherBusy(true);
+    try {
+      const messages = await loadThreadMessages(id);
+      await setActiveThreadId(id);
+      setThreadId(id);
+      setInitialMessages(messages);
+    } catch (err) {
+      console.error("[extension] failed to switch conversation", err);
+    } finally {
+      setSwitcherBusy(false);
+    }
+  }
+
+  async function handleNewThread() {
+    if (!session?.user || switcherBusy) return;
+    setSwitcherBusy(true);
+    try {
+      const thread = await createThread(session.user.id);
+      setThreads((prev) => [thread, ...prev]);
+      setThreadId(thread.id);
+      setInitialMessages([]);
+    } catch (err) {
+      console.error("[extension] failed to start a new conversation", err);
+    } finally {
+      setSwitcherBusy(false);
+    }
+  }
 
   if (session === undefined) {
     return (
@@ -256,16 +310,126 @@ export function App() {
     );
   }
 
+  const activeThread = threads.find((t) => t.id === threadId);
+
   return (
     <div className="app">
       <Header signedIn />
+      <ThreadSwitcher
+        threads={threads}
+        activeId={threadId}
+        activeTitle={activeThread ? activeThread.title : "Conversation"}
+        busy={switcherBusy}
+        onSelect={(id) => void handleSelectThread(id)}
+        onNewThread={() => void handleNewThread()}
+      />
+      {/* Remounts ChatView (and its internal useChat state) whenever the
+          active thread changes -- same pattern the website's ChatWindow
+          uses (see chat.$threadId.tsx), so switching never bleeds one
+          conversation's state into another. */}
       <ChatView
+        key={threadId}
         threadId={threadId}
         initialMessages={initialMessages}
         accessToken={session.access_token}
         pageActionBusy={pageActionBusy}
         setPageActionBusy={setPageActionBusy}
+        onActivity={() => void refreshThreads()}
       />
+    </div>
+  );
+}
+
+function formatThreadTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.round(hours / 24);
+  if (days < 7) return days + "d ago";
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function ThreadSwitcher({
+  threads,
+  activeId,
+  activeTitle,
+  busy,
+  onSelect,
+  onNewThread,
+}: {
+  threads: Thread[];
+  activeId: string;
+  activeTitle: string;
+  busy: boolean;
+  onSelect: (id: string) => void;
+  onNewThread: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  return (
+    <div className="thread-switcher" ref={containerRef}>
+      <button
+        type="button"
+        className="thread-switcher-trigger"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="thread-switcher-title">{activeTitle}</span>
+        <span className="thread-switcher-chevron" aria-hidden>
+          {open ? "\u25B2" : "\u25BC"}
+        </span>
+      </button>
+      {open && (
+        <div className="thread-switcher-dropdown" role="listbox">
+          <button
+            type="button"
+            className="thread-switcher-new"
+            onClick={() => {
+              onNewThread();
+              setOpen(false);
+            }}
+            disabled={busy}
+          >
+            + New conversation
+          </button>
+          <div className="thread-switcher-list">
+            {threads.map((thread) => (
+              <button
+                key={thread.id}
+                type="button"
+                role="option"
+                aria-selected={thread.id === activeId}
+                className={"thread-switcher-item" + (thread.id === activeId ? " active" : "")}
+                onClick={() => {
+                  onSelect(thread.id);
+                  setOpen(false);
+                }}
+                disabled={busy}
+              >
+                <span className="thread-switcher-item-title">{thread.title || "Conversation"}</span>
+                <span className="thread-switcher-item-time">
+                  {formatThreadTime(thread.updated_at)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -380,12 +544,14 @@ function ChatView({
   accessToken,
   pageActionBusy,
   setPageActionBusy,
+  onActivity,
 }: {
   threadId: string;
   initialMessages: UIMessage[];
   accessToken: string;
   pageActionBusy: boolean;
   setPageActionBusy: (busy: boolean) => void;
+  onActivity: () => void;
 }) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
@@ -401,6 +567,7 @@ function ChatView({
       headers: { Authorization: `Bearer ${accessToken}` },
       body: { threadId },
     }),
+    onFinish: () => onActivity(),
   });
 
   const isBusy = status === "submitted" || status === "streaming";
@@ -426,7 +593,9 @@ function ChatView({
   function submit(text: string) {
     const trimmed = text.trim();
     if ((!trimmed && attachments.length === 0) || isBusy) return;
-    void sendMessage(attachments.length > 0 ? { text: trimmed, files: attachments } : { text: trimmed });
+    void sendMessage(
+      attachments.length > 0 ? { text: trimmed, files: attachments } : { text: trimmed },
+    );
     setInput("");
     setAttachments([]);
   }
@@ -523,8 +692,8 @@ function ChatView({
       <div className="messages" ref={scrollRef}>
         {messages.length === 0 && (
           <p className="empty-state">
-            Ask Lumin for help understanding something, finding sources, or figuring out how to
-            cite what you're reading — Lumin will guide you, not do it for you.
+            Ask Lumin for help understanding something, finding sources, or figuring out how to cite
+            what you're reading — Lumin will guide you, not do it for you.
           </p>
         )}
         {messages.map((m) => {

@@ -17,6 +17,7 @@ const links = [
   { to: "/knowledge", label: "Knowledge" },
   { to: "/flashcards", label: "Flashcards" },
   { to: "/chat", label: "Lumin AI" },
+  { to: "/about", label: "About" },
 ] as const;
 
 // Class names below (site-header, site-header-inner, site-header-row1,

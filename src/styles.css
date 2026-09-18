@@ -326,6 +326,16 @@
   box-shadow: var(--shadow-glow);
 }
 
+/* A soft, theme-matching glow behind text itself (not a box) -- used for
+   the standalone hero-style pull quote on the About page. Follows
+   --accent (like glow-orb does for the logo) so it still reads correctly
+   whichever color theme is active. */
+@utility text-glow-accent {
+  text-shadow:
+    0 0 24px color-mix(in oklch, var(--accent) 75%, transparent),
+    0 0 56px color-mix(in oklch, var(--accent) 45%, transparent);
+}
+
 @utility shadow-panel {
   box-shadow: var(--shadow-panel);
 }

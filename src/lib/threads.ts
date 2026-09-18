@@ -79,14 +79,65 @@ export type StoredMessage = {
   id: string;
   role: string;
   content: string;
+  created_at: string;
 };
 
 export async function listMessages(threadId: string): Promise<StoredMessage[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, role, content")
+    .select("id, role, content, created_at")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+/** Formats a conversation as a plain-text transcript for offline reading:
+ * alternating "User:" / "Lumin:" turns, each stamped with a local
+ * date/time, so the file reads sensibly outside the app (email, Notepad,
+ * printed, etc). */
+export function formatTranscript(title: string, messages: StoredMessage[]): string {
+  const heading = title || "Conversation";
+  const lines = [heading, "=".repeat(heading.length), ""];
+  for (const message of messages) {
+    const speaker =
+      message.role === "assistant" ? "Lumin" : message.role === "user" ? "User" : message.role;
+    const timestamp = new Date(message.created_at).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    lines.push(`${speaker} [${timestamp}]:`, message.content.trim(), "");
+  }
+  return lines.join("\n").trimEnd() + "\n";
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "conversation";
+}
+
+/** Triggers a browser download of `content` as a plain-text file -- no
+ * server round trip needed, the whole conversation is already local. */
+export function downloadTextFile(filename: string, content: string): void {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Fetches a thread's full message history fresh (so it works even for a
+ * thread that isn't the one currently open) and downloads it as a .txt
+ * file, "User:" / "Lumin:" transcript with timestamps. */
+export async function exportThreadTranscript(thread: Thread): Promise<void> {
+  const messages = await listMessages(thread.id);
+  const text = formatTranscript(thread.title, messages);
+  downloadTextFile(`${slugify(thread.title)}.txt`, text);
 }

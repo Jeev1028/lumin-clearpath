@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MessageSquarePlus, Search, Trash2, X } from "lucide-react";
+import { Download, MessageSquarePlus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { LuminWordmark } from "@/components/lumin/LuminMark";
@@ -13,6 +13,7 @@ type Props = {
   activeId: string;
   onNewThread: () => void;
   onDeleteThread: (id: string) => void;
+  onExportThread: (thread: Thread) => void;
   onSignOut: () => void;
   /** Called after any navigation-triggering action — used to close the
    * mobile drawer this sidebar may be rendered inside of. No-op on the
@@ -31,6 +32,7 @@ export function ThreadSidebar({
   activeId,
   onNewThread,
   onDeleteThread,
+  onExportThread,
   onSignOut,
   onNavigate,
   showBranding = true,
@@ -129,6 +131,15 @@ export function ThreadSidebar({
             >
               {thread.title}
             </Link>
+            <button
+              type="button"
+              aria-label="Export conversation as a text file"
+              title="Export as .txt"
+              onClick={() => onExportThread(thread)}
+              className="rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:text-foreground"
+            >
+              <Download className="h-4 w-4" />
+            </button>
             <button
               type="button"
               aria-label="Delete conversation"

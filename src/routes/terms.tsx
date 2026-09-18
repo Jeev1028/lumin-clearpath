@@ -27,10 +27,10 @@ function TermsPage() {
 
       <h2 className="text-xl font-semibold">1. Who can use ClearPath</h2>
       <p>
-        ClearPath is intended for students, educators, and others using it for educational
-        purposes. If you are under the age required to consent to online services in your
-        jurisdiction without parental consent, you should have a parent or guardian review these
-        Terms and our Privacy Policy with you before you use ClearPath.
+        ClearPath is intended for students, educators, and others using it for educational purposes.
+        If you are under the age required to consent to online services in your jurisdiction without
+        parental consent, you should have a parent or guardian review these Terms and our Privacy
+        Policy with you before you use ClearPath.
       </p>
 
       <h2 className="text-xl font-semibold">2. Your account</h2>
@@ -47,37 +47,54 @@ function TermsPage() {
         AI, the following principles apply and cannot be bypassed by asking indirectly:
       </p>
       <ul>
-        <li>Lumin AI will explain concepts, ask guiding questions, and check your understanding rather than writing assignments, essays, lab reports, or other graded work for you.</li>
-        <li>When you ask Lumin AI to research a topic, it will provide links to real sources and remind you to cite them yourself in MLA format — it will not generate citations on your behalf.</li>
-        <li>Analysis or summarization requests are answered in plain paragraph form, not formatted as an assignment deliverable (such as an essay or report) that could be submitted as your own work.</li>
+        <li>
+          Lumin AI will explain concepts, ask guiding questions, and check your understanding rather
+          than writing assignments, essays, lab reports, or other graded work for you.
+        </li>
+        <li>
+          Lumin AI will not solve math, science, or other problems for you — even simple ones — and
+          will not generate names, titles, or brainstormed ideas for your projects. Instead, it
+          walks you through the method, demonstrates on a different example, or asks questions to
+          help you land on your own answer.
+        </li>
+        <li>
+          When you ask Lumin AI to research a topic, it will provide links to real sources and
+          remind you to cite them yourself in MLA format — it will not generate citations on your
+          behalf.
+        </li>
+        <li>
+          Analysis or summarization requests are answered in plain paragraph form, not formatted as
+          an assignment deliverable (such as an essay or report) that could be submitted as your own
+          work.
+        </li>
       </ul>
       <p>
         You agree not to attempt to use ClearPath or Lumin AI to violate your school's academic
-        integrity policies, and you remain solely responsible for complying with those policies
-        and for how you use any information or guidance Lumin AI provides.
+        integrity policies, and you remain solely responsible for complying with those policies and
+        for how you use any information or guidance Lumin AI provides.
       </p>
 
       <h2 className="text-xl font-semibold">4. Lumin AI study planner</h2>
       <p>
         On the Tasks and Schedule pages, you can ask Lumin AI to generate a personalized
-        study/assignment plan. To do this, Lumin AI reads your outstanding tasks, your weekly
-        class schedule, any calendar events in the relevant time window, and any preferences you
-        choose to type in (such as preferred study times or subjects you find harder), and uses
-        that information — together with general, published learning-science research (such as
-        spaced repetition, interleaving, and time-boxing) — to suggest a day-by-day plan. This
-        feature only exists to help you decide <em>when</em> to work on your own tasks; it never
-        completes any assignment's actual content for you, and remains subject to the academic
-        honesty principles in Section 3. The plan is a suggestion, not a requirement — you're free
-        to ignore or change it, and it does not affect your grades or standing in any way.
+        study/assignment plan. To do this, Lumin AI reads your outstanding tasks, your weekly class
+        schedule, any calendar events in the relevant time window, and any preferences you choose to
+        type in (such as preferred study times or subjects you find harder), and uses that
+        information — together with general, published learning-science research (such as spaced
+        repetition, interleaving, and time-boxing) — to suggest a day-by-day plan. This feature only
+        exists to help you decide <em>when</em> to work on your own tasks; it never completes any
+        assignment's actual content for you, and remains subject to the academic honesty principles
+        in Section 3. The plan is a suggestion, not a requirement — you're free to ignore or change
+        it, and it does not affect your grades or standing in any way.
       </p>
 
       <h2 className="text-xl font-semibold">5. Connected Google services</h2>
       <p>
-        ClearPath may allow you to optionally connect Google Classroom and Google Calendar to
-        import your courses, coursework, and events. By connecting these services, you authorize
-        ClearPath to access the specific data covered by the permissions you approve. You can
-        disconnect these integrations at any time from your account settings or directly from your
-        Google Account permissions. See our{" "}
+        ClearPath may allow you to optionally connect Google Classroom and Google Calendar to import
+        your courses, coursework, and events. By connecting these services, you authorize ClearPath
+        to access the specific data covered by the permissions you approve. You can disconnect these
+        integrations at any time from your account settings or directly from your Google Account
+        permissions. See our{" "}
         <Link to="/privacy" className="underline underline-offset-4">
           Privacy Policy
         </Link>{" "}
@@ -86,26 +103,35 @@ function TermsPage() {
 
       <h2 className="text-xl font-semibold">5a. Messaging a teacher</h2>
       <p>
-        If you connect Google Classroom, you can send a private note to a course's teacher from
-        an assignment's detail view. Because Google's Classroom API does not let apps read or post
-        real Classroom comments, ClearPath delivers your note as a regular email sent directly to
-        the teacher's school email address, with your email set as the reply-to address. This is
-        not a Classroom comment and will not appear inside Google Classroom itself. You are
-        responsible for what you write, and it remains subject to the same academic honesty and
-        acceptable-use rules as everything else in the Service.
+        If you connect Google Classroom, you can send a private note to a course's teacher from an
+        assignment's detail view. Because Google's Classroom API does not let apps read or post real
+        Classroom comments, ClearPath delivers your note as a regular email sent directly to the
+        teacher's school email address, with your email set as the reply-to address. This is not a
+        Classroom comment and will not appear inside Google Classroom itself. You are responsible
+        for what you write, and it remains subject to the same academic honesty and acceptable-use
+        rules as everything else in the Service.
       </p>
 
       <h2 className="text-xl font-semibold">6. Acceptable use</h2>
       <p>You agree not to:</p>
       <ul>
-        <li>Use the Service for any unlawful purpose or in violation of any applicable school policy.</li>
-        <li>Attempt to disrupt, overload, or gain unauthorized access to the Service or other users' accounts or data.</li>
+        <li>
+          Use the Service for any unlawful purpose or in violation of any applicable school policy.
+        </li>
+        <li>
+          Attempt to disrupt, overload, or gain unauthorized access to the Service or other users'
+          accounts or data.
+        </li>
         <li>Use automated means (bots, scrapers) to access the Service without our permission.</li>
         <li>Misrepresent your identity or affiliation with any school.</li>
-        <li>Use Lumin AI to generate content intended to deceive an instructor about its authorship.</li>
+        <li>
+          Use Lumin AI to generate content intended to deceive an instructor about its authorship.
+        </li>
       </ul>
 
-      <h2 className="text-xl font-semibold">7. AI-generated content is not guaranteed to be accurate</h2>
+      <h2 className="text-xl font-semibold">
+        7. AI-generated content is not guaranteed to be accurate
+      </h2>
       <p>
         Lumin AI is an AI system and can make mistakes, including factual errors, incomplete
         explanations, or an unrealistic study plan. Lumin AI is a study aid, not a substitute for
@@ -116,10 +142,10 @@ function TermsPage() {
 
       <h2 className="text-xl font-semibold">8. Intellectual property</h2>
       <p>
-        The ClearPath name, logo, and design are the property of ClearPath. You retain ownership
-        of the content you create within the Service (such as your tasks and notes). By using
-        Lumin AI, you grant us the limited right to process your messages, tasks, and schedule
-        data solely to provide the Service to you, as described in our Privacy Policy.
+        The ClearPath name, logo, and design are the property of ClearPath. You retain ownership of
+        the content you create within the Service (such as your tasks and notes). By using Lumin AI,
+        you grant us the limited right to process your messages, tasks, and schedule data solely to
+        provide the Service to you, as described in our Privacy Policy.
       </p>
 
       <h2 className="text-xl font-semibold">9. Availability and changes to the Service</h2>
@@ -133,21 +159,21 @@ function TermsPage() {
       <p>
         To the fullest extent permitted by law, ClearPath is not liable for any indirect,
         incidental, or consequential damages arising from your use of the Service, including any
-        academic consequences resulting from your use of Lumin AI, its study planner, or reliance
-        on AI-generated content.
+        academic consequences resulting from your use of Lumin AI, its study planner, or reliance on
+        AI-generated content.
       </p>
 
       <h2 className="text-xl font-semibold">11. Termination</h2>
       <p>
         You may stop using ClearPath and delete your account at any time. We may suspend or
-        terminate accounts that violate these Terms, misuse the Service, or pose a security risk
-        to other users.
+        terminate accounts that violate these Terms, misuse the Service, or pose a security risk to
+        other users.
       </p>
 
       <h2 className="text-xl font-semibold">12. Changes to these Terms</h2>
       <p>
-        We may update these Terms from time to time. If we make material changes, we will update
-        the effective date above and, where appropriate, notify you directly.
+        We may update these Terms from time to time. If we make material changes, we will update the
+        effective date above and, where appropriate, notify you directly.
       </p>
 
       <h2 className="text-xl font-semibold">13. Contact us</h2>
