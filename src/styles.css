@@ -367,6 +367,19 @@
   display: none;
 }
 
+/* A faint scattering of small stars/dots -- used behind the About page's
+   hero quote for a bit more atmosphere than flat color + orbs alone.
+   Deliberately very low opacity/contrast so it reads as texture, not
+   noise, and stays out of the way of the text sitting on top of it. */
+@utility bg-starfield {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--foreground) 55%, transparent) 1px,
+    transparent 1.6px
+  );
+  background-size: 28px 28px;
+}
+
 @utility glow-orb {
   /* Was hardcoded to Midnight's blue (hue 245) -- color-mix() lets it
      follow --primary, so the glow behind the Lumin mark actually matches
