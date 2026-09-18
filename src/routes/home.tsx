@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { syncScheduleWidget } from "@/lib/schedule-widget";
 import {
   CATEGORY_LABELS,
   classroomAverage,
@@ -40,7 +41,8 @@ export const Route = createFileRoute("/home")({
       { title: "Today — ClearPath by Lumin AI" },
       {
         name: "description",
-        content: "Everything due today, your schedule, recent notifications and grades, in one place.",
+        content:
+          "Everything due today, your schedule, recent notifications and grades, in one place.",
       },
     ],
   }),
@@ -70,7 +72,9 @@ function greeting(): string {
   return "Good evening";
 }
 
-function firstName(user: { user_metadata?: Record<string, unknown>; email?: string } | null): string {
+function firstName(
+  user: { user_metadata?: Record<string, unknown>; email?: string } | null,
+): string {
   if (!user) return "";
   const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
   const full = meta["full_name"] || meta["name"] || user.email || "";
@@ -132,7 +136,10 @@ function TodayPage() {
   const dow = new Date().getDay();
 
   const overdueTasks = useMemo(
-    () => tasks.filter((t) => isOverdue(t, today)).sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? "")),
+    () =>
+      tasks
+        .filter((t) => isOverdue(t, today))
+        .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? "")),
     [tasks, today],
   );
   const dueTodayTasks = useMemo(
@@ -149,10 +156,11 @@ function TodayPage() {
     in7.setDate(in7.getDate() + 7);
     const in7Str = todayStrFor(in7);
     return tasks
-      .filter((t) => t.due_date && t.due_date > today && t.due_date <= in7Str && t.status !== "submitted")
+      .filter(
+        (t) => t.due_date && t.due_date > today && t.due_date <= in7Str && t.status !== "submitted",
+      )
       .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""))
       .slice(0, 5);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, today]);
 
   const todaySchedule = useMemo(() => {
@@ -173,7 +181,10 @@ function TodayPage() {
         title: e.title,
         time: e.all_day
           ? "All day"
-          : new Date(e.start_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+          : new Date(e.start_at).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
         sub: e.location,
         sortKey: e.all_day ? "00:00" : e.start_at.slice(11, 16),
       }));
@@ -182,6 +193,18 @@ function TodayPage() {
 
   const unreadNotifications = notifications.filter((n) => !n.read_at).slice(0, 5);
   const overallAverage = coursework ? classroomAverage(coursework) : null;
+
+  // Keeps the iOS home screen widget's "today's schedule" in sync -- a
+  // no-op everywhere except the native iOS app (see syncScheduleWidget).
+  // Fires whenever today's schedule is recomputed (data load, day
+  // rollover), not just once, so the widget reflects edits made from
+  // other pages too the next time this page is visited.
+  useEffect(() => {
+    if (!ready) return;
+    void syncScheduleWidget(
+      todaySchedule.map((item) => ({ title: item.title, time: item.time, location: item.sub })),
+    );
+  }, [ready, todaySchedule]);
 
   async function handleNotificationClick(n: AppNotification) {
     setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read_at: "now" } : x)));
@@ -248,7 +271,9 @@ function TodayPage() {
             </div>
             <div className="mt-3 space-y-2">
               {overdueTasks.length === 0 && dueTodayTasks.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nothing due today — you're clear. 🎉</p>
+                <p className="text-sm text-muted-foreground">
+                  Nothing due today — you're clear. 🎉
+                </p>
               )}
               {overdueTasks.slice(0, 4).map((t) => (
                 <Link
@@ -269,7 +294,9 @@ function TodayPage() {
                 >
                   <ClipboardList className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                  {t.course && <span className="shrink-0 text-xs text-muted-foreground">{t.course}</span>}
+                  {t.course && (
+                    <span className="shrink-0 text-xs text-muted-foreground">{t.course}</span>
+                  )}
                 </Link>
               ))}
             </div>
