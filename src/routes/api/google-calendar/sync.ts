@@ -16,6 +16,7 @@ import {
 import { decryptToken, encryptToken } from "@/lib/token-crypto";
 
 type SyncBody = { timeZone?: string };
+type SkippedItem = { title: string; reason: string };
 
 export const Route = createFileRoute("/api/google-calendar/sync")({
   server: {
@@ -69,35 +70,52 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
         const calendarId = connection.google_calendar_id;
         let pushed = 0;
         let pulled = 0;
+        // Events that couldn't be pushed (bad time range, Google API
+        // rejection, etc.) are skipped individually with a reason instead
+        // of aborting the whole sync -- one malformed event used to take
+        // down every other event's sync along with it (see the
+        // "timeRangeEmpty" bug this replaced: an end time not strictly
+        // after its start time made Google reject that single event, which
+        // threw and skipped straight to the catch-all below, discarding
+        // everything else that sync would have pushed/pulled).
+        const skipped: SkippedItem[] = [];
 
         try {
           // ---- PUSH: weekly template (schedule_events) ----
           const { data: scheduleRows } = await supabase.from("schedule_events").select("*");
           for (const row of scheduleRows ?? []) {
             const dtStartDate = nextOccurrenceDate(row.day_of_week);
+            const startDateTime = toGoogleDateTime(dtStartDate, row.start_time.slice(0, 5));
+            const endDateTime = toGoogleDateTime(dtStartDate, row.end_time.slice(0, 5));
+            if (endDateTime <= startDateTime) {
+              skipped.push({ title: row.title, reason: "end time isn't after its start time" });
+              continue;
+            }
             const eventBody: Partial<GoogleEvent> = {
               summary: row.title,
               location: row.location ?? undefined,
-              start: {
-                dateTime: toGoogleDateTime(dtStartDate, row.start_time.slice(0, 5)),
-                timeZone,
-              },
-              end: {
-                dateTime: toGoogleDateTime(dtStartDate, row.end_time.slice(0, 5)),
-                timeZone,
-              },
+              start: { dateTime: startDateTime, timeZone },
+              end: { dateTime: endDateTime, timeZone },
               recurrence: weeklyRecurrenceRule(row.day_of_week),
             };
-            if (row.google_event_id) {
-              await updateGoogleEvent(accessToken!, calendarId, row.google_event_id, eventBody);
-            } else {
-              const created = await insertGoogleEvent(accessToken!, calendarId, eventBody);
-              await supabase
-                .from("schedule_events")
-                .update({ google_event_id: created.id })
-                .eq("id", row.id);
+            try {
+              if (row.google_event_id) {
+                await updateGoogleEvent(accessToken!, calendarId, row.google_event_id, eventBody);
+              } else {
+                const created = await insertGoogleEvent(accessToken!, calendarId, eventBody);
+                await supabase
+                  .from("schedule_events")
+                  .update({ google_event_id: created.id })
+                  .eq("id", row.id);
+              }
+              pushed++;
+            } catch (err) {
+              console.error("[google-calendar] failed to push schedule event", row.id, err);
+              skipped.push({
+                title: row.title,
+                reason: err instanceof Error ? err.message : String(err),
+              });
             }
-            pushed++;
           }
 
           // ---- PUSH: one-off ClearPath-created events (calendar_events) ----
@@ -106,27 +124,37 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
             .select("*")
             .eq("source", "clearpath");
           for (const row of oneOffRows ?? []) {
+            const startValue = row.all_day ? row.start_at.slice(0, 10) : row.start_at;
+            const endValue = row.all_day ? row.end_at.slice(0, 10) : row.end_at;
+            if (endValue <= startValue) {
+              skipped.push({ title: row.title, reason: "end time isn't after its start time" });
+              continue;
+            }
             const eventBody: Partial<GoogleEvent> = {
               summary: row.title,
               description: row.description ?? undefined,
               location: row.location ?? undefined,
-              start: row.all_day
-                ? { date: row.start_at.slice(0, 10) }
-                : { dateTime: row.start_at, timeZone },
-              end: row.all_day
-                ? { date: row.end_at.slice(0, 10) }
-                : { dateTime: row.end_at, timeZone },
+              start: row.all_day ? { date: startValue } : { dateTime: startValue, timeZone },
+              end: row.all_day ? { date: endValue } : { dateTime: endValue, timeZone },
             };
-            if (row.google_event_id) {
-              await updateGoogleEvent(accessToken!, calendarId, row.google_event_id, eventBody);
-            } else {
-              const created = await insertGoogleEvent(accessToken!, calendarId, eventBody);
-              await supabase
-                .from("calendar_events")
-                .update({ google_event_id: created.id })
-                .eq("id", row.id);
+            try {
+              if (row.google_event_id) {
+                await updateGoogleEvent(accessToken!, calendarId, row.google_event_id, eventBody);
+              } else {
+                const created = await insertGoogleEvent(accessToken!, calendarId, eventBody);
+                await supabase
+                  .from("calendar_events")
+                  .update({ google_event_id: created.id })
+                  .eq("id", row.id);
+              }
+              pushed++;
+            } catch (err) {
+              console.error("[google-calendar] failed to push one-off event", row.id, err);
+              skipped.push({
+                title: row.title,
+                reason: err instanceof Error ? err.message : String(err),
+              });
             }
-            pushed++;
           }
 
           // ---- PULL: bring in events we don't already know about ----
@@ -183,14 +211,14 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
             .update({ last_synced_at: new Date().toISOString() })
             .eq("user_id", userId);
 
-          return Response.json({ pushed, pulled });
+          return Response.json({ pushed, pulled, skipped });
         } catch (err) {
           console.error("[google-calendar] sync failed", err);
-          // Temporarily surfaces the real error message (instead of a
-          // generic "Sync failed") so a failure can actually be diagnosed
-          // from the browser's Network tab without needing access to
-          // server-side logs. Safe to expose: these are Google API/DB
-          // exception messages, never secrets.
+          // Surfaces the real error message (instead of a generic "Sync
+          // failed") so a failure can actually be diagnosed from the
+          // browser's Network tab without needing access to server-side
+          // logs. Safe to expose: these are Google API/DB exception
+          // messages, never secrets.
           const detail = err instanceof Error ? err.message : String(err);
           return new Response(`Sync failed: ${detail}`, { status: 500 });
         }

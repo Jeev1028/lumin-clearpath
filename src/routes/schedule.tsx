@@ -209,7 +209,9 @@ function SchedulePage() {
         }
       },
       onUndo: () =>
-        setOneOffEvents((prev) => [...prev, item].sort((a, b) => a.start_at.localeCompare(b.start_at))),
+        setOneOffEvents((prev) =>
+          [...prev, item].sort((a, b) => a.start_at.localeCompare(b.start_at)),
+        ),
     });
   }
 
@@ -245,7 +247,11 @@ function SchedulePage() {
         body: JSON.stringify({ timeZone }),
       });
       if (!res.ok) throw new Error(await res.text());
-      const result = (await res.json()) as { pushed: number; pulled: number };
+      const result = (await res.json()) as {
+        pushed: number;
+        pulled: number;
+        skipped?: { title: string; reason: string }[];
+      };
       const [freshEvents, freshOneOff, freshConnection] = await Promise.all([
         listEvents(),
         listCalendarEvents(),
@@ -257,11 +263,16 @@ function SchedulePage() {
       if (!options?.silent) {
         toast.success(`Synced — ${result.pushed} sent, ${result.pulled} new from Google.`);
       }
+      // Individual events can fail to push (e.g. an end time that isn't
+      // after its start time) without failing the whole sync -- surfaced
+      // here so the student knows exactly which event to go fix, instead
+      // of silently never showing up in Google Calendar.
+      for (const item of result.skipped ?? []) {
+        toast.warning(`Couldn't sync "${item.title}" — ${item.reason}`);
+      }
     } catch (err) {
       toast.error(
-        err instanceof Error && err.message
-          ? err.message
-          : "Sync failed — please try again.",
+        err instanceof Error && err.message ? err.message : "Sync failed — please try again.",
       );
     } finally {
       setCalendarBusy(false);
@@ -326,8 +337,8 @@ function SchedulePage() {
       <main id="main-content" className="mx-auto max-w-5xl px-6 pb-24">
         <h1 className="text-3xl font-bold">Class schedule</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Weekday classes, weekend sessions, extracurriculars and holiday learning — one week at
-          a glance.
+          Weekday classes, weekend sessions, extracurriculars and holiday learning — one week at a
+          glance.
         </p>
 
         <div className="mt-6">
@@ -360,7 +371,10 @@ function SchedulePage() {
                   onClick={() => void handleSync()}
                   className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground disabled:opacity-60"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} aria-hidden />
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
                   {syncing ? "Syncing…" : "Sync now"}
                 </Button>
                 <Button
@@ -416,7 +430,9 @@ function SchedulePage() {
                 <CalendarClock className="h-5 w-5 text-accent" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-semibold">Subscribe from Apple Calendar, Outlook, etc.</p>
+                <p className="text-sm font-semibold">
+                  Subscribe from Apple Calendar, Outlook, etc.
+                </p>
                 <p className="text-xs text-muted-foreground">
                   A live link that keeps updating automatically — unlike Export, you only set this
                   up once.
@@ -454,10 +470,9 @@ function SchedulePage() {
               <p className="text-xs text-muted-foreground">
                 <strong>Apple Calendar:</strong> tap the link on your iPhone/Mac and it opens
                 automatically, or in the Calendar app go to File → New Calendar Subscription and
-                paste it in.{" "}
-                <strong>Outlook/Google Calendar:</strong> use "Add calendar → From URL" and paste
-                the link (swap <code>webcal://</code> for <code>https://</code> if asked for a
-                plain URL). Keep this link private — anyone with it can see your schedule.
+                paste it in. <strong>Outlook/Google Calendar:</strong> use "Add calendar → From URL"
+                and paste the link (swap <code>webcal://</code> for <code>https://</code> if asked
+                for a plain URL). Keep this link private — anyone with it can see your schedule.
               </p>
             </div>
           )}
@@ -481,9 +496,7 @@ function SchedulePage() {
             <Label htmlFor="category">Type</Label>
             <Select
               value={draft.category}
-              onValueChange={(value) =>
-                setDraft({ ...draft, category: value as ScheduleCategory })
-              }
+              onValueChange={(value) => setDraft({ ...draft, category: value as ScheduleCategory })}
             >
               <SelectTrigger id="category">
                 <SelectValue />
