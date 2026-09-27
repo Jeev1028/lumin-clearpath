@@ -153,6 +153,16 @@ function Index() {
             ClearPath brings your tasks, your class schedule and Lumin AI together in one calm
             place. It illuminates the path. You still walk it.
           </p>
+          {/* Deliberately plain, literal restatement of the tagline above --
+              not for visitors (who just read the stylized version), but so
+              anyone skimming quickly for "what does this app actually do"
+              (e.g. during Google OAuth app verification) gets an
+              unambiguous answer without having to parse marketing copy. */}
+          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground/70">
+            In plain terms: ClearPath is a website where students track assignments and tests, plan
+            their weekly class schedule, and get guided help studying from an AI tutor called Lumin
+            AI.
+          </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Button
               asChild
