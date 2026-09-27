@@ -60,10 +60,9 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
               .eq("user_id", userId);
           } catch (err) {
             console.error("[google-calendar] token refresh failed", err);
-            return new Response(
-              "Google Calendar access has expired — please reconnect it.",
-              { status: 409 },
-            );
+            return new Response("Google Calendar access has expired — please reconnect it.", {
+              status: 409,
+            });
           }
         }
 
@@ -161,9 +160,7 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
               pulled++;
             } else if (!event.recurrence?.length) {
               const allDay = Boolean(event.start?.date);
-              const startAt = allDay
-                ? `${event.start!.date}T00:00:00.000Z`
-                : event.start?.dateTime;
+              const startAt = allDay ? `${event.start!.date}T00:00:00.000Z` : event.start?.dateTime;
               const endAt = allDay ? `${event.end!.date}T00:00:00.000Z` : event.end?.dateTime;
               if (!startAt || !endAt) continue;
               await supabase.from("calendar_events").insert({
@@ -189,7 +186,13 @@ export const Route = createFileRoute("/api/google-calendar/sync")({
           return Response.json({ pushed, pulled });
         } catch (err) {
           console.error("[google-calendar] sync failed", err);
-          return new Response("Sync failed", { status: 500 });
+          // Temporarily surfaces the real error message (instead of a
+          // generic "Sync failed") so a failure can actually be diagnosed
+          // from the browser's Network tab without needing access to
+          // server-side logs. Safe to expose: these are Google API/DB
+          // exception messages, never secrets.
+          const detail = err instanceof Error ? err.message : String(err);
+          return new Response(`Sync failed: ${detail}`, { status: 500 });
         }
       },
     },
