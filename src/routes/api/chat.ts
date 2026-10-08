@@ -15,13 +15,25 @@ import type { Database } from "@/integrations/supabase/types";
 
 type ChatBody = { messages?: UIMessage[]; threadId?: string; lastTier?: "primary" | "fallback" };
 
-const PRIMARY_MODEL = "gemini-3.6-flash";
-// Used only while the primary is overloaded. Every new message tries the
-// primary first again, so students move back up as soon as it recovers.
-const FALLBACK_MODEL = "gemini-3.5-flash";
-// If the primary hasn't produced anything by then, treat it as overloaded.
-const PRIMARY_FIRST_TOKEN_MS = 12_000;
-const FALLBACK_TOTAL_MS = 45_000;
+// Best to lightest. Every message starts at the top and walks down until a
+// model answers, so students move back up as soon as the better ones recover.
+// Each model has its own separate free-tier quota, so more entries = more
+// free headroom.
+const MODEL_CHAIN = [
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite-preview",
+] as const;
+// How long a model gets to produce its first output before we move on. The
+// last model gets longer since there's nowhere left to fall back to.
+const FIRST_TOKEN_MS = 12_000;
+const FALLBACK_FIRST_TOKEN_MS = 8_000;
+const LAST_RESORT_FIRST_TOKEN_MS = 45_000;
 
 const DEMOTED_NOTICE =
   "Lumin is in high demand right now. We apologize for the inconvenience, but we're temporarily moving you to a slightly lighter model. Lumin will keep trying to bring you back to the full model.";
@@ -207,18 +219,33 @@ export const Route = createFileRoute("/api/chat")({
                 transient: true,
               } as UIMessageChunk);
 
-            let forward: ReadableStream<UIMessageChunk>;
-            try {
-              forward = await start(PRIMARY_MODEL, PRIMARY_FIRST_TOKEN_MS);
-              if (lastTier === "fallback") status("primary", RESTORED_NOTICE);
-            } catch {
-              status("fallback", DEMOTED_NOTICE);
-              forward = await start(FALLBACK_MODEL, FALLBACK_TOTAL_MS);
+            let forward: ReadableStream<UIMessageChunk> | undefined;
+            let lastError: unknown;
+            for (let i = 0; i < MODEL_CHAIN.length; i++) {
+              const isLast = i === MODEL_CHAIN.length - 1;
+              try {
+                forward = await start(
+                  MODEL_CHAIN[i]!,
+                  isLast
+                    ? LAST_RESORT_FIRST_TOKEN_MS
+                    : i === 0
+                      ? FIRST_TOKEN_MS
+                      : FALLBACK_FIRST_TOKEN_MS,
+                );
+              } catch (error) {
+                lastError = error;
+                // Tell the student once, as soon as the best model fails.
+                if (i === 0) status("fallback", DEMOTED_NOTICE);
+                continue;
+              }
+              if (i === 0 && lastTier === "fallback") status("primary", RESTORED_NOTICE);
+              break;
             }
+            if (!forward) throw lastError ?? new Error("all models failed");
             writer.merge(forward);
           },
           onError: (error) => {
-            console.error("[chat] both models failed", error);
+            console.error("[chat] all models failed", error);
             return "Lumin could not respond right now. Please try again in a moment.";
           },
           onFinish: async ({ responseMessage }) => {
