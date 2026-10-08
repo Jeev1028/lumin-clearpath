@@ -118,6 +118,13 @@ export const Route = createFileRoute("/api/chat")({
           // when discussing a whole attached document/PDF (which
           // naturally warrants a more thorough response).
           maxOutputTokens: 2048,
+          // When Gemini is overloaded the SDK's default 2 retries plus slow
+          // 503s ran until Vercel's 300s limit, leaving students on
+          // "Lumin is thinking..." for 5 minutes. Fail fast with a real
+          // error toast instead.
+          maxRetries: 1,
+          abortSignal: AbortSignal.timeout(45_000),
+          onError: ({ error }) => console.error("[chat] model error", error),
           providerOptions: {
             google: {
               thinkingConfig: { thinkingLevel: "low" },
