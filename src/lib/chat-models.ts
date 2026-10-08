@@ -48,7 +48,7 @@ const OPENAI_COMPATIBLE: OpenAICompatibleProvider[] = [
     name: "groq",
     keyEnv: "GROQ_API_KEY",
     baseURL: () => "https://api.groq.com/openai/v1",
-    models: ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"],
+    models: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"],
   },
   {
     name: "cerebras",
@@ -60,13 +60,19 @@ const OPENAI_COMPATIBLE: OpenAICompatibleProvider[] = [
     name: "openrouter",
     keyEnv: "OPENROUTER_API_KEY",
     baseURL: () => "https://openrouter.ai/api/v1",
-    models: ["openai/gpt-oss-120b:free", "meta-llama/llama-3.3-70b-instruct:free"],
+    models: [
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "google/gemma-4-31b-it:free",
+      // OpenRouter's own router: picks whichever free model is up.
+      "openrouter/free",
+    ],
   },
   {
     name: "mistral",
     keyEnv: "MISTRAL_API_KEY",
     baseURL: () => "https://api.mistral.ai/v1",
-    models: ["mistral-large-latest", "mistral-small-latest"],
+    models: ["mistral-medium-latest", "mistral-small-latest", "ministral-14b-latest"],
   },
   {
     name: "github-models",
