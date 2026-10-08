@@ -266,9 +266,8 @@ export function ChatWindow({
 
           {tier === "fallback" && (
             <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-xs text-amber-300">
-              Lumin is in high demand, so you&apos;re on a slightly lighter model for now. Lumin
-              keeps retrying the full model with every message and will tell you when it&apos;s
-              back.
+              Lumin is in high demand right now, so replies may be slightly lower quality than
+              usual. Lumin keeps trying to bring you back to full quality.
             </div>
           )}
 

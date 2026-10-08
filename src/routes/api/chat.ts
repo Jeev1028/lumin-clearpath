@@ -21,9 +21,11 @@ const FIRST_TOKEN_MS = 12_000;
 const FALLBACK_FIRST_TOKEN_MS = 8_000;
 const LAST_RESORT_FIRST_TOKEN_MS = 45_000;
 
+// Shown when Lumin has to answer with anything below the top model. It never
+// says which model: each step down the chain is only slightly worse.
 const DEMOTED_NOTICE =
-  "Lumin is in high demand right now. We apologize for the inconvenience, but we're temporarily moving you to a slightly lighter model. Lumin will keep trying to bring you back to the full model.";
-const RESTORED_NOTICE = "Good news: Lumin is back at full strength.";
+  "Lumin is in high demand right now, so replies may be slightly lower quality than usual. We apologize for the inconvenience. Lumin keeps trying to bring you back to full quality.";
+const RESTORED_NOTICE = "Good news: Lumin is back to full quality.";
 
 // Appended to Lumin's prompt for every model so answers read the same no
 // matter which provider ends up replying.
@@ -240,10 +242,11 @@ export const Route = createFileRoute("/api/chat")({
                 lastError = error;
                 continue;
               }
-              // Only say something when the answer comes from a clearly
-              // weaker model, or when we're back up from that state.
-              if (chain[i]!.lite) status("fallback", DEMOTED_NOTICE);
-              else if (lastTier === "fallback") status("primary", RESTORED_NOTICE);
+              // The top of the chain is full quality. Anything below it is
+              // "slightly worse" -- tell the student once (the client keeps
+              // a banner up), and tell them when they're back at the top.
+              if (i > 0 && lastTier !== "fallback") status("fallback", DEMOTED_NOTICE);
+              else if (i === 0 && lastTier === "fallback") status("primary", RESTORED_NOTICE);
               break;
             }
             if (!forward) throw lastError ?? new Error("all models failed");
