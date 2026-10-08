@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createClient } from "@supabase/supabase-js";
 import {
   convertToModelMessages,
@@ -10,25 +9,12 @@ import {
   type UIMessageChunk,
 } from "ai";
 
+import { buildModelChain, type ChatModelCandidate } from "@/lib/chat-models";
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
 import type { Database } from "@/integrations/supabase/types";
 
 type ChatBody = { messages?: UIMessage[]; threadId?: string; lastTier?: "primary" | "fallback" };
 
-// Best to lightest. Every message starts at the top and walks down until a
-// model answers, so students move back up as soon as the better ones recover.
-// Each model has its own separate free-tier quota, so more entries = more
-// free headroom.
-const MODEL_CHAIN = [
-  "gemini-3.6-flash",
-  "gemini-3.8-flash",
-  "gemini-3.5-flash",
-  "gemini-3.7-flash",
-  "gemini-3-flash-preview",
-  "gemini-3.1-flash-lite",
-  "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite-preview",
-] as const;
 // How long a model gets to produce its first output before we move on. The
 // last model gets longer since there's nowhere left to fall back to.
 const FIRST_TOKEN_MS = 12_000;
@@ -141,9 +127,9 @@ export const Route = createFileRoute("/api/chat")({
           if (threadUpdateError) console.error("[chat] failed to update thread", threadUpdateError);
         }
 
-        const google = createGoogleGenerativeAI({
-          apiKey: geminiApiKey,
-        });
+        const hasAttachments = messages.some((m) => m.parts.some((part) => part.type === "file"));
+        // Best -> lightest; see src/lib/chat-models.ts.
+        const chain = buildModelChain(process.env, hasAttachments);
 
         const history: UIMessage[] = messages;
         const modelMessages = await convertToModelMessages(history);
@@ -152,14 +138,14 @@ export const Route = createFileRoute("/api/chat")({
         // Starts a model and waits for its first real output. Resolves with a
         // stream to forward, or rejects if the model errors / stalls first.
         async function start(
-          modelId: string,
+          candidate: ChatModelCandidate,
           firstTokenMs: number,
         ): Promise<ReadableStream<UIMessageChunk>> {
           const controller = new AbortController();
           const total = setTimeout(() => controller.abort(), firstTokenMs);
           let streamError: unknown;
           const result = streamText({
-            model: google(modelId),
+            model: candidate.model,
             system: LUMIN_SYSTEM_PROMPT,
             messages: modelMessages,
             // 800 was cutting off longer replies mid-sentence, especially
@@ -170,9 +156,15 @@ export const Route = createFileRoute("/api/chat")({
             abortSignal: controller.signal,
             onError: ({ error }) => {
               streamError = error;
-              console.error(`[chat] ${modelId} error`, error);
+              console.error(`[chat] ${candidate.label} error`, error);
             },
-            providerOptions: { google: { thinkingConfig: { thinkingLevel: "low" } } },
+            ...(candidate.isGemini
+              ? {
+                  providerOptions: {
+                    google: { thinkingConfig: { thinkingLevel: "low" as const } },
+                  },
+                }
+              : {}),
           });
           const reader = result
             .toUIMessageStream({ originalMessages: history, sendReasoning: true })
@@ -221,11 +213,11 @@ export const Route = createFileRoute("/api/chat")({
 
             let forward: ReadableStream<UIMessageChunk> | undefined;
             let lastError: unknown;
-            for (let i = 0; i < MODEL_CHAIN.length; i++) {
-              const isLast = i === MODEL_CHAIN.length - 1;
+            for (let i = 0; i < chain.length; i++) {
+              const isLast = i === chain.length - 1;
               try {
                 forward = await start(
-                  MODEL_CHAIN[i]!,
+                  chain[i]!,
                   isLast
                     ? LAST_RESORT_FIRST_TOKEN_MS
                     : i === 0
