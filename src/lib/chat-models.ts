@@ -23,6 +23,11 @@ export type ChatModelCandidate = {
   isGemini: boolean;
   /** Can read attached images/PDFs. Others are text-only. */
   multimodal: boolean;
+  /**
+   * Noticeably weaker than the rest. Only these trigger the "lighter model"
+   * notice; every other model is meant to feel the same to students.
+   */
+  lite: boolean;
 };
 
 type Env = Record<string, string | undefined>;
@@ -111,6 +116,7 @@ export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCan
     model: google!(id),
     isGemini: true,
     multimodal: true,
+    lite: id.includes("lite"),
   });
 
   if (google) chain.push(...GEMINI_TOP.map(gemini));
@@ -127,6 +133,7 @@ export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCan
           model: client.chat(id),
           isGemini: false,
           multimodal: false,
+          lite: false,
         });
       }
     }

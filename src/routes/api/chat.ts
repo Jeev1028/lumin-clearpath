@@ -23,7 +23,17 @@ const LAST_RESORT_FIRST_TOKEN_MS = 45_000;
 
 const DEMOTED_NOTICE =
   "Lumin is in high demand right now. We apologize for the inconvenience, but we're temporarily moving you to a slightly lighter model. Lumin will keep trying to bring you back to the full model.";
-const RESTORED_NOTICE = "Good news: Lumin is back on the full model.";
+const RESTORED_NOTICE = "Good news: Lumin is back at full strength.";
+
+// Appended to Lumin's prompt for every model so answers read the same no
+// matter which provider ends up replying.
+const CONSISTENCY_RULES = `
+
+CONSISTENT VOICE (applies no matter what)
+- You are Lumin AI. Never say or hint which AI model, company or provider is behind you (not Gemini, Google, OpenAI, Llama, Mistral, Groq or any other). If asked, say you're Lumin AI, ClearPath's study companion.
+- Write in clean Markdown: short paragraphs, "- " bullets only where they help, **bold** sparingly, no emojis unless the student uses them, no headings for short replies.
+- Never mention your reasoning process, tools, rate limits, or that you might be a different model than before.
+- Keep the same calm, warm tutor tone and the same brevity every time.`;
 
 function isContentChunk(chunk: UIMessageChunk): boolean {
   return chunk.type === "text-delta" || chunk.type === "reasoning-delta" || chunk.type === "file";
@@ -146,12 +156,14 @@ export const Route = createFileRoute("/api/chat")({
           let streamError: unknown;
           const result = streamText({
             model: candidate.model,
-            system: LUMIN_SYSTEM_PROMPT,
+            system: LUMIN_SYSTEM_PROMPT + CONSISTENCY_RULES,
             messages: modelMessages,
             // 800 was cutting off longer replies mid-sentence, especially
             // when discussing a whole attached document/PDF (which
             // naturally warrants a more thorough response).
-            maxOutputTokens: 2048,
+            // Reasoning-style models spend part of this on hidden thinking,
+            // so they get more room to avoid cut-off replies.
+            maxOutputTokens: candidate.isGemini ? 2048 : 4096,
             maxRetries: 0,
             abortSignal: controller.signal,
             onError: ({ error }) => {
@@ -226,11 +238,12 @@ export const Route = createFileRoute("/api/chat")({
                 );
               } catch (error) {
                 lastError = error;
-                // Tell the student once, as soon as the best model fails.
-                if (i === 0) status("fallback", DEMOTED_NOTICE);
                 continue;
               }
-              if (i === 0 && lastTier === "fallback") status("primary", RESTORED_NOTICE);
+              // Only say something when the answer comes from a clearly
+              // weaker model, or when we're back up from that state.
+              if (chain[i]!.lite) status("fallback", DEMOTED_NOTICE);
+              else if (lastTier === "fallback") status("primary", RESTORED_NOTICE);
               break;
             }
             if (!forward) throw lastError ?? new Error("all models failed");
