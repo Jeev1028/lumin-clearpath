@@ -51,14 +51,30 @@ export function ChatWindow({
   const lastAutoSpokenIdRef = useRef<string | null>(null);
   const { speak, stopSpeaking } = useSoundSettings();
 
+  // Which model answered last. While "fallback", the server still tries the
+  // full model first on every message and tells us when we're back up.
+  const [tier, setTier] = useState<"primary" | "fallback">("primary");
+  const tierRef = useRef<"primary" | "fallback">("primary");
+
   const { messages, sendMessage, status } = useChat({
     id: threadId,
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       headers: { Authorization: `Bearer ${accessToken}` },
-      body: { threadId },
+      body: () => ({ threadId, lastTier: tierRef.current }),
     }),
+    onData: (part) => {
+      if (part.type !== "data-lumin-status") return;
+      const { tier: next, notice } = part.data as {
+        tier: "primary" | "fallback";
+        notice: string;
+      };
+      tierRef.current = next;
+      setTier(next);
+      if (next === "fallback") toast.warning(notice, { duration: 10000 });
+      else toast.success(notice);
+    },
     onError: (error) => toast.error(error.message || "Lumin could not respond right now."),
     onFinish: () => onActivity(),
   });
@@ -247,6 +263,14 @@ export function ChatWindow({
               </div>
             );
           })}
+
+          {tier === "fallback" && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-xs text-amber-300">
+              Lumin is in high demand, so you&apos;re on a slightly lighter model for now. Lumin
+              keeps retrying the full model with every message and will tell you when it&apos;s
+              back.
+            </div>
+          )}
 
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

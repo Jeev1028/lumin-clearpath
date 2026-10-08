@@ -1,12 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createClient } from "@supabase/supabase-js";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  type UIMessage,
+  type UIMessageChunk,
+} from "ai";
 
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
 import type { Database } from "@/integrations/supabase/types";
 
-type ChatBody = { messages?: UIMessage[]; threadId?: string };
+type ChatBody = { messages?: UIMessage[]; threadId?: string; lastTier?: "primary" | "fallback" };
+
+const PRIMARY_MODEL = "gemini-3.6-flash";
+// Used only while the primary is overloaded. Every new message tries the
+// primary first again, so students move back up as soon as it recovers.
+const FALLBACK_MODEL = "gemini-3.5-flash";
+// If the primary hasn't produced anything by then, treat it as overloaded.
+const PRIMARY_FIRST_TOKEN_MS = 12_000;
+const FALLBACK_TOTAL_MS = 45_000;
+
+const DEMOTED_NOTICE =
+  "Lumin is in high demand right now. We apologize for the inconvenience, but we're temporarily moving you to a slightly lighter model. Lumin will keep trying to bring you back to the full model.";
+const RESTORED_NOTICE = "Good news: Lumin is back on the full model.";
+
+function isContentChunk(chunk: UIMessageChunk): boolean {
+  return chunk.type === "text-delta" || chunk.type === "reasoning-delta" || chunk.type === "file";
+}
 
 function textOf(message: UIMessage): string {
   return message.parts
@@ -110,32 +133,94 @@ export const Route = createFileRoute("/api/chat")({
           apiKey: geminiApiKey,
         });
 
-        const result = streamText({
-          model: google("gemini-3.6-flash"),
-          system: LUMIN_SYSTEM_PROMPT,
-          messages: await convertToModelMessages(messages),
-          // 800 was cutting off longer replies mid-sentence, especially
-          // when discussing a whole attached document/PDF (which
-          // naturally warrants a more thorough response).
-          maxOutputTokens: 2048,
-          // When Gemini is overloaded the SDK's default 2 retries plus slow
-          // 503s ran until Vercel's 300s limit, leaving students on
-          // "Lumin is thinking..." for 5 minutes. Fail fast with a real
-          // error toast instead.
-          maxRetries: 1,
-          abortSignal: AbortSignal.timeout(45_000),
-          onError: ({ error }) => console.error("[chat] model error", error),
-          providerOptions: {
-            google: {
-              thinkingConfig: { thinkingLevel: "low" },
-            },
-          },
-        });
+        const history: UIMessage[] = messages;
+        const modelMessages = await convertToModelMessages(history);
+        const lastTier = body.lastTier === "fallback" ? "fallback" : "primary";
 
-        return result.toUIMessageStreamResponse({
-          originalMessages: messages,
-          sendReasoning: true,
-          headers: cors,
+        // Starts a model and waits for its first real output. Resolves with a
+        // stream to forward, or rejects if the model errors / stalls first.
+        async function start(
+          modelId: string,
+          firstTokenMs: number,
+        ): Promise<ReadableStream<UIMessageChunk>> {
+          const controller = new AbortController();
+          const total = setTimeout(() => controller.abort(), firstTokenMs);
+          let streamError: unknown;
+          const result = streamText({
+            model: google(modelId),
+            system: LUMIN_SYSTEM_PROMPT,
+            messages: modelMessages,
+            // 800 was cutting off longer replies mid-sentence, especially
+            // when discussing a whole attached document/PDF (which
+            // naturally warrants a more thorough response).
+            maxOutputTokens: 2048,
+            maxRetries: 0,
+            abortSignal: controller.signal,
+            onError: ({ error }) => {
+              streamError = error;
+              console.error(`[chat] ${modelId} error`, error);
+            },
+            providerOptions: { google: { thinkingConfig: { thinkingLevel: "low" } } },
+          });
+          const reader = result
+            .toUIMessageStream({ originalMessages: history, sendReasoning: true })
+            .getReader();
+          const buffered: UIMessageChunk[] = [];
+          try {
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) throw streamError ?? new Error("empty response");
+              if (value.type === "error" || value.type === "abort") {
+                throw streamError ?? new Error("model error");
+              }
+              buffered.push(value);
+              if (isContentChunk(value)) break;
+            }
+          } catch (error) {
+            clearTimeout(total);
+            controller.abort();
+            throw error;
+          }
+          // Got output: stop the first-token timer (the rest streams freely
+          // under the route's own max duration).
+          clearTimeout(total);
+          return new ReadableStream<UIMessageChunk>({
+            start(c) {
+              for (const chunk of buffered) c.enqueue(chunk);
+            },
+            async pull(c) {
+              const { done, value } = await reader.read();
+              if (done) c.close();
+              else c.enqueue(value);
+            },
+            cancel: () => reader.cancel(),
+          });
+        }
+
+        const stream = createUIMessageStream({
+          originalMessages: history,
+          execute: async ({ writer }) => {
+            const status = (tier: "primary" | "fallback", notice: string) =>
+              writer.write({
+                type: "data-lumin-status",
+                data: { tier, notice },
+                transient: true,
+              } as UIMessageChunk);
+
+            let forward: ReadableStream<UIMessageChunk>;
+            try {
+              forward = await start(PRIMARY_MODEL, PRIMARY_FIRST_TOKEN_MS);
+              if (lastTier === "fallback") status("primary", RESTORED_NOTICE);
+            } catch {
+              status("fallback", DEMOTED_NOTICE);
+              forward = await start(FALLBACK_MODEL, FALLBACK_TOTAL_MS);
+            }
+            writer.merge(forward);
+          },
+          onError: (error) => {
+            console.error("[chat] both models failed", error);
+            return "Lumin could not respond right now. Please try again in a moment.";
+          },
           onFinish: async ({ responseMessage }) => {
             const content = textOf(responseMessage);
             if (!content) return;
@@ -149,6 +234,8 @@ export const Route = createFileRoute("/api/chat")({
             if (error) console.error("[chat] failed to save assistant message", error);
           },
         });
+
+        return createUIMessageStreamResponse({ stream, headers: cors });
       },
     },
   },
