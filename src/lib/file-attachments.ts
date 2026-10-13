@@ -11,6 +11,15 @@ import type { FileUIPart } from "ai";
 // 4.5MB) -- base64 adds ~33% overhead, so 4MB raw stays safely under that
 // even with everything else in the request.
 export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+// The whole request (all files in ONE message, base64-inflated) must also fit
+// the 4.5MB limit, so there is a combined cap per message as well.
+export const MAX_TOTAL_ATTACHMENT_BYTES = 3 * 1024 * 1024;
+
+/** Approximate raw size of a base64 data URL. */
+export function dataUrlBytes(url: string): number {
+  const comma = url.indexOf(",");
+  return Math.floor(((url.length - comma - 1) * 3) / 4);
+}
 export const ACCEPTED_ATTACHMENT_TYPES =
   ".pdf,application/pdf,image/*,.json,application/json,.txt,text/plain";
 
@@ -34,16 +43,25 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 
 export async function filesToAttachmentParts(
   fileList: FileList | File[],
+  alreadyAttachedBytes = 0,
 ): Promise<{ parts: FileUIPart[]; errors: string[] }> {
   const parts: FileUIPart[] = [];
   const errors: string[] = [];
+  let total = alreadyAttachedBytes;
   for (const file of Array.from(fileList)) {
     if (file.size > MAX_ATTACHMENT_BYTES) {
       errors.push(`"${file.name}" is too large (max 4MB per file).`);
       continue;
     }
+    if (total + file.size > MAX_TOTAL_ATTACHMENT_BYTES) {
+      errors.push(
+        `"${file.name}" wasn't added: Lumin can read about 3MB of files per message. Send the rest in your next message.`,
+      );
+      continue;
+    }
     try {
       const url = await readFileAsDataUrl(file);
+      total += file.size;
       parts.push({
         type: "file",
         mediaType: resolveAttachmentMediaType(file),

@@ -12,7 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
-import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
+import {
+  ACCEPTED_ATTACHMENT_TYPES,
+  dataUrlBytes,
+  filesToAttachmentParts,
+} from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -62,7 +66,31 @@ export function ChatWindow({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       headers: { Authorization: `Bearer ${accessToken}` },
-      body: () => ({ threadId, lastTier: tierRef.current }),
+      // Files from earlier messages are dropped from the request (they'd
+      // blow the host's ~4.5MB body limit once a few pile up); only the
+      // newest message keeps its files.
+      prepareSendMessagesRequest: ({ messages, body }) => ({
+        body: {
+          ...body,
+          threadId,
+          lastTier: tierRef.current,
+          messages: messages.map((m, i) =>
+            i === messages.length - 1
+              ? m
+              : {
+                  ...m,
+                  parts: m.parts.map((part) =>
+                    part.type === "file"
+                      ? {
+                          type: "text" as const,
+                          text: `[Earlier attachment: ${part.filename ?? "file"}]`,
+                        }
+                      : part,
+                  ),
+                },
+          ),
+        },
+      }),
     }),
     onData: (part) => {
       if (part.type !== "data-lumin-status") return;
@@ -145,7 +173,10 @@ export function ChatWindow({
 
   async function handleFilesSelected(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
-    const { parts, errors } = await filesToAttachmentParts(fileList);
+    const { parts, errors } = await filesToAttachmentParts(
+      fileList,
+      attachments.reduce((sum, a) => sum + dataUrlBytes(a.url), 0),
+    );
     if (parts.length > 0) setAttachments((prev) => [...prev, ...parts]);
     for (const message of errors) toast.error(message);
   }
