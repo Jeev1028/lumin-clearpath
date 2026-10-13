@@ -136,6 +136,15 @@ const INK: Rgb = [26, 26, 26];
 const MUTED: Rgb = [110, 110, 110];
 const CODE_COLOR: Rgb = [150, 40, 70];
 
+/**
+ * Warms the PDF library and fonts so the download is near-instant. iOS only
+ * allows the share sheet shortly after a tap, so we can't afford to fetch
+ * ~1.8MB of fonts after the student presses Download.
+ */
+export function preloadPdfAssets(): void {
+  void Promise.all([import("jspdf"), import("jspdf-autotable"), loadFonts()]).catch(() => {});
+}
+
 export async function downloadPdfDocument(title: string, markdown: string): Promise<void> {
   const [{ jsPDF }, autoTableModule, fonts] = await Promise.all([
     import("jspdf"),
@@ -399,5 +408,39 @@ export async function downloadPdfDocument(title: string, markdown: string): Prom
       .trim()
       .replace(/\s+/g, "-")
       .slice(0, 60) || "lumin-document";
-  doc.save(`${safe}.pdf`);
+  const filename = `${safe}.pdf`;
+  const blob = doc.output("blob");
+
+  // Phones (and the iOS app's web view) don't handle a plain file download
+  // well, so hand the PDF to the system share sheet ("Save to Files", Print,
+  // AirDrop, ...). Desktop browsers just download it.
+  const file = new File([blob], filename, { type: "application/pdf" });
+  const canShareFile =
+    typeof navigator !== "undefined" &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files: [file] });
+  const isTouchPhone =
+    typeof navigator !== "undefined" &&
+    (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  if (canShareFile && isTouchPhone) {
+    try {
+      await navigator.share({ files: [file], title });
+      return;
+    } catch (error) {
+      // The student closing the share sheet is not an error.
+      if (error instanceof DOMException && error.name === "AbortError") return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Last resort for browsers that ignore the download attribute (older iOS).
+  if (isTouchPhone) window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

@@ -1,14 +1,18 @@
 import { FileText, Loader2, Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { downloadPdfDocument } from "@/lib/pdf-document";
+import { downloadPdfDocument, preloadPdfAssets } from "@/lib/pdf-document";
 
 type Props = { title: string; markdown: string; complete: boolean };
 
 /** A PDF Lumin wrote, shown as a file card with a download button. */
 export function PdfDocumentCard({ title, markdown, complete }: Props) {
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (complete) preloadPdfAssets();
+  }, [complete]);
 
   async function download() {
     setBusy(true);
