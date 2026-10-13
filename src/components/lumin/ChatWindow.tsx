@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
 import { supabase } from "@/integrations/supabase/client";
+import { PdfDocumentCard } from "@/components/lumin/PdfDocumentCard";
+import { proseOnly, splitPdfSegments } from "@/lib/pdf-document";
 import { exportMarkdownAsPdf } from "@/lib/export-pdf";
 import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
@@ -132,7 +134,9 @@ export function ChatWindow({
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant") return;
     if (lastAutoSpokenIdRef.current === last.id) return;
-    const text = last.parts.map((part) => (part.type === "text" ? part.text : "")).join("");
+    const text = proseOnly(
+      last.parts.map((part) => (part.type === "text" ? part.text : "")).join(""),
+    );
     if (!text) return;
     lastAutoSpokenIdRef.current = last.id;
     speak(text, {
@@ -237,6 +241,9 @@ export function ChatWindow({
               .join("");
             const files = message.parts.filter((part): part is FileUIPart => part.type === "file");
             if (!text && files.length === 0) return null;
+            const segments = splitPdfSegments(text);
+            const hasPdf = segments.some((seg) => seg.kind === "pdf");
+            const proseText = proseOnly(text);
             return (
               <div
                 key={message.id}
@@ -250,24 +257,26 @@ export function ChatWindow({
                         Generative AI · Verify before relying on this
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
+                        {!hasPdf && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                exportMarkdownAsPdf(proseText, "Lumin AI");
+                              } catch {
+                                toast.error("Couldn't create the PDF. Please try again.");
+                              }
+                            }}
+                            aria-label="Save this message as a PDF"
+                            title="Save as PDF"
+                            className="shrink-0 rounded-full border border-border/70 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            <FileDown className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => {
-                            try {
-                              exportMarkdownAsPdf(text, "Lumin AI");
-                            } catch {
-                              toast.error("Couldn't create the PDF. Please try again.");
-                            }
-                          }}
-                          aria-label="Save this message as a PDF"
-                          title="Save as PDF"
-                          className="shrink-0 rounded-full border border-border/70 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <FileDown className="h-3.5 w-3.5" aria-hidden />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReadAloud(message.id, text)}
+                          onClick={() => handleReadAloud(message.id, proseText || text)}
                           aria-label={
                             speakingId === message.id
                               ? "Stop reading aloud"
@@ -311,10 +320,19 @@ export function ChatWindow({
                         ))}
                       </div>
                     )}
-                    {text && (
-                      <div className="lumin-md">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-                      </div>
+                    {segments.map((segment, si) =>
+                      segment.kind === "pdf" ? (
+                        <PdfDocumentCard
+                          key={si}
+                          title={segment.title}
+                          markdown={segment.markdown}
+                          complete={segment.complete}
+                        />
+                      ) : (
+                        <div key={si} className="lumin-md">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.text}</ReactMarkdown>
+                        </div>
+                      ),
                     )}
                   </div>
                 </div>
