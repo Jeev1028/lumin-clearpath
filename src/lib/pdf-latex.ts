@@ -134,11 +134,12 @@ function mathToUnicode(math: string): string {
 }
 
 export function stripLatex(markdown: string): string {
-  return markdown
+  const delimited = markdown
     .replace(/\$\$([\s\S]+?)\$\$/g, (_a, m: string) => mathToUnicode(m))
     .replace(/\\\(([\s\S]+?)\\\)/g, (_a, m: string) => mathToUnicode(m))
     .replace(/\\\[([\s\S]+?)\\\]/g, (_a, m: string) => mathToUnicode(m))
     .replace(/(?<![\\$\d])\$(?!\s)([^$\n]{1,200}?)(?<!\s)\$(?!\d)/g, (_a, m: string) =>
       mathToUnicode(m),
     );
+  return delimited.replace(/\\([A-Za-z]+)/g, (all, name: string) => SYMBOLS[name] ?? all);
 }

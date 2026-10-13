@@ -38,6 +38,16 @@ CONSISTENT VOICE (applies no matter what)
 - Never mention your reasoning process, tools, rate limits, or that you might be a different model than before.
 - Keep the same calm, warm tutor tone and the same brevity every time.`;
 
+/** True when a reply opened a PDF block that it never closed. */
+function hasOpenPdf(text: string): boolean {
+  let open = false;
+  for (const line of text.split("\n")) {
+    if (/^:::pdf/i.test(line.trim())) open = true;
+    else if (/^:::[ \t]*$/.test(line)) open = false;
+  }
+  return open;
+}
+
 function isContentChunk(chunk: UIMessageChunk): boolean {
   return chunk.type === "text-delta" || chunk.type === "reasoning-delta" || chunk.type === "file";
 }
@@ -271,6 +281,7 @@ export const Route = createFileRoute("/api/chat")({
               } as UIMessageChunk);
 
             let forward: ReadableStream<UIMessageChunk> | undefined;
+            let used = chain[0]!;
             let lastError: unknown;
             for (let i = 0; i < chain.length; i++) {
               const isLast = i === chain.length - 1;
@@ -287,6 +298,7 @@ export const Route = createFileRoute("/api/chat")({
                 lastError = error;
                 continue;
               }
+              used = chain[i]!;
               // The top of the chain is full quality. Anything below it is
               // "slightly worse" -- tell the student once (the client keeps
               // a banner up), and tell them when they're back at the top.
@@ -295,7 +307,77 @@ export const Route = createFileRoute("/api/chat")({
               break;
             }
             if (!forward) throw lastError ?? new Error("all models failed");
-            writer.merge(forward);
+            // Forward the reply ourselves so that, if a model quits partway
+            // through a PDF (weaker fallbacks often do, calmly, with no
+            // error), we can make it carry on instead of handing the student
+            // a half-finished document.
+            const reader = forward.getReader();
+            const held: UIMessageChunk[] = [];
+            let written = "";
+            let textId = "";
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value.type === "text-delta") {
+                written += value.delta;
+                textId = value.id;
+              }
+              if (
+                value.type === "text-end" ||
+                value.type === "finish-step" ||
+                value.type === "finish"
+              ) {
+                held.push(value);
+                continue;
+              }
+              writer.write(value);
+            }
+            for (let attempt = 0; attempt < 3 && textId && hasOpenPdf(written); attempt++) {
+              try {
+                const more = streamText({
+                  model: used.model,
+                  system: LUMIN_SYSTEM_PROMPT + CONSISTENCY_RULES,
+                  messages: [
+                    ...modelMessages,
+                    { role: "assistant", content: written.trimEnd() },
+                    {
+                      role: "user",
+                      content:
+                        "You stopped before the document was finished. Continue the document exactly where you stopped. Output ONLY the remaining content: do not repeat anything already written, do not add an introduction, and do NOT write the :::pdf opening line again (the document is already open). Finish every remaining section and question in full detail, then close the document with a line containing only ::: and add a one-line note.",
+                    },
+                  ],
+                  maxOutputTokens: used.maxOutputTokens,
+                  maxRetries: 0,
+                  abortSignal: AbortSignal.timeout(90_000),
+                });
+                let added = "";
+                let pending = "";
+                const emit = (piece: string) => {
+                  added += piece;
+                  writer.write({ type: "text-delta", id: textId, delta: piece } as UIMessageChunk);
+                };
+                for await (const delta of more.textStream) {
+                  pending += delta;
+                  const cut = pending.lastIndexOf("\n");
+                  if (cut === -1) continue;
+                  const complete = pending.slice(0, cut + 1);
+                  pending = pending.slice(cut + 1);
+                  // The model must not restart the document: drop any new header.
+                  const kept = complete
+                    .split("\n")
+                    .filter((line) => !/^:::pdf/i.test(line.trim()))
+                    .join("\n");
+                  if (kept) emit(kept);
+                }
+                if (pending && !/^:::pdf/i.test(pending.trim())) emit(pending);
+                written += added;
+                if (added.trim().length < 40) break;
+              } catch (error) {
+                console.error("[chat] continuation failed", error);
+                break;
+              }
+            }
+            for (const chunk of held) writer.write(chunk);
           },
           onError: (error) => {
             console.error("[chat] all models failed", error);
