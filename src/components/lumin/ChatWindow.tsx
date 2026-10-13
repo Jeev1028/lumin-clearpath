@@ -1,6 +1,16 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
-import { ArrowUp, Mic, Paperclip, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
+import {
+  ArrowUp,
+  Loader2,
+  Mic,
+  Paperclip,
+  Sparkles,
+  Square,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -40,6 +50,9 @@ export function ChatWindow({
   const [input, setInput] = useState(initialInput ?? "");
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const [attachmentSizes, setAttachmentSizes] = useState<number[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   // On mobile, Return/Enter on the on-screen keyboard should insert a
   // newline like it does everywhere else -- students send the message with
   // the send button instead. Desktop keeps the usual Enter-to-send, with
@@ -150,22 +163,28 @@ export function ChatWindow({
     // Copy now: the input is reset right after this is called, which empties
     // the live FileList before the awaits below finish.
     const picked = Array.from(fileList);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user.id;
-    if (!userId) {
-      toast.error("Please sign in again to attach files.");
-      return;
+    setUploadProgress({ done: 0, total: picked.length });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) {
+        toast.error("Please sign in again to attach files.");
+        return;
+      }
+      const { parts, sizes, errors } = await filesToAttachmentParts(picked, {
+        supabase,
+        userId,
+        alreadyAttachedBytes: attachmentSizes.reduce((sum, n) => sum + n, 0),
+        onProgress: (done, total) => setUploadProgress({ done, total }),
+      });
+      if (parts.length > 0) {
+        setAttachments((prev) => [...prev, ...parts]);
+        setAttachmentSizes((prev) => [...prev, ...sizes]);
+      }
+      for (const message of errors) toast.error(message);
+    } finally {
+      setUploadProgress(null);
     }
-    const { parts, sizes, errors } = await filesToAttachmentParts(picked, {
-      supabase,
-      userId,
-      alreadyAttachedBytes: attachmentSizes.reduce((sum, n) => sum + n, 0),
-    });
-    if (parts.length > 0) {
-      setAttachments((prev) => [...prev, ...parts]);
-      setAttachmentSizes((prev) => [...prev, ...sizes]);
-    }
-    for (const message of errors) toast.error(message);
   }
 
   function removeAttachment(index: number) {
@@ -175,7 +194,7 @@ export function ChatWindow({
 
   function submit() {
     const text = input.trim();
-    if ((!text && attachments.length === 0) || isBusy) return;
+    if ((!text && attachments.length === 0) || isBusy || uploadProgress) return;
     if (listening) toggleListening();
     setInput("");
     setAttachments([]);
@@ -323,6 +342,25 @@ export function ChatWindow({
               ))}
             </div>
           )}
+          {uploadProgress && (
+            <div
+              role="status"
+              className="mb-2 flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-foreground"
+            >
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+              <span>
+                Uploading files… {uploadProgress.done} of {uploadProgress.total}
+              </span>
+              <span className="h-1 flex-1 overflow-hidden rounded-full bg-primary/20">
+                <span
+                  className="block h-full bg-primary transition-all"
+                  style={{
+                    width: `${uploadProgress.total ? (uploadProgress.done / uploadProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </span>
+            </div>
+          )}
           {listening && (
             <div className="mb-2 flex items-center gap-2 rounded-full border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs text-red-300">
               <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-400" />
@@ -393,7 +431,7 @@ export function ChatWindow({
             <Button
               size="icon"
               onClick={submit}
-              disabled={isBusy || (!input.trim() && attachments.length === 0)}
+              disabled={isBusy || !!uploadProgress || (!input.trim() && attachments.length === 0)}
               className="bg-gradient-lumin text-primary-foreground"
               aria-label="Send message"
             >

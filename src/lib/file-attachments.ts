@@ -53,13 +53,20 @@ export function dataUrlBytes(url: string): number {
  */
 export async function filesToAttachmentParts(
   fileList: FileList | File[],
-  opts: { supabase: SupabaseClient; userId: string; alreadyAttachedBytes: number },
+  opts: {
+    supabase: SupabaseClient;
+    userId: string;
+    alreadyAttachedBytes: number;
+    /** Called as each file finishes: (finished, total). */
+    onProgress?: (done: number, total: number) => void;
+  },
 ): Promise<{ parts: FileUIPart[]; sizes: number[]; errors: string[] }> {
-  const parts: FileUIPart[] = [];
-  const sizes: number[] = [];
   const errors: string[] = [];
   let total = opts.alreadyAttachedBytes;
   let inlineTotal = 0;
+
+  // Size checks first (cheap, in order), then upload the survivors in parallel.
+  const accepted: File[] = [];
   for (const file of Array.from(fileList)) {
     if (file.size > MAX_ATTACHMENT_BYTES) {
       errors.push(`"${file.name}" is too large (max 15MB per file).`);
@@ -71,37 +78,53 @@ export async function filesToAttachmentParts(
       );
       continue;
     }
-    const mediaType = resolveAttachmentMediaType(file);
-    const safeName = file.name.replace(/[^\w.\- ]+/g, "_").slice(-80);
-    const path = `${opts.userId}/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await opts.supabase.storage
-      .from(ATTACHMENT_BUCKET)
-      .upload(path, file, { contentType: mediaType, upsert: false });
-    if (!uploadError) {
-      parts.push({
-        type: "file",
-        mediaType,
-        url: `${STORAGE_URL_PREFIX}${path}`,
-        filename: file.name,
-      });
-      sizes.push(file.size);
-      total += file.size;
-      continue;
-    }
-    console.error("[attachments] upload failed, falling back to inline", uploadError);
-    if (inlineTotal + file.size > MAX_INLINE_TOTAL_BYTES) {
-      errors.push(`Couldn't upload "${file.name}". Please try again.`);
-      continue;
-    }
-    try {
-      const url = await readFileAsDataUrl(file);
-      parts.push({ type: "file", mediaType, url, filename: file.name });
-      sizes.push(file.size);
-      total += file.size;
-      inlineTotal += file.size;
-    } catch {
-      errors.push(`Couldn't read "${file.name}".`);
-    }
+    total += file.size;
+    accepted.push(file);
   }
+
+  let done = 0;
+  opts.onProgress?.(0, accepted.length);
+  const results = await Promise.all(
+    accepted.map(async (file): Promise<FileUIPart | null> => {
+      try {
+        const mediaType = resolveAttachmentMediaType(file);
+        const safeName = file.name.replace(/[^\w.\- ]+/g, "_").slice(-80);
+        const path = `${opts.userId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await opts.supabase.storage
+          .from(ATTACHMENT_BUCKET)
+          .upload(path, file, { contentType: mediaType, upsert: false });
+        if (!uploadError) {
+          return {
+            type: "file",
+            mediaType,
+            url: `${STORAGE_URL_PREFIX}${path}`,
+            filename: file.name,
+          };
+        }
+        console.error("[attachments] upload failed, falling back to inline", uploadError);
+        if (inlineTotal + file.size > MAX_INLINE_TOTAL_BYTES) {
+          errors.push(`Couldn't upload "${file.name}". Please try again.`);
+          return null;
+        }
+        inlineTotal += file.size;
+        const url = await readFileAsDataUrl(file);
+        return { type: "file", mediaType, url, filename: file.name };
+      } catch {
+        errors.push(`Couldn't read "${file.name}".`);
+        return null;
+      } finally {
+        done += 1;
+        opts.onProgress?.(done, accepted.length);
+      }
+    }),
+  );
+
+  const parts: FileUIPart[] = [];
+  const sizes: number[] = [];
+  results.forEach((part, i) => {
+    if (!part) return;
+    parts.push(part);
+    sizes.push(accepted[i]!.size);
+  });
   return { parts, sizes, errors };
 }
