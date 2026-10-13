@@ -2,6 +2,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import {
   ArrowUp,
+  FileDown,
   Loader2,
   Mic,
   Paperclip,
@@ -23,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
 import { supabase } from "@/integrations/supabase/client";
+import { exportMarkdownAsPdf } from "@/lib/export-pdf";
 import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
 
@@ -247,28 +249,45 @@ export function ChatWindow({
                         <Sparkles className="h-3 w-3" aria-hidden />
                         Generative AI · Verify before relying on this
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleReadAloud(message.id, text)}
-                        aria-label={
-                          speakingId === message.id
-                            ? "Stop reading aloud"
-                            : "Read this message aloud"
-                        }
-                        title={speakingId === message.id ? "Stop reading aloud" : "Read aloud"}
-                        className={cn(
-                          "shrink-0 rounded-full border p-1.5 transition-colors",
-                          speakingId === message.id
-                            ? "border-accent bg-accent/10 text-accent"
-                            : "border-border/60 text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {speakingId === message.id ? (
-                          <VolumeX className="h-3.5 w-3.5" aria-hidden />
-                        ) : (
-                          <Volume2 className="h-3.5 w-3.5" aria-hidden />
-                        )}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            try {
+                              exportMarkdownAsPdf(text, "Lumin AI");
+                            } catch {
+                              toast.error("Couldn't create the PDF. Please try again.");
+                            }
+                          }}
+                          aria-label="Save this message as a PDF"
+                          title="Save as PDF"
+                          className="shrink-0 rounded-full border border-border/70 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <FileDown className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReadAloud(message.id, text)}
+                          aria-label={
+                            speakingId === message.id
+                              ? "Stop reading aloud"
+                              : "Read this message aloud"
+                          }
+                          title={speakingId === message.id ? "Stop reading aloud" : "Read aloud"}
+                          className={cn(
+                            "shrink-0 rounded-full border p-1.5 transition-colors",
+                            speakingId === message.id
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-border/60 text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {speakingId === message.id ? (
+                            <VolumeX className="h-3.5 w-3.5" aria-hidden />
+                          ) : (
+                            <Volume2 className="h-3.5 w-3.5" aria-hidden />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   )}
                   <div
