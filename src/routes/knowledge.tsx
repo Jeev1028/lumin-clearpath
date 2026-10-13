@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Compass, Layers, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -176,9 +177,13 @@ function KnowledgePage() {
             {busy ? "Mapping…" : "Explore"}
           </Button>
         </form>
+        <HighDemandNotice active={busy || asking || makingFlashcards} className="mt-3" />
 
         {path.length > 0 && (
-          <nav aria-label="Topic breadcrumb" className="mt-4 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+          <nav
+            aria-label="Topic breadcrumb"
+            className="mt-4 flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
+          >
             {path.map((p, i) => (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight className="h-3 w-3" aria-hidden />}
@@ -202,11 +207,7 @@ function KnowledgePage() {
         {node && (
           <div className="mt-6 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-panel">
             <div className="relative mx-auto" style={{ width: 400, height: 400, maxWidth: "100%" }}>
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 400 400"
-                aria-hidden
-              >
+              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 400" aria-hidden>
                 {positions.map((p, i) => (
                   <line
                     key={i}
@@ -299,8 +300,7 @@ function KnowledgePage() {
 
         {!node && !busy && (
           <p className="mt-10 text-center text-sm text-muted-foreground">
-            Type a topic above to see its map of related concepts. Click any node to explore
-            deeper.
+            Type a topic above to see its map of related concepts. Click any node to explore deeper.
           </p>
         )}
       </main>

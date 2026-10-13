@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Brain, ChevronDown, Layers, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -90,7 +91,9 @@ function PracticePage() {
       setCheckQuestions(data.questions);
       setCheckAnswers(new Array(data.questions.length).fill(-1));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not generate a level check right now.");
+      toast.error(
+        err instanceof Error ? err.message : "Could not generate a level check right now.",
+      );
     } finally {
       setChecking(false);
     }
@@ -103,7 +106,8 @@ function PracticePage() {
       return;
     }
     const correct = checkQuestions.filter((q, i) => q.correctIndex === checkAnswers[i]).length;
-    const level: Difficulty = correct >= 4 ? "advanced" : correct >= 2 ? "intermediate" : "beginner";
+    const level: Difficulty =
+      correct >= 4 ? "advanced" : correct >= 2 ? "intermediate" : "beginner";
     setDifficulty(level);
     setCheckQuestions(null);
     toast.success(`You got ${correct}/5 — starting you at ${DIFFICULTY_LABELS[level]}.`);
@@ -204,6 +208,7 @@ function PracticePage() {
             </Select>
           </div>
 
+          <HighDemandNotice active={generating} className="sm:col-span-2" />
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             <Button
               type="button"
@@ -297,7 +302,10 @@ function PracticePage() {
                   onClick={() => void handleGenerate()}
                   className="gap-1.5"
                 >
-                  <RefreshCw className={cn("h-3.5 w-3.5", generating && "animate-spin")} aria-hidden />
+                  <RefreshCw
+                    className={cn("h-3.5 w-3.5", generating && "animate-spin")}
+                    aria-hidden
+                  />
                   New set
                 </Button>
               </div>
@@ -314,7 +322,10 @@ function PracticePage() {
                   aria-expanded={revealed.has(i)}
                 >
                   <ChevronDown
-                    className={cn("h-3.5 w-3.5 transition-transform", revealed.has(i) && "rotate-180")}
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      revealed.has(i) && "rotate-180",
+                    )}
                     aria-hidden
                   />
                   {revealed.has(i) ? "Hide answer" : "Reveal answer & explanation"}

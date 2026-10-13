@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Layers, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -286,6 +287,7 @@ function FlashcardsPage() {
                 Creates a new 10-card deck you can edit afterward.
               </p>
             </div>
+            <HighDemandNotice active={generating} />
             <DialogFooter>
               <Button
                 type="submit"

@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -197,6 +198,7 @@ export function StudyPlanner() {
         />
       </div>
 
+      <HighDemandNotice active={generating} className="mt-3" />
       <Button
         type="button"
         onClick={() => void handleGenerate()}
