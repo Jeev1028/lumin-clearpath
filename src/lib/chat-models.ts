@@ -71,7 +71,11 @@ const OPENAI_COMPATIBLE: Record<
  * Builds the model chain for one request. When the conversation contains
  * attachments, text-only providers are left out so the file isn't dropped.
  */
-export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCandidate[] {
+export function buildModelChain(
+  env: Env,
+  hasAttachments: boolean,
+  longOutput = false,
+): ChatModelCandidate[] {
   const geminiKey = env["GEMINI_API_KEY"];
   const google = geminiKey ? createGoogleGenerativeAI({ apiKey: geminiKey }) : null;
 
@@ -95,6 +99,9 @@ export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCan
       continue;
     }
     if (hasAttachments) continue;
+    // Groq's free tier caps prompt + reply too tightly for long documents
+    // (a cut-off PDF is worse than using a different model).
+    if (longOutput && provider === "groq") continue;
     const client = clients.get(provider);
     if (!client) continue;
     chain.push({

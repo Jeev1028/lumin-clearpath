@@ -330,6 +330,10 @@ export function ChatWindow({
                             segment.complete ||
                             !(isBusy && message.id === messages[messages.length - 1]?.id)
                           }
+                          truncated={
+                            !segment.complete &&
+                            !(isBusy && message.id === messages[messages.length - 1]?.id)
+                          }
                         />
                       ) : (
                         <div key={si} className="lumin-md">

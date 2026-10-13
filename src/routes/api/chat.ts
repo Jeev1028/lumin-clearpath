@@ -142,7 +142,14 @@ export const Route = createFileRoute("/api/chat")({
 
         const hasAttachments = messages.some((m) => m.parts.some((part) => part.type === "file"));
         // Best -> lightest; see src/lib/chat-models.ts.
-        const chain = buildModelChain(process.env, hasAttachments);
+        // Documents (PDFs, long tests/guides) need long replies, which the
+        // tightest free tiers can't deliver without cutting off mid-way.
+        const lastUserText = lastMessage?.role === "user" ? textOf(lastMessage) : "";
+        const longOutput =
+          /pdf|document|worksheet|handout|practice (test|exam|paper)|study guide|combine|merge|full (test|paper)|all of (it|them)/i.test(
+            lastUserText,
+          ) || messages.some((m) => m.role === "assistant" && textOf(m).includes(":::pdf"));
+        const chain = buildModelChain(process.env, hasAttachments, longOutput);
 
         // Files uploaded to storage arrive as small references; download them
         // with the student's own token (storage rules limit them to their own
@@ -201,6 +208,11 @@ export const Route = createFileRoute("/api/chat")({
             maxOutputTokens: candidate.maxOutputTokens,
             maxRetries: 0,
             abortSignal: controller.signal,
+            onFinish: ({ finishReason, usage }) => {
+              if (finishReason === "length") {
+                console.warn(`[chat] ${candidate.label} hit the output cap`, usage);
+              }
+            },
             onError: ({ error }) => {
               streamError = error;
               console.error(`[chat] ${candidate.label} error`, error);

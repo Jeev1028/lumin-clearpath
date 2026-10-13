@@ -4,10 +4,10 @@ import { toast } from "sonner";
 
 import { downloadPdfDocument, preloadPdfAssets } from "@/lib/pdf-document";
 
-type Props = { title: string; markdown: string; complete: boolean };
+type Props = { title: string; markdown: string; complete: boolean; truncated?: boolean };
 
 /** A PDF Lumin wrote, shown as a file card with a download button. */
-export function PdfDocumentCard({ title, markdown, complete }: Props) {
+export function PdfDocumentCard({ title, markdown, complete, truncated }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -34,7 +34,11 @@ export function PdfDocumentCard({ title, markdown, complete }: Props) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold break-words text-foreground">{title}.pdf</p>
         <p className="text-xs text-muted-foreground">
-          {complete ? "PDF document ready" : "Lumin is writing this document…"}
+          {truncated
+            ? "This document was cut off before it finished. Ask Lumin to make it again."
+            : complete
+              ? "PDF document ready"
+              : "Lumin is writing this document…"}
         </p>
       </div>
       <button
