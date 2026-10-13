@@ -94,7 +94,8 @@ export function buildModelChain(
         model: google(id),
         isGemini: true,
         multimodal: true,
-        maxOutputTokens: 8192,
+        // Gemini Flash models can write far more; documents need the room.
+        maxOutputTokens: 24000,
       });
       continue;
     }
@@ -111,7 +112,7 @@ export function buildModelChain(
       multimodal: false,
       // Groq's free tier rejects a request when prompt + max output exceeds
       // its per-minute token budget, so keep its cap lower.
-      maxOutputTokens: provider === "groq" ? 3000 : 8192,
+      maxOutputTokens: provider === "groq" ? 3000 : 12000,
     });
   }
   return chain;
