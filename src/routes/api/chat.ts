@@ -9,6 +9,7 @@ import {
   type UIMessageChunk,
 } from "ai";
 
+import { ATTACHMENT_BUCKET, STORAGE_URL_PREFIX } from "@/lib/file-attachments";
 import { buildModelChain, type ChatModelCandidate } from "@/lib/chat-models";
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
 import type { Database } from "@/integrations/supabase/types";
@@ -143,7 +144,39 @@ export const Route = createFileRoute("/api/chat")({
         // Best -> lightest; see src/lib/chat-models.ts.
         const chain = buildModelChain(process.env, hasAttachments);
 
-        const history: UIMessage[] = messages;
+        // Files uploaded to storage arrive as small references; download them
+        // with the student's own token (storage rules limit them to their own
+        // folder) and inline them for the model. Data-URL files (the browser
+        // extension) pass through untouched.
+        const history: UIMessage[] = await Promise.all(
+          messages.map(async (m) => ({
+            ...m,
+            parts: await Promise.all(
+              m.parts.map(async (part) => {
+                if (part.type !== "file" || !part.url.startsWith(STORAGE_URL_PREFIX)) return part;
+                const path = part.url.slice(STORAGE_URL_PREFIX.length);
+                if (!path.startsWith(`${userId}/`)) {
+                  return {
+                    type: "text" as const,
+                    text: `[Attachment unavailable: ${part.filename ?? "file"}]`,
+                  };
+                }
+                const { data, error } = await supabase.storage
+                  .from(ATTACHMENT_BUCKET)
+                  .download(path);
+                if (error || !data) {
+                  console.error("[chat] attachment download failed", error);
+                  return {
+                    type: "text" as const,
+                    text: `[Attachment unavailable: ${part.filename ?? "file"}]`,
+                  };
+                }
+                const base64 = Buffer.from(await data.arrayBuffer()).toString("base64");
+                return { ...part, url: `data:${part.mediaType};base64,${base64}` };
+              }),
+            ),
+          })),
+        );
         const modelMessages = await convertToModelMessages(history);
         const lastTier = body.lastTier === "fallback" ? "fallback" : "primary";
 

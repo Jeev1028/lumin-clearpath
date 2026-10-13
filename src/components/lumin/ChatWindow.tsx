@@ -12,11 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isSpeechToTextSupported, useSpeechToText } from "@/hooks/useSpeechToText";
-import {
-  ACCEPTED_ATTACHMENT_TYPES,
-  dataUrlBytes,
-  filesToAttachmentParts,
-} from "@/lib/file-attachments";
+import { supabase } from "@/integrations/supabase/client";
+import { ACCEPTED_ATTACHMENT_TYPES, filesToAttachmentParts } from "@/lib/file-attachments";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -42,6 +39,7 @@ export function ChatWindow({
 }: Props) {
   const [input, setInput] = useState(initialInput ?? "");
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
+  const [attachmentSizes, setAttachmentSizes] = useState<number[]>([]);
   // On mobile, Return/Enter on the on-screen keyboard should insert a
   // newline like it does everywhere else -- students send the message with
   // the send button instead. Desktop keeps the usual Enter-to-send, with
@@ -66,31 +64,7 @@ export function ChatWindow({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       headers: { Authorization: `Bearer ${accessToken}` },
-      // Files from earlier messages are dropped from the request (they'd
-      // blow the host's ~4.5MB body limit once a few pile up); only the
-      // newest message keeps its files.
-      prepareSendMessagesRequest: ({ messages, body }) => ({
-        body: {
-          ...body,
-          threadId,
-          lastTier: tierRef.current,
-          messages: messages.map((m, i) =>
-            i === messages.length - 1
-              ? m
-              : {
-                  ...m,
-                  parts: m.parts.map((part) =>
-                    part.type === "file"
-                      ? {
-                          type: "text" as const,
-                          text: `[Earlier attachment: ${part.filename ?? "file"}]`,
-                        }
-                      : part,
-                  ),
-                },
-          ),
-        },
-      }),
+      body: () => ({ threadId, lastTier: tierRef.current }),
     }),
     onData: (part) => {
       if (part.type !== "data-lumin-status") return;
@@ -173,16 +147,27 @@ export function ChatWindow({
 
   async function handleFilesSelected(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
-    const { parts, errors } = await filesToAttachmentParts(
-      fileList,
-      attachments.reduce((sum, a) => sum + dataUrlBytes(a.url), 0),
-    );
-    if (parts.length > 0) setAttachments((prev) => [...prev, ...parts]);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+    if (!userId) {
+      toast.error("Please sign in again to attach files.");
+      return;
+    }
+    const { parts, sizes, errors } = await filesToAttachmentParts(fileList, {
+      supabase,
+      userId,
+      alreadyAttachedBytes: attachmentSizes.reduce((sum, n) => sum + n, 0),
+    });
+    if (parts.length > 0) {
+      setAttachments((prev) => [...prev, ...parts]);
+      setAttachmentSizes((prev) => [...prev, ...sizes]);
+    }
     for (const message of errors) toast.error(message);
   }
 
   function removeAttachment(index: number) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachmentSizes((prev) => prev.filter((_, i) => i !== index));
   }
 
   function submit() {
@@ -191,6 +176,7 @@ export function ChatWindow({
     if (listening) toggleListening();
     setInput("");
     setAttachments([]);
+    setAttachmentSizes([]);
     void sendMessage(attachments.length > 0 ? { text, files: attachments } : { text });
     onActivity();
   }
