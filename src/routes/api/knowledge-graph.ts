@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateObjectWithFallback } from "@/lib/ai-fallback";
 import { requireUser } from "@/lib/api-auth";
 
 const KNOWLEDGE_GRAPH_SYSTEM_PROMPT = `You are Lumin AI's Knowledge Graph tool, part of ClearPath. Your job is to help a student break a topic down into its map of related sub-concepts so THEY can go research each one themselves -- never to explain or teach the topic yourself.
@@ -16,7 +15,10 @@ ACADEMIC HONESTY (non-negotiable):
 const knowledgeGraphSchema = z.object({
   summary: z.string(),
   subtopics: z.array(z.string()).min(4).max(8),
-  sources: z.array(z.object({ title: z.string(), url: z.string() })).min(1).max(3),
+  sources: z
+    .array(z.object({ title: z.string(), url: z.string() }))
+    .min(1)
+    .max(3),
 });
 
 export const Route = createFileRoute("/api/knowledge-graph")({
@@ -37,11 +39,8 @@ export const Route = createFileRoute("/api/knowledge-graph")({
         if (!topic) return new Response("A topic is required", { status: 400 });
         const path = Array.isArray(body.path) ? body.path.filter((p) => typeof p === "string") : [];
 
-        const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
-
         try {
-          const { object } = await generateObject({
-            model: google("gemini-3.6-flash"),
+          const object = await generateObjectWithFallback({
             schema: knowledgeGraphSchema,
             system: KNOWLEDGE_GRAPH_SYSTEM_PROMPT,
             prompt: [

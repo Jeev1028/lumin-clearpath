@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateObjectWithFallback } from "@/lib/ai-fallback";
 import { requireUser } from "@/lib/api-auth";
 
 const LEVEL_CHECK_SYSTEM_PROMPT = `You are Lumin AI's Adaptive Learner tool, part of ClearPath. Generate a short, original diagnostic quiz (NOT taken from any real textbook or existing assignment) to gauge how comfortable a student currently is with a subject, so ClearPath can calibrate practice difficulty. Questions should range from easy to moderately challenging across the set. Multiple choice, exactly 4 options each, exactly one correct.`;
@@ -33,10 +32,8 @@ export const Route = createFileRoute("/api/adaptive/level-check")({
         const subject = body.subject?.trim();
         if (!subject) return new Response("A subject is required", { status: 400 });
 
-        const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
         try {
-          const { object } = await generateObject({
-            model: google("gemini-3.6-flash"),
+          const object = await generateObjectWithFallback({
             schema: levelCheckSchema,
             system: LEVEL_CHECK_SYSTEM_PROMPT,
             prompt: `Generate a 5-question diagnostic quiz for the subject: "${subject}".`,

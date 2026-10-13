@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateText } from "ai";
 
+import { generateTextWithFallback } from "@/lib/ai-fallback";
 import { requireUser } from "@/lib/api-auth";
 import { STUDY_PLAN_SYSTEM_PROMPT } from "@/lib/study-plan-prompt";
 
@@ -130,7 +129,8 @@ export const Route = createFileRoute("/api/study-plan")({
         ]);
         if (tasksRes.error) return new Response("Could not load tasks", { status: 500 });
         if (scheduleRes.error) return new Response("Could not load schedule", { status: 500 });
-        if (calendarRes.error) return new Response("Could not load calendar events", { status: 500 });
+        if (calendarRes.error)
+          return new Response("Could not load calendar events", { status: 500 });
 
         const prompt = `Today's date: ${todayStr}. Requested horizon: ${horizon} (plan through ${windowEnd.toISOString().slice(0, 10)}).
 
@@ -148,22 +148,13 @@ ${preferences || "(none given — use sensible defaults)"}
 
 Produce the plan now, following the output format and boundaries in your instructions.`;
 
-        const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
-
         let text: string;
         try {
-          const result = await generateText({
-            model: google("gemini-3.6-flash"),
+          text = await generateTextWithFallback({
             system: STUDY_PLAN_SYSTEM_PROMPT,
             prompt,
             maxOutputTokens: 1800,
-            providerOptions: {
-              google: {
-                thinkingConfig: { thinkingLevel: "low" },
-              },
-            },
           });
-          text = result.text;
         } catch (err) {
           console.error("[study-plan] generation failed", err);
           return new Response("Could not generate a plan right now — please try again.", {

@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateObjectWithFallback } from "@/lib/ai-fallback";
 import { requireUser } from "@/lib/api-auth";
 
 const PRACTICE_SYSTEM_PROMPT = `You are Lumin AI's Adaptive Learner tool, part of ClearPath. Generate a short set of ORIGINAL practice questions (never copied from a real textbook, worksheet, or assignment) for a student to self-test with, calibrated to the requested difficulty. This is extra self-practice the student chose to do -- unlike ClearPath's main research/homework assistant, it is appropriate here to give full worked answers and explanations, since you invented these questions yourself for practice purposes, not helping complete the student's real assigned work.
@@ -44,10 +43,8 @@ export const Route = createFileRoute("/api/adaptive/practice")({
           return new Response("A subject and difficulty are required", { status: 400 });
         }
 
-        const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
         try {
-          const { object } = await generateObject({
-            model: google("gemini-3.6-flash"),
+          const object = await generateObjectWithFallback({
             schema: practiceSchema,
             system: PRACTICE_SYSTEM_PROMPT,
             prompt: `Generate exactly 5 ${difficulty}-difficulty practice questions for the subject: "${subject}".`,
