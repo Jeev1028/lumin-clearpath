@@ -8,17 +8,19 @@ const FLASHCARDS_SYSTEM_PROMPT = `You are Lumin AI's flashcard generator, part o
 
 TRUTHFULNESS (non-negotiable): every card must be a fact you are genuinely confident is true. NEVER invent facts, biographies, dates, quotes, awards, publications or relationships. If the subject is a private individual, a classmate, a local or personal matter, an obscure person/place/organization, a fictional-sounding name you do not recognize, or anything you cannot reliably describe, set "reliable" to false and return an empty "cards" array. Do not guess, and do not write cards that merely sound plausible. If the subject is a school topic or a well-documented person or thing, set "reliable" to true and write accurate cards only.`;
 
-const flashcardsSchema = z.object({
-  reliable: z.boolean(),
-  cards: z
-    .array(
-      z.object({
-        front: z.string(),
-        back: z.string(),
-      }),
-    )
-    .max(10),
-});
+function flashcardsSchema(count: number) {
+  return z.object({
+    reliable: z.boolean(),
+    cards: z
+      .array(
+        z.object({
+          front: z.string(),
+          back: z.string(),
+        }),
+      )
+      .max(count),
+  });
+}
 
 export const Route = createFileRoute("/api/flashcards/generate")({
   server: {
@@ -30,17 +32,19 @@ export const Route = createFileRoute("/api/flashcards/generate")({
         const geminiApiKey = process.env["GEMINI_API_KEY"];
         if (!geminiApiKey) return new Response("AI is not configured", { status: 500 });
 
-        const body = (await request.json().catch(() => ({}))) as { topic?: string };
+        const body = (await request.json().catch(() => ({}))) as { topic?: string; count?: number };
+        const requested = Math.round(Number(body.count));
+        const count = Number.isFinite(requested) ? Math.min(30, Math.max(3, requested)) : 10;
         const topic = body.topic?.trim();
         if (!topic) return new Response("A topic is required", { status: 400 });
 
         try {
           const object = await generateObjectWithFallback({
-            schema: flashcardsSchema,
+            schema: flashcardsSchema(count),
             system: FLASHCARDS_SYSTEM_PROMPT,
-            prompt: `Generate exactly 10 flashcards for the subject: "${topic}".`,
+            prompt: `Generate exactly ${count} flashcards for the subject: "${topic}".`,
           });
-          if (!object.reliable || object.cards.length < 5) {
+          if (!object.reliable || object.cards.length < Math.min(3, count)) {
             return new Response(
               "Lumin doesn't have reliable information on that topic, so it won't guess. Try a school subject or a well-documented topic instead.",
               { status: 422 },

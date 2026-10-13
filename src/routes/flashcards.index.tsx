@@ -27,6 +27,15 @@ import {
 } from "@/lib/flashcards";
 import { undoableDelete } from "@/lib/undoable-delete";
 
+const MIN_CARDS = 3;
+const MAX_CARDS = 30;
+
+function clampCount(value: string): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 10;
+  return Math.min(MAX_CARDS, Math.max(MIN_CARDS, n));
+}
+
 export const Route = createFileRoute("/flashcards/")({
   head: () => ({
     meta: [
@@ -53,6 +62,7 @@ function FlashcardsPage() {
 
   const [generateOpen, setGenerateOpen] = useState(false);
   const [genTopic, setGenTopic] = useState("");
+  const [genCount, setGenCount] = useState("10");
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -120,7 +130,7 @@ function FlashcardsPage() {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ topic: genTopic.trim() }),
+        body: JSON.stringify({ topic: genTopic.trim(), count: clampCount(genCount) }),
       });
       if (!res.ok) {
         await deleteDeck(deck.id).catch(() => undefined);
@@ -280,19 +290,35 @@ function FlashcardsPage() {
             <DialogTitle>Generate a deck with Lumin</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleGenerate} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="gen-topic">Topic</Label>
-              <Input
-                id="gen-topic"
-                value={genTopic}
-                onChange={(e) => setGenTopic(e.target.value)}
-                placeholder="Cell organelles, French irregular verbs, WWI causes…"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Creates a new 10-card deck you can edit afterward.
-              </p>
+            <div className="flex gap-3">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Label htmlFor="gen-topic">Topic</Label>
+                <Input
+                  id="gen-topic"
+                  value={genTopic}
+                  onChange={(e) => setGenTopic(e.target.value)}
+                  placeholder="Cell organelles, French irregular verbs, WWI causes…"
+                  required
+                />
+              </div>
+              <div className="w-24 shrink-0 space-y-2">
+                <Label htmlFor="gen-count">Cards</Label>
+                <Input
+                  id="gen-count"
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_CARDS}
+                  max={MAX_CARDS}
+                  value={genCount}
+                  onChange={(e) => setGenCount(e.target.value)}
+                  onBlur={() => setGenCount(String(clampCount(genCount)))}
+                />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Creates a new {clampCount(genCount)}-card deck you can edit afterward ({MIN_CARDS} to{" "}
+              {MAX_CARDS} cards).
+            </p>
             <HighDemandNotice active={generating} />
             <DialogFooter>
               <Button
