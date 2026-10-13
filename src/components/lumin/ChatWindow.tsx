@@ -147,13 +147,16 @@ export function ChatWindow({
 
   async function handleFilesSelected(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
+    // Copy now: the input is reset right after this is called, which empties
+    // the live FileList before the awaits below finish.
+    const picked = Array.from(fileList);
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
     if (!userId) {
       toast.error("Please sign in again to attach files.");
       return;
     }
-    const { parts, sizes, errors } = await filesToAttachmentParts(fileList, {
+    const { parts, sizes, errors } = await filesToAttachmentParts(picked, {
       supabase,
       userId,
       alreadyAttachedBytes: attachmentSizes.reduce((sum, n) => sum + n, 0),
