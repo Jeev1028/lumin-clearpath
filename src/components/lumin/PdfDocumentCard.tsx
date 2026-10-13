@@ -27,12 +27,12 @@ export function PdfDocumentCard({ title, markdown, complete }: Props) {
   }
 
   return (
-    <div className="my-3 flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
+    <div className="my-3 flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
         <FileText className="h-5 w-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foreground">{title}.pdf</p>
+        <p className="text-sm font-semibold break-words text-foreground">{title}.pdf</p>
         <p className="text-xs text-muted-foreground">
           {complete ? "PDF document ready" : "Lumin is writing this document…"}
         </p>

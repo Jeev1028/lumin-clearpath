@@ -210,8 +210,8 @@ export function ChatWindow({
   }
 
   return (
-    <div className="flex h-full flex-1 flex-col bg-deep">
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+    <div className="flex h-full min-w-0 flex-1 flex-col bg-deep">
+      <div ref={scrollContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
           {messages.length === 0 && (
             <div className="pt-16 text-center">
@@ -249,7 +249,7 @@ export function ChatWindow({
                 key={message.id}
                 className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}
               >
-                <div className={cn("max-w-[85%]", message.role === "user" ? "" : "w-full")}>
+                <div className={cn("min-w-0 max-w-[85%]", message.role === "user" ? "" : "w-full")}>
                   {message.role === "assistant" && (
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="animate-badge-glow inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
@@ -326,7 +326,10 @@ export function ChatWindow({
                           key={si}
                           title={segment.title}
                           markdown={segment.markdown}
-                          complete={segment.complete}
+                          complete={
+                            segment.complete ||
+                            !(isBusy && message.id === messages[messages.length - 1]?.id)
+                          }
                         />
                       ) : (
                         <div key={si} className="lumin-md">

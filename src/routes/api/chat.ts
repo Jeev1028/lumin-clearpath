@@ -198,7 +198,7 @@ export const Route = createFileRoute("/api/chat")({
             // naturally warrants a more thorough response).
             // Reasoning-style models spend part of this on hidden thinking,
             // so they get more room to avoid cut-off replies.
-            maxOutputTokens: candidate.isGemini ? 2048 : 4096,
+            maxOutputTokens: 4096,
             maxRetries: 0,
             abortSignal: controller.signal,
             onError: ({ error }) => {
