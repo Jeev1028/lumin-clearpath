@@ -106,7 +106,10 @@ const BOX_INTERVAL_DAYS = [0, 0, 1, 3, 7, 14];
 /** Records a Study-mode review: "knew it" advances the card to the next
  * box (reviewed less often), "didn't know" resets it to box 1 (reviewed
  * again soon). */
-export async function recordReview(card: Flashcard, knew: boolean): Promise<void> {
+export async function recordReview(
+  card: Flashcard,
+  knew: boolean,
+): Promise<{ box: number; due_at: string }> {
   const nextBox = knew ? Math.min(card.box + 1, 5) : 1;
   const days = BOX_INTERVAL_DAYS[nextBox] ?? 0;
   const dueAt = new Date();
@@ -116,4 +119,5 @@ export async function recordReview(card: Flashcard, knew: boolean): Promise<void
     .update({ box: nextBox, due_at: dueAt.toISOString(), updated_at: new Date().toISOString() })
     .eq("id", card.id);
   if (error) throw error;
+  return { box: nextBox, due_at: dueAt.toISOString() };
 }

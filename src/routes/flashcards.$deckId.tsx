@@ -82,7 +82,9 @@ function DeckPage() {
           All decks
         </Link>
         <h1 className="mt-2 text-3xl font-bold">{deck.title}</h1>
-        {deck.description && <p className="mt-1 text-sm text-muted-foreground">{deck.description}</p>}
+        {deck.description && (
+          <p className="mt-1 text-sm text-muted-foreground">{deck.description}</p>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-1 rounded-full border border-border/60 bg-card/40 p-1">
           {(
@@ -110,9 +112,7 @@ function DeckPage() {
         </div>
 
         <div className="mt-6">
-          {mode === "manage" && (
-            <ManageCards deckId={deckId} cards={cards} setCards={setCards} />
-          )}
+          {mode === "manage" && <ManageCards deckId={deckId} cards={cards} setCards={setCards} />}
           {mode === "study" && <StudyMode cards={cards} setCards={setCards} />}
           {mode === "match" && <MatchGame cards={cards} />}
         </div>
@@ -143,7 +143,11 @@ function ManageCards({
     if (!user || !front.trim() || !back.trim()) return;
     setBusy(true);
     try {
-      const card = await createCard(user.id, { deck_id: deckId, front: front.trim(), back: back.trim() });
+      const card = await createCard(user.id, {
+        deck_id: deckId,
+        front: front.trim(),
+        back: back.trim(),
+      });
       setCards((prev) => [...prev, card]);
       setFront("");
       setBack("");
@@ -165,7 +169,9 @@ function ManageCards({
     try {
       await updateCard(id, { front: editFront.trim(), back: editBack.trim() });
       setCards((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, front: editFront.trim(), back: editBack.trim() } : c)),
+        prev.map((c) =>
+          c.id === id ? { ...c, front: editFront.trim(), back: editBack.trim() } : c,
+        ),
       );
       setEditingId(null);
     } catch {
@@ -233,10 +239,22 @@ function ManageCards({
           <div key={card.id} className="rounded-xl border border-border/60 bg-card/60 p-4">
             {editingId === card.id ? (
               <div className="space-y-2">
-                <Textarea value={editFront} onChange={(e) => setEditFront(e.target.value)} className="min-h-14" />
-                <Textarea value={editBack} onChange={(e) => setEditBack(e.target.value)} className="min-h-14" />
+                <Textarea
+                  value={editFront}
+                  onChange={(e) => setEditFront(e.target.value)}
+                  className="min-h-14"
+                />
+                <Textarea
+                  value={editBack}
+                  onChange={(e) => setEditBack(e.target.value)}
+                  className="min-h-14"
+                />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void saveEdit(card.id)} className="bg-gradient-lumin text-primary-foreground">
+                  <Button
+                    size="sm"
+                    onClick={() => void saveEdit(card.id)}
+                    className="bg-gradient-lumin text-primary-foreground"
+                  >
                     Save
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
@@ -246,7 +264,11 @@ function ManageCards({
               </div>
             ) : (
               <div className="flex items-start justify-between gap-3">
-                <button type="button" onClick={() => startEdit(card)} className="min-w-0 flex-1 text-left">
+                <button
+                  type="button"
+                  onClick={() => startEdit(card)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <p className="text-sm font-medium">{card.front}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{card.back}</p>
                 </button>
@@ -272,6 +294,14 @@ function ManageCards({
   );
 }
 
+function dueCardIds(cards: Flashcard[]): string[] {
+  const now = Date.now();
+  return [...cards]
+    .filter((c) => new Date(c.due_at).getTime() <= now)
+    .sort((a, b) => a.box - b.box || a.due_at.localeCompare(b.due_at))
+    .map((c) => c.id);
+}
+
 function StudyMode({
   cards,
   setCards,
@@ -279,12 +309,15 @@ function StudyMode({
   cards: Flashcard[];
   setCards: React.Dispatch<React.SetStateAction<Flashcard[]>>;
 }) {
-  const queue = useMemo(() => {
-    const now = Date.now();
-    return [...cards]
-      .filter((c) => new Date(c.due_at).getTime() <= now)
-      .sort((a, b) => a.box - b.box || a.due_at.localeCompare(b.due_at));
-  }, [cards]);
+  // The study list is fixed when a session starts. Rebuilding it after each
+  // answer re-sorted the cards under the position counter, so some cards were
+  // skipped and others came back straight away.
+  const [sessionIds, setSessionIds] = useState<string[]>(() => dueCardIds(cards));
+  const cardsById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
+  const queue = useMemo(
+    () => sessionIds.map((id) => cardsById.get(id)).filter((c): c is Flashcard => !!c),
+    [sessionIds, cardsById],
+  );
 
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -292,9 +325,12 @@ function StudyMode({
   const { playTone } = useSoundSettings();
 
   useEffect(() => {
+    setSessionIds(dueCardIds(cards));
     setIndex(0);
     setFlipped(false);
     setReviewedCount(0);
+    // Only restart the session when cards are added or removed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards.length]);
 
   const current = queue[index];
@@ -303,14 +339,10 @@ function StudyMode({
     if (!current) return;
     if (knew) playTone("success");
     try {
-      await recordReview(current, knew);
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === current.id
-            ? { ...c, box: knew ? Math.min(c.box + 1, 5) : 1, due_at: new Date().toISOString() }
-            : c,
-        ),
-      );
+      const updated = await recordReview(current, knew);
+      // Cards you missed come back at the end of this session.
+      if (!knew) setSessionIds((ids) => [...ids, current.id]);
+      setCards((prev) => prev.map((c) => (c.id === current.id ? { ...c, ...updated } : c)));
     } catch {
       toast.error("Could not save that review.");
     }
@@ -336,7 +368,7 @@ function StudyMode({
         <p className="mt-1 text-sm text-muted-foreground">
           {reviewedCount > 0
             ? `Reviewed ${reviewedCount} card${reviewedCount === 1 ? "" : "s"} this session.`
-            : "Cards you've marked \"knew it\" come back later — check back soon, or add more cards."}
+            : 'Cards you\'ve marked "knew it" come back later — check back soon, or add more cards.'}
         </p>
       </div>
     );
@@ -436,7 +468,10 @@ function MatchGame({ cards }: { cards: Flashcard[] }) {
         setTimeout(() => {
           setMatched(nextMatched);
           setSelected([]);
-          if (nextMatched.size === MATCH_ROUND_SIZE || nextMatched.size === new Set(tiles.map((t) => t.cardId)).size) {
+          if (
+            nextMatched.size === MATCH_ROUND_SIZE ||
+            nextMatched.size === new Set(tiles.map((t) => t.cardId)).size
+          ) {
             setFinishedMs(startedAt ? Date.now() - startedAt : 0);
           }
         }, 400);
@@ -468,7 +503,8 @@ function MatchGame({ cards }: { cards: Flashcard[] }) {
       {finishedMs !== null && (
         <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-4 text-center">
           <p className="text-sm font-semibold text-accent">
-            Matched in {(finishedMs / 1000).toFixed(1)}s with {mistakes} mistake{mistakes === 1 ? "" : "s"}!
+            Matched in {(finishedMs / 1000).toFixed(1)}s with {mistakes} mistake
+            {mistakes === 1 ? "" : "s"}!
           </p>
         </div>
       )}
