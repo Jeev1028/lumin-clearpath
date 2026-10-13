@@ -28,6 +28,8 @@ export type ChatModelCandidate = {
   isGemini: boolean;
   /** Can read attached images/PDFs. Others are text-only. */
   multimodal: boolean;
+  /** Reply length cap. Some free tiers count it against a per-minute budget. */
+  maxOutputTokens: number;
 };
 
 type Env = Record<string, string | undefined>;
@@ -88,6 +90,7 @@ export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCan
         model: google(id),
         isGemini: true,
         multimodal: true,
+        maxOutputTokens: 8192,
       });
       continue;
     }
@@ -99,6 +102,9 @@ export function buildModelChain(env: Env, hasAttachments: boolean): ChatModelCan
       model: client.chat(id),
       isGemini: false,
       multimodal: false,
+      // Groq's free tier rejects a request when prompt + max output exceeds
+      // its per-minute token budget, so keep its cap lower.
+      maxOutputTokens: provider === "groq" ? 3000 : 8192,
     });
   }
   return chain;
