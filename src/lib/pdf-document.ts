@@ -9,6 +9,8 @@
 // The chat window turns that block into a downloadable file card instead of
 // showing the raw text, and this module builds the actual PDF in the browser.
 
+import { stripLatex } from "./pdf-latex";
+
 export type MessageSegment =
   | { kind: "text"; text: string }
   | { kind: "pdf"; title: string; markdown: string; complete: boolean };
