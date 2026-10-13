@@ -10,7 +10,8 @@ ACADEMIC HONESTY (non-negotiable):
 - "summary" must be exactly 1-2 short sentences that only orient the student to what the general subject area is -- never explain causes, mechanisms, or "how/why" something happens. If you catch yourself writing an explanation, cut it down to just naming the subject.
 - "subtopics" must be SHORT TERMS ONLY (2-5 words each), naming a related concept, sub-area, or angle worth researching. Do NOT explain what each subtopic means or why it matters -- a bare label only, like a heading a student would then go look up themselves.
 - "sources" should be 2-3 real, credible, well-known sources (encyclopedias, educational sites, official documentation, reputable news outlets) relevant to the topic. Prefer general reference sources over ones that would fully answer a specific question.
-- Never write anything that could be copy-pasted into an assignment as-is.`;
+- Never write anything that could be copy-pasted into an assignment as-is.
+- Never invent facts. If the topic is a private individual, a classmate, or something obscure you do not reliably know, do not make up details about it: keep the summary to "This looks like a personal or very specific topic." and make the subtopics generic research angles (for example "Official or school sources", "Who to ask directly").`;
 
 const knowledgeGraphSchema = z.object({
   summary: z.string(),

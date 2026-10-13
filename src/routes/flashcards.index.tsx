@@ -122,7 +122,13 @@ function FlashcardsPage() {
         },
         body: JSON.stringify({ topic: genTopic.trim() }),
       });
-      if (!res.ok) throw new Error("Could not generate flashcards right now.");
+      if (!res.ok) {
+        await deleteDeck(deck.id).catch(() => undefined);
+        const reason = (await res.text().catch(() => "")).trim();
+        throw new Error(
+          res.status === 422 && reason ? reason : "Could not generate flashcards right now.",
+        );
+      }
       const { cards } = (await res.json()) as { cards: { front: string; back: string }[] };
       for (const card of cards) {
         await createCard(user.id, { deck_id: deck.id, front: card.front, back: card.back });

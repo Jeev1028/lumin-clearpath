@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/lumin/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { createCard, createDeck } from "@/lib/flashcards";
+import { createCard, createDeck, deleteDeck } from "@/lib/flashcards";
 import { createThread } from "@/lib/threads";
 
 export const Route = createFileRoute("/knowledge")({
@@ -135,7 +135,13 @@ function KnowledgePage() {
         headers: { "Content-Type": "application/json", Authorization: await authHeader() },
         body: JSON.stringify({ topic: node.topic }),
       });
-      if (!res.ok) throw new Error("Could not generate flashcards right now.");
+      if (!res.ok) {
+        await deleteDeck(deck.id).catch(() => undefined);
+        const reason = (await res.text().catch(() => "")).trim();
+        throw new Error(
+          res.status === 422 && reason ? reason : "Could not generate flashcards right now.",
+        );
+      }
       const { cards } = (await res.json()) as { cards: { front: string; back: string }[] };
       for (const card of cards) {
         await createCard(user.id, { deck_id: deck.id, front: card.front, back: card.back });
