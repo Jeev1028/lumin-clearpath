@@ -170,6 +170,11 @@ export const Route = createFileRoute("/api/study-plan")({
         if (calendarRes.error)
           return new Response("Could not load calendar events", { status: 500 });
 
+        const fullDay =
+          /\b(breaks?|eat|eating|meals?|breakfast|lunch|dinner|snacks?|outside|outdoors?|walk|exercise|sleep|bed ?time|whole day|entire day|full day|all day|every hour|define my life|rest)\b/i.test(
+            preferences,
+          );
+
         // Hand back the current plan so a request like "keep Fridays light" or
         // "move chemistry earlier" edits it, instead of starting from scratch.
         const { data: existing } = await supabase
@@ -199,6 +204,11 @@ ${previousPlan}
 `
     : ""
 }
+${
+  fullDay
+    ? "\nThe student asked for breaks, meals, or time outside, so use FULL-DAY MODE from your instructions: a complete timeline for every day in the window, with meals, breaks after focused work, and outdoor time included as bullets with exact times.\n"
+    : ""
+}
 Before you answer, check every block you wrote against the constraints above and against the fixed schedule and calendar events (including times the student says they are busy or unavailable, and days they do not want to work). Remove or move any block that overlaps or is on a forbidden day. Then produce the plan, following the output format and boundaries in your instructions.`;
 
         let text: string;
@@ -206,11 +216,13 @@ Before you answer, check every block you wrote against the constraints above and
           text = await generateTextWithFallback({
             system: STUDY_PLAN_SYSTEM_PROMPT,
             prompt,
-            maxOutputTokens: Math.min(8000, 1000 + windowDays * 200),
+            maxOutputTokens: fullDay
+              ? Math.min(14000, 1500 + windowDays * 600)
+              : Math.min(8000, 1000 + windowDays * 200),
             // A plan is a long answer, so give each model a fair try but never
             // leave the student watching a spinner for minutes.
-            perModelMs: 40_000,
-            totalMs: 110_000,
+            perModelMs: fullDay ? 55_000 : 40_000,
+            totalMs: 125_000,
           });
         } catch (err) {
           console.error("[study-plan] generation failed", err);
