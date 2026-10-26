@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarClock, Copy, Download, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Download, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
+import { ScheduleCalendar } from "@/components/lumin/ScheduleCalendar";
 import { StudyPlanner } from "@/components/lumin/StudyPlanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,6 @@ import {
   createEvent,
   deleteCalendarEvent,
   deleteEvent,
-  formatTime,
   getCalendarConnection,
   listCalendarEvents,
   listEvents,
@@ -566,53 +566,24 @@ function SchedulePage() {
           </div>
         </form>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {DAY_NAMES.map((name, index) => {
-            const dayEvents = events.filter((e) => e.day_of_week === index);
-            if (dayEvents.length === 0) return null;
-            return (
-              <section
-                key={name}
-                className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-panel"
-              >
-                <h2 className="mb-3 text-sm font-semibold tracking-widest text-muted-foreground uppercase">
-                  {name}
-                </h2>
-                <ul className="space-y-3">
-                  {dayEvents.map((item) => (
-                    <li key={item.id} className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTime(item.start_time)} – {formatTime(item.end_time)} ·{" "}
-                          {CATEGORY_LABELS[item.category]}
-                          {item.location ? ` · ${item.location}` : ""}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${item.title}`}
-                        onClick={() => void onDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-          {events.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground md:col-span-2">
-              Your week is empty. Add a class or session above.
+        <div className="mt-8">
+          <ScheduleCalendar
+            events={events}
+            oneOffEvents={oneOffEvents}
+            onDeleteWeekly={onDelete}
+            onDeleteOneOff={onDeleteOneOff}
+          />
+          {events.length === 0 && oneOffEvents.length === 0 && (
+            <p className="mt-3 text-center text-sm text-muted-foreground">
+              Your calendar is empty. Add a class or event with the forms on this page.
             </p>
           )}
         </div>
 
         <h2 className="mt-12 text-xl font-semibold">Upcoming events</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          One-off events like appointments — added here, or pulled in from Google Calendar.
+          One-off events like appointments — added here, or pulled in from Google Calendar. They
+          show up on the calendar above.
         </p>
 
         <form
@@ -669,43 +640,6 @@ function SchedulePage() {
             </Button>
           </div>
         </form>
-
-        <div className="mt-4 space-y-2">
-          {oneOffEvents.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/50 px-4 py-3"
-            >
-              <div>
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(item.start_at).toLocaleString(undefined, {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                  {item.location ? ` · ${item.location}` : ""}
-                  {item.source === "google" ? " · from Google Calendar" : ""}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Delete ${item.title}`}
-                onClick={() => void onDeleteOneOff(item.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          {oneOffEvents.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-              No upcoming one-off events.
-            </p>
-          )}
-        </div>
       </main>
     </div>
   );
