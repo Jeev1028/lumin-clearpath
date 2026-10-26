@@ -6,7 +6,7 @@ import { STUDY_PLAN_SYSTEM_PROMPT } from "@/lib/study-plan-prompt";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-type PlanBody = { horizon?: "week" | "month"; preferences?: string };
+type PlanBody = { horizon?: "week" | "month"; preferences?: string; today?: string };
 
 type TaskRow = {
   title: string;
@@ -106,10 +106,19 @@ export const Route = createFileRoute("/api/study-plan")({
         const horizon = body.horizon === "month" ? "month" : "week";
         const preferences = (body.preferences ?? "").trim().slice(0, 1000);
 
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        // The student's own local date (falls back to the server's).
+        const todayStr = /^\d{4}-\d{2}-\d{2}$/.test(body.today ?? "")
+          ? (body.today as string)
+          : new Date().toISOString().slice(0, 10);
         const today = new Date();
-        const todayStr = today.toISOString().slice(0, 10);
+        // A rolling window starting today: 7 or 30 days including today.
         const windowDays = horizon === "month" ? 30 : 7;
-        const windowEnd = new Date(today.getTime() + windowDays * 24 * 60 * 60 * 1000);
+        const lastDay = new Date(
+          new Date(`${todayStr}T00:00:00Z`).getTime() + (windowDays - 1) * DAY_MS,
+        );
+        const lastDayStr = lastDay.toISOString().slice(0, 10);
+        const windowEnd = new Date(lastDay.getTime() + 2 * DAY_MS);
 
         const [tasksRes, scheduleRes, calendarRes] = await Promise.all([
           supabase
@@ -132,7 +141,15 @@ export const Route = createFileRoute("/api/study-plan")({
         if (calendarRes.error)
           return new Response("Could not load calendar events", { status: 500 });
 
-        const prompt = `Today's date: ${todayStr}. Requested horizon: ${horizon} (plan through ${windowEnd.toISOString().slice(0, 10)}).
+        // Hand back the current plan so a request like "keep Fridays light" or
+        // "move chemistry earlier" edits it, instead of starting from scratch.
+        const { data: existing } = await supabase
+          .from("study_plans")
+          .select("plan_markdown")
+          .maybeSingle();
+        const previousPlan = existing?.plan_markdown?.trim() ?? "";
+
+        const prompt = `Today's date: ${todayStr}. Plan window: ${windowDays} days, from ${todayStr} through ${lastDayStr} inclusive. Cover every day in that window that has something to schedule, through the last day. Do not stop at the end of a calendar week or month.
 
 STUDENT'S OUTSTANDING TASKS:
 ${formatTasks(tasksRes.data as TaskRow[])}
@@ -143,9 +160,16 @@ ${formatSchedule(scheduleRes.data as ScheduleRow[])}
 ONE-OFF EVENTS ALREADY ON THE CALENDAR IN THIS WINDOW:
 ${formatCalendarEvents(calendarRes.data as CalendarRow[])}
 
-STUDENT'S STATED PREFERENCES:
+STUDENT'S STATED PREFERENCES / REQUESTED CHANGES (these MUST visibly change the plan):
 ${preferences || "(none given — use sensible defaults)"}
-
+${
+  previousPlan && preferences
+    ? `
+THE STUDENT'S CURRENT PLAN (revise this one: apply every requested change above, keep the parts they did not mention, and shift dates to match the window above):
+${previousPlan}
+`
+    : ""
+}
 Produce the plan now, following the output format and boundaries in your instructions.`;
 
         let text: string;
@@ -153,7 +177,7 @@ Produce the plan now, following the output format and boundaries in your instruc
           text = await generateTextWithFallback({
             system: STUDY_PLAN_SYSTEM_PROMPT,
             prompt,
-            maxOutputTokens: 1800,
+            maxOutputTokens: horizon === "month" ? 6000 : 2500,
           });
         } catch (err) {
           console.error("[study-plan] generation failed", err);

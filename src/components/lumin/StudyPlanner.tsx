@@ -118,7 +118,12 @@ export function StudyPlanner() {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ horizon, preferences }),
+        body: JSON.stringify({
+          horizon,
+          preferences,
+          // The student's local date, so "today" is right near midnight UTC.
+          today: new Date().toLocaleDateString("en-CA"),
+        }),
       });
       const text = await res.text();
       if (!res.ok) throw new Error(text || "Could not generate a plan right now.");
@@ -180,7 +185,7 @@ export function StudyPlanner() {
                 : "border-border/60 bg-background/40 text-muted-foreground hover:text-foreground",
             )}
           >
-            {option === "week" ? "This week" : "This month"}
+            {option === "week" ? "Next 7 days" : "Next 30 days"}
           </button>
         ))}
       </div>
@@ -205,7 +210,7 @@ export function StudyPlanner() {
         disabled={generating}
         className="mt-3 bg-gradient-lumin text-primary-foreground shadow-glow"
       >
-        {generating ? "Building your plan…" : plan ? "Regenerate plan" : "Generate my plan"}
+        {generating ? "Building your plan…" : plan ? "Update plan" : "Generate my plan"}
       </Button>
 
       {plan && (

@@ -110,6 +110,12 @@ export async function listEvents(): Promise<ScheduleEvent[]> {
   return (data ?? []) as ScheduleEvent[];
 }
 
+export async function clearEvents(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("schedule_events").delete().in("id", ids);
+  if (error) throw error;
+}
+
 export async function createEvent(
   userId: string,
   input: Omit<ScheduleEvent, "id">,
@@ -253,7 +259,8 @@ export async function listClassroomCoursework(): Promise<ClassroomCoursework[]> 
  * the Grades page and the Today dashboard so both stay in sync. */
 export function classroomAverage(items: ClassroomCoursework[]): number | null {
   const graded = items.filter(
-    (i) => typeof i.assigned_grade === "number" && typeof i.max_points === "number" && i.max_points > 0,
+    (i) =>
+      typeof i.assigned_grade === "number" && typeof i.max_points === "number" && i.max_points > 0,
   );
   if (graded.length === 0) return null;
   const pct = graded.reduce((sum, i) => sum + i.assigned_grade! / i.max_points!, 0) / graded.length;
