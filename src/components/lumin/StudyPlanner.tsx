@@ -135,6 +135,7 @@ export function StudyPlanner() {
           preferences,
           // The student's local date, so "today" is right near midnight UTC.
           today: new Date().toLocaleDateString("en-CA"),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
       const text = await res.text();

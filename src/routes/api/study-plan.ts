@@ -6,7 +6,12 @@ import { STUDY_PLAN_SYSTEM_PROMPT } from "@/lib/study-plan-prompt";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-type PlanBody = { horizon?: "week" | "month"; preferences?: string; today?: string };
+type PlanBody = {
+  horizon?: "week" | "month";
+  preferences?: string;
+  today?: string;
+  timeZone?: string;
+};
 
 type TaskRow = {
   title: string;
@@ -62,14 +67,20 @@ function formatSchedule(rows: ScheduleRow[]): string {
   return lines.length ? lines.join("\n") : "(no fixed weekly schedule saved)";
 }
 
-function formatCalendarEvents(rows: CalendarRow[]): string {
+function formatCalendarEvents(rows: CalendarRow[], timeZone: string): string {
   if (rows.length === 0) return "(none in this window)";
   return rows
     .map((r) => {
       const start = new Date(r.start_at);
       const label = r.all_day
-        ? start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
-        : start.toLocaleString(undefined, {
+        ? start.toLocaleDateString("en-CA", {
+            timeZone,
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })
+        : start.toLocaleString("en-CA", {
+            timeZone,
             weekday: "short",
             month: "short",
             day: "numeric",
@@ -104,8 +115,19 @@ export const Route = createFileRoute("/api/study-plan")({
 
         const body = (await request.json().catch(() => ({}))) as PlanBody;
         const horizon = body.horizon === "month" ? "month" : "week";
-        const preferences = (body.preferences ?? "").trim().slice(0, 1000);
+        const preferences = (body.preferences ?? "").trim().slice(0, 4000);
 
+        // Format times in the student's timezone. The server runs in UTC, which
+        // moved a 2-5pm event to 9pm-midnight in the plan.
+        let timeZone = "America/Toronto";
+        try {
+          if (body.timeZone) {
+            new Intl.DateTimeFormat("en-CA", { timeZone: body.timeZone });
+            timeZone = body.timeZone;
+          }
+        } catch {
+          // keep the default
+        }
         const DAY_MS = 24 * 60 * 60 * 1000;
         // The student's own local date (falls back to the server's).
         const todayStr = /^\d{4}-\d{2}-\d{2}$/.test(body.today ?? "")
@@ -158,9 +180,9 @@ FIXED WEEKLY SCHEDULE (recurring every week):
 ${formatSchedule(scheduleRes.data as ScheduleRow[])}
 
 ONE-OFF EVENTS ALREADY ON THE CALENDAR IN THIS WINDOW:
-${formatCalendarEvents(calendarRes.data as CalendarRow[])}
+${formatCalendarEvents(calendarRes.data as CalendarRow[], timeZone)}
 
-STUDENT'S STATED PREFERENCES / REQUESTED CHANGES (these MUST visibly change the plan):
+STUDENT'S HARD CONSTRAINTS AND REQUESTED CHANGES (every one of these is a rule, not a suggestion; a block that breaks one is a wrong answer):
 ${preferences || "(none given — use sensible defaults)"}
 ${
   previousPlan && preferences
@@ -170,7 +192,7 @@ ${previousPlan}
 `
     : ""
 }
-Produce the plan now, following the output format and boundaries in your instructions.`;
+Before you answer, check every block you wrote against the constraints above and against the fixed schedule and calendar events (including times the student says they are busy or unavailable, and days they do not want to work). Remove or move any block that overlaps or is on a forbidden day. Then produce the plan, following the output format and boundaries in your instructions.`;
 
         let text: string;
         try {
