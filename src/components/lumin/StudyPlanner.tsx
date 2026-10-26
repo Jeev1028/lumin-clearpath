@@ -142,6 +142,7 @@ export function StudyPlanner() {
     try {
       const res = await fetch("/api/study-plan", {
         method: "POST",
+        signal: AbortSignal.timeout(150_000),
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
@@ -161,7 +162,11 @@ export function StudyPlanner() {
       setCompleted(new Set());
       toast.success("Study plan generated.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not generate a plan right now.");
+      toast.error(
+        err instanceof Error && err.name !== "TimeoutError" && err.name !== "AbortError"
+          ? err.message
+          : "Building the plan is taking too long. Try again, or choose fewer days.",
+      );
     } finally {
       setGenerating(false);
     }

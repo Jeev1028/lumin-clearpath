@@ -207,6 +207,10 @@ Before you answer, check every block you wrote against the constraints above and
             system: STUDY_PLAN_SYSTEM_PROMPT,
             prompt,
             maxOutputTokens: Math.min(8000, 1000 + windowDays * 200),
+            // A plan is a long answer, so give each model a fair try but never
+            // leave the student watching a spinner for minutes.
+            perModelMs: 40_000,
+            totalMs: 110_000,
           });
         } catch (err) {
           console.error("[study-plan] generation failed", err);

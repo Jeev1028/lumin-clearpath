@@ -44,10 +44,17 @@ export async function generateTextWithFallback(opts: {
   system: string;
   prompt: string;
   maxOutputTokens: number;
+  /** Longest a single model may take before we move on (default 50s). */
+  perModelMs?: number;
+  /** Stop trying new models after this long overall (default: no limit). */
+  totalMs?: number;
 }): Promise<string> {
   const chain = buildModelChain(process.env, false).slice(0, MAX_ATTEMPTS);
   let lastError: unknown = new Error("no AI models are configured");
+  const startedAt = Date.now();
   for (const candidate of chain) {
+    const remaining = opts.totalMs ? opts.totalMs - (Date.now() - startedAt) : Infinity;
+    if (remaining < 5_000) break;
     try {
       const { text } = await generateText({
         model: candidate.model,
@@ -55,7 +62,7 @@ export async function generateTextWithFallback(opts: {
         prompt: opts.prompt,
         maxOutputTokens: Math.max(opts.maxOutputTokens, candidate.isGemini ? 4000 : 0),
         maxRetries: 0,
-        abortSignal: AbortSignal.timeout(PER_MODEL_MS * 2),
+        abortSignal: AbortSignal.timeout(Math.min(opts.perModelMs ?? PER_MODEL_MS * 2, remaining)),
         ...(candidate.isGemini
           ? { providerOptions: { google: { thinkingConfig: { thinkingLevel: "low" as const } } } }
           : {}),
