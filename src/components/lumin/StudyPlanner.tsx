@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,10 +24,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-type Horizon = "week" | "month";
+const MIN_DAYS = 1;
+const MAX_DAYS = 60;
+const PRESET_DAYS = [7, 14, 30];
+
+function clampDays(value: string): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n < MIN_DAYS) return 7;
+  return Math.min(MAX_DAYS, n);
+}
 
 type StudyPlan = {
-  horizon: Horizon;
+  /** Number of days as text; older plans saved "week" or "month". */
+  horizon: string;
   preferences: string | null;
   plan_markdown: string;
   generated_at: string;
@@ -84,7 +94,7 @@ export function StudyPlanner() {
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [horizon, setHorizon] = useState<Horizon>("week");
+  const [horizon, setHorizon] = useState("7");
   const [preferences, setPreferences] = useState("");
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [confirmClear, setConfirmClear] = useState(false);
@@ -101,7 +111,13 @@ export function StudyPlanner() {
         const data = (await res.json()) as { plan: StudyPlan | null };
         if (data.plan) {
           setPlan(data.plan);
-          setHorizon(data.plan.horizon);
+          setHorizon(
+            data.plan.horizon === "month"
+              ? "30"
+              : data.plan.horizon === "week"
+                ? "7"
+                : String(clampDays(data.plan.horizon)),
+          );
           setPreferences(data.plan.preferences ?? "");
           setCompleted(new Set(data.plan.completed_blocks ?? []));
         }
@@ -131,7 +147,7 @@ export function StudyPlanner() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          horizon,
+          days: clampDays(horizon),
           preferences,
           // The student's local date, so "today" is right near midnight UTC.
           today: new Date().toLocaleDateString("en-CA"),
@@ -203,19 +219,34 @@ export function StudyPlanner() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {(["week", "month"] as const).map((option) => (
+        <Label htmlFor="study-plan-days" className="text-xs text-muted-foreground">
+          Plan the next
+        </Label>
+        <Input
+          id="study-plan-days"
+          type="number"
+          inputMode="numeric"
+          min={MIN_DAYS}
+          max={MAX_DAYS}
+          value={horizon}
+          onChange={(e) => setHorizon(e.target.value)}
+          onBlur={() => setHorizon(String(clampDays(horizon)))}
+          className="h-8 w-20 text-sm"
+        />
+        <span className="text-xs text-muted-foreground">days</span>
+        {PRESET_DAYS.map((n) => (
           <button
-            key={option}
+            key={n}
             type="button"
-            onClick={() => setHorizon(option)}
+            onClick={() => setHorizon(String(n))}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              horizon === option
+              clampDays(horizon) === n
                 ? "border-accent bg-accent/15 text-foreground"
                 : "border-border/60 bg-background/40 text-muted-foreground hover:text-foreground",
             )}
           >
-            {option === "week" ? "Next 7 days" : "Next 30 days"}
+            {n === 7 ? "1 week" : n === 14 ? "2 weeks" : "30 days"}
           </button>
         ))}
       </div>

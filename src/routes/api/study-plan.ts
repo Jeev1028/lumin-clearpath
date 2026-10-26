@@ -7,7 +7,8 @@ import { STUDY_PLAN_SYSTEM_PROMPT } from "@/lib/study-plan-prompt";
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 type PlanBody = {
-  horizon?: "week" | "month";
+  days?: number;
+  horizon?: string;
   preferences?: string;
   today?: string;
   timeZone?: string;
@@ -114,7 +115,14 @@ export const Route = createFileRoute("/api/study-plan")({
         if (!geminiApiKey) return new Response("AI is not configured", { status: 500 });
 
         const body = (await request.json().catch(() => ({}))) as PlanBody;
-        const horizon = body.horizon === "month" ? "month" : "week";
+        // Any number of days from 1 to 60 (older clients send "week" / "month").
+        const requestedDays = Math.round(Number(body.days));
+        const windowDays = Number.isFinite(requestedDays)
+          ? Math.min(60, Math.max(1, requestedDays))
+          : body.horizon === "month"
+            ? 30
+            : 7;
+        const horizon = String(windowDays);
         const preferences = (body.preferences ?? "").trim().slice(0, 4000);
 
         // Format times in the student's timezone. The server runs in UTC, which
@@ -135,7 +143,6 @@ export const Route = createFileRoute("/api/study-plan")({
           : new Date().toISOString().slice(0, 10);
         const today = new Date();
         // A rolling window starting today: 7 or 30 days including today.
-        const windowDays = horizon === "month" ? 30 : 7;
         const lastDay = new Date(
           new Date(`${todayStr}T00:00:00Z`).getTime() + (windowDays - 1) * DAY_MS,
         );
@@ -199,7 +206,7 @@ Before you answer, check every block you wrote against the constraints above and
           text = await generateTextWithFallback({
             system: STUDY_PLAN_SYSTEM_PROMPT,
             prompt,
-            maxOutputTokens: horizon === "month" ? 6000 : 2500,
+            maxOutputTokens: Math.min(8000, 1000 + windowDays * 200),
           });
         } catch (err) {
           console.error("[study-plan] generation failed", err);
