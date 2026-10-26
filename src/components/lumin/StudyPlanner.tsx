@@ -1,10 +1,20 @@
-import { Sparkles } from "lucide-react";
+import { Eraser, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -77,6 +87,8 @@ export function StudyPlanner() {
   const [horizon, setHorizon] = useState<Horizon>("week");
   const [preferences, setPreferences] = useState("");
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -135,6 +147,23 @@ export function StudyPlanner() {
       toast.error(err instanceof Error ? err.message : "Could not generate a plan right now.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleClear() {
+    if (!user) return;
+    setClearing(true);
+    try {
+      const { error } = await supabase.from("study_plans").delete().eq("user_id", user.id);
+      if (error) throw error;
+      setPlan(null);
+      setCompleted(new Set());
+      setConfirmClear(false);
+      toast.success("Study plan cleared.");
+    } catch {
+      toast.error("Could not clear your study plan. Please try again.");
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -212,6 +241,42 @@ export function StudyPlanner() {
       >
         {generating ? "Building your plan…" : plan ? "Update plan" : "Generate my plan"}
       </Button>
+      {plan && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setConfirmClear(true)}
+          disabled={generating}
+          className="mt-3 ml-2 gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+        >
+          <Eraser className="h-3.5 w-3.5" aria-hidden />
+          Clear schedule
+        </Button>
+      )}
+
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear your study schedule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes your current study plan and your progress checkboxes. Your tasks and
+              class schedule are not affected. You can generate a new plan any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={clearing}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleClear();
+              }}
+            >
+              {clearing ? "Clearing…" : "Clear schedule"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {plan && (
         <div className="mt-5 border-t border-border/60 pt-5">
