@@ -65,6 +65,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.4",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "New Week and Year views in the Calendar tab, and a Talk to Lumin button on every study task that opens a chat with the task already described.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.4.9/LuminCalendar-unsigned.ipa",
+          "size": 4288286,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.3.1",
           "date": "2026-10-27T00:00:00Z",
           "localizedDescription": "Fixes the Today widget under SideStore, adds lock screen widgets, a new Up next card, progress ring, grouped checklist and colour-coded month dots. The app is now called Lumin Cal.",
