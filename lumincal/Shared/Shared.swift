@@ -2,7 +2,18 @@ import Foundation
 
 /// Storage shared between the app and the widget (needs the App Group).
 enum Shared {
-    static let groupId = "group.ca.luminclearpath.calendar"
+    static let fallbackGroup = "group.ca.luminclearpath.calendar"
+
+    /// SideStore and AltStore re-sign the app for your own team and rename the App Group
+    /// (the team id gets appended). They record the real ids in the ALTAppGroups Info.plist
+    /// key, so use whichever group the system actually lets us open.
+    static let groupId: String = {
+        let injected = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? []
+        for id in injected + [fallbackGroup] {
+            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) != nil { return id }
+        }
+        return injected.first ?? fallbackGroup
+    }()
     static var defaults: UserDefaults { UserDefaults(suiteName: groupId) ?? .standard }
     static let feedKey = "feedURL"
     static let doneKey = "doneIds"

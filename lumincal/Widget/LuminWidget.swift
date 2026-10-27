@@ -3,17 +3,24 @@ import WidgetKit
 
 struct AgendaEntry: TimelineEntry {
     let date: Date
+    /// Today's remaining items (all-day first, then by start time).
     let items: [AgendaItem]
     let done: Set<String>
+    /// Checklist progress across the whole day, including blocks already finished.
+    let checkTotal: Int
+    let checkDone: Int
 }
 
 struct AgendaProvider: TimelineProvider {
     func placeholder(in context: Context) -> AgendaEntry {
         let now = Date()
-        return AgendaEntry(date: now, items: [
-            AgendaItem(id: "p1", title: "Chemistry: chapter 4", start: now, end: now.addingTimeInterval(3600),
-                       allDay: false, location: nil, source: .plan, colorHex: nil),
-        ], done: [])
+        return AgendaEntry(
+            date: now,
+            items: [
+                AgendaItem(id: "p1", title: "Chemistry: chapter 4", start: now, end: now.addingTimeInterval(3600),
+                           allDay: false, location: nil, source: .plan, colorHex: nil),
+            ],
+            done: [], checkTotal: 4, checkDone: 1)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (AgendaEntry) -> Void) {
@@ -31,10 +38,15 @@ struct AgendaProvider: TimelineProvider {
     private func current() -> AgendaEntry {
         let cal = Calendar.current
         let now = Date()
-        let today = AgendaCache.load()
-            .filter { cal.isDateInToday($0.start) && ($0.allDay || $0.end >= now) }
+        let todayAll = AgendaCache.load().filter { cal.isDateInToday($0.start) }
+        let done = DoneStore.all()
+        let upcoming = todayAll
+            .filter { $0.allDay || $0.end >= now }
             .sorted { $0.allDay != $1.allDay ? $0.allDay : $0.start < $1.start }
-        return AgendaEntry(date: now, items: today, done: DoneStore.all())
+        let checks = todayAll.filter { $0.checkable }
+        return AgendaEntry(
+            date: now, items: upcoming, done: done,
+            checkTotal: checks.count, checkDone: checks.filter { done.contains($0.id) }.count)
     }
 }
 
@@ -44,27 +56,100 @@ struct AgendaWidgetView: View {
 
     private var limit: Int { family == .systemSmall ? 3 : family == .systemMedium ? 4 : 9 }
 
+    /// The next thing that still needs attention.
+    private var next: AgendaItem? {
+        entry.items.first { !$0.allDay && !entry.done.contains($0.id) }
+            ?? entry.items.first { !entry.done.contains($0.id) }
+    }
+
+    private func time(_ d: Date) -> String { d.formatted(date: .omitted, time: .shortened) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(entry.date.formatted(.dateTime.weekday(.wide).day().month()))
-                .font(.caption.bold()).foregroundStyle(Color(red: 0.36, green: 0.83, blue: 0.9))
+        switch family {
+        case .accessoryInline: inline
+        case .accessoryCircular: circular
+        case .accessoryRectangular: rectangular
+        default: home
+        }
+    }
+
+    // MARK: Lock screen
+
+    private var inline: some View {
+        Group {
+            if let n = next {
+                Text("\(n.title) · \(time(n.start))")
+            } else {
+                Text("Nothing left today")
+            }
+        }
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    private var circular: some View {
+        Gauge(value: Double(entry.checkDone), in: 0...Double(max(entry.checkTotal, 1))) {
+            Image(systemName: "checklist")
+        } currentValueLabel: {
+            Text("\(entry.checkDone)")
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    private var rectangular: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let n = next {
+                Text(n.title).font(.headline).lineLimit(2).widgetAccentable()
+                Text(n.allDay ? "All day" : "\(time(n.start)) – \(time(n.end))").font(.caption)
+            } else {
+                Text("Nothing left today").font(.headline).widgetAccentable()
+            }
+            if entry.checkTotal > 0 {
+                Text("\(entry.checkDone) of \(entry.checkTotal) done").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    // MARK: Home screen
+
+    private var home: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(entry.date.formatted(.dateTime.weekday(.wide).day().month()))
+                    .font(.caption.bold()).foregroundStyle(Color(red: 0.36, green: 0.83, blue: 0.9))
+                Spacer(minLength: 4)
+                if entry.checkTotal > 0 {
+                    Text("\(entry.checkDone)/\(entry.checkTotal)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.white.opacity(0.12), in: Capsule())
+                }
+            }
             if entry.items.isEmpty {
                 Spacer()
-                Text("Nothing left today").font(.footnote).foregroundStyle(.secondary)
+                Text(entry.checkTotal > 0 && entry.checkDone == entry.checkTotal
+                     ? "All done. Nice work!" : "Nothing left today")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Spacer()
             }
             ForEach(entry.items.prefix(limit)) { item in
-                HStack(spacing: 5) {
-                    Image(systemName: item.checkable
-                          ? (entry.done.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                          : "circle.fill")
-                        .font(.system(size: item.checkable ? 11 : 6))
-                        .foregroundStyle(item.colorHex.flatMap { Color(hex: $0) } ?? .blue)
+                HStack(spacing: 6) {
+                    if item.checkable {
+                        Image(systemName: entry.done.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 12))
+                            .foregroundStyle(entry.done.contains(item.id) ? Color(red: 0.36, green: 0.83, blue: 0.9) : .secondary)
+                    } else {
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(item.colorHex.flatMap { Color(hex: $0) } ?? Color(red: 0.31, green: 0.63, blue: 0.94))
+                            .frame(width: 3, height: 22)
+                    }
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(item.title).font(.caption).lineLimit(1)
+                        Text(item.title).font(.caption.weight(.medium)).lineLimit(1)
                             .strikethrough(entry.done.contains(item.id))
                         if !item.allDay {
-                            Text(item.start.formatted(date: .omitted, time: .shortened))
+                            Text(time(item.start))
                                 .font(.system(size: 10)).foregroundStyle(.secondary)
                         }
                     }
@@ -77,7 +162,11 @@ struct AgendaWidgetView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(.white)
-        .containerBackground(Color(red: 0.039, green: 0.067, blue: 0.157), for: .widget)
+        .containerBackground(for: .widget) {
+            LinearGradient(
+                colors: [Color(red: 0.075, green: 0.137, blue: 0.29), Color(red: 0.039, green: 0.067, blue: 0.157)],
+                startPoint: .top, endPoint: .bottom)
+        }
     }
 }
 
@@ -89,7 +178,10 @@ struct LuminWidget: Widget {
         }
         .configurationDisplayName("Today")
         .description("Your calendar events and study checklist for today.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryRectangular, .accessoryInline, .accessoryCircular,
+        ])
     }
 }
 
