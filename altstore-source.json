@@ -65,6 +65,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.5",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "A Plan tab: pick your dates, generate a study plan, tick blocks off (synced with the website) and talk to Lumin about any block.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.5.10/LuminCalendar-unsigned.ipa",
+          "size": 4367572,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.4",
           "date": "2026-10-27T00:00:00Z",
           "localizedDescription": "New Week and Year views in the Calendar tab, and a Talk to Lumin button on every study task that opens a chat with the task already described.",
