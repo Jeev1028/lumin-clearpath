@@ -1,0 +1,45 @@
+name: Build Lumin Calendar (unsigned .ipa)
+
+# Unsigned on purpose: sign and install it with SideStore / AltStore using
+# your own Apple ID, so no Apple credentials live in this repo.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "lumincal/**"
+      - ".github/workflows/lumincal-build.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: lumincal
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build (no signing)
+        run: |
+          xcodebuild -project LuminCalendar.xcodeproj -scheme LuminCalendar \
+            -configuration Release -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package as .ipa
+        run: |
+          rm -rf Payload && mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/LuminCalendar.app Payload/
+          zip -qr LuminCalendar-unsigned.ipa Payload
+          ls -la LuminCalendar-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LuminCalendar-unsigned-ipa
+          path: lumincal/LuminCalendar-unsigned.ipa

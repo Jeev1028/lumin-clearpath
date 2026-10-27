@@ -1,0 +1,50 @@
+name: LuminCalendar
+options:
+  bundleIdPrefix: ca.luminclearpath
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  LuminCalendar:
+    type: application
+    platform: iOS
+    sources: [App, Shared]
+    entitlements:
+      path: App/LuminCalendar.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ca.luminclearpath.calendar]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Lumin Calendar
+        UILaunchScreen: {}
+        NSCalendarsFullAccessUsageDescription: Lumin Calendar shows and edits your calendar events so you can use it instead of the Apple Calendar app.
+        NSCalendarsUsageDescription: Lumin Calendar shows and edits your calendar events.
+        NSRemindersFullAccessUsageDescription: Lumin Calendar can show your reminders alongside your events.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ca.luminclearpath.calendar
+    dependencies:
+      - target: LuminWidget
+  LuminWidget:
+    type: app-extension
+    platform: iOS
+    sources: [Widget, Shared]
+    entitlements:
+      path: Widget/LuminWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ca.luminclearpath.calendar]
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Lumin Calendar
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ca.luminclearpath.calendar.widget

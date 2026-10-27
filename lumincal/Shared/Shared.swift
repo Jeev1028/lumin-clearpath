@@ -1,0 +1,54 @@
+import Foundation
+
+/// Storage shared between the app and the widget (needs the App Group).
+enum Shared {
+    static let groupId = "group.ca.luminclearpath.calendar"
+    static var defaults: UserDefaults { UserDefaults(suiteName: groupId) ?? .standard }
+    static let feedKey = "feedURL"
+    static let doneKey = "doneIds"
+    static let agendaKey = "agendaJson"
+}
+
+enum ItemSource: String, Codable {
+    case apple   // from the iPhone calendar (EventKit)
+    case lumin   // classes, due dates and one-off events from Lumin
+    case plan    // study-plan blocks (checklist items)
+}
+
+/// One thing on the calendar, from any source.
+struct AgendaItem: Codable, Identifiable, Hashable {
+    var id: String
+    var title: String
+    var start: Date
+    var end: Date
+    var allDay: Bool
+    var location: String?
+    var source: ItemSource
+    /// Hex color of the Apple calendar it belongs to, if any.
+    var colorHex: String?
+
+    /// Study blocks and due dates can be ticked off.
+    var checkable: Bool { source == .plan || id.hasPrefix("task-") }
+}
+
+enum DoneStore {
+    static func all() -> Set<String> {
+        Set(Shared.defaults.stringArray(forKey: Shared.doneKey) ?? [])
+    }
+    static func set(_ id: String, done: Bool) {
+        var s = all()
+        if done { s.insert(id) } else { s.remove(id) }
+        Shared.defaults.set(Array(s), forKey: Shared.doneKey)
+    }
+}
+
+enum AgendaCache {
+    static func save(_ items: [AgendaItem]) {
+        let enc = JSONEncoder()
+        if let data = try? enc.encode(items) { Shared.defaults.set(data, forKey: Shared.agendaKey) }
+    }
+    static func load() -> [AgendaItem] {
+        guard let data = Shared.defaults.data(forKey: Shared.agendaKey) else { return [] }
+        return (try? JSONDecoder().decode([AgendaItem].self, from: data)) ?? []
+    }
+}
