@@ -47,7 +47,7 @@ struct AgendaWidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(entry.date.formatted(.dateTime.weekday(.wide).day().month()))
-                .font(.caption.bold()).foregroundStyle(.blue)
+                .font(.caption.bold()).foregroundStyle(Color(red: 0.36, green: 0.83, blue: 0.9))
             if entry.items.isEmpty {
                 Spacer()
                 Text("Nothing left today").font(.footnote).foregroundStyle(.secondary)
@@ -76,7 +76,8 @@ struct AgendaWidgetView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .containerBackground(.background, for: .widget)
+        .foregroundStyle(.white)
+        .containerBackground(Color(red: 0.039, green: 0.067, blue: 0.157), for: .widget)
     }
 }
 
