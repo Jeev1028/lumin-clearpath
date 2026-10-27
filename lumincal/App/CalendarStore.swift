@@ -36,8 +36,11 @@ final class CalendarStore: ObservableObject {
 
     func reload() async {
         let cal = Calendar.current
-        let from = cal.date(byAdding: .day, value: -daysBack, to: cal.startOfDay(for: Date()))!
-        let to = cal.date(byAdding: .day, value: daysForward, to: cal.startOfDay(for: Date()))!
+        let todayStart = cal.startOfDay(for: Date())
+        // Load the whole current year so the year view has data, plus a margin around today.
+        let year = cal.dateInterval(of: .year, for: Date())
+        let from = min(year?.start ?? todayStart, cal.date(byAdding: .day, value: -daysBack, to: todayStart)!)
+        let to = max(year?.end ?? todayStart, cal.date(byAdding: .day, value: daysForward, to: todayStart)!)
 
         var all: [AgendaItem] = []
         ekIds = [:]
@@ -63,7 +66,10 @@ final class CalendarStore: ObservableObject {
             .sorted { $0.start < $1.start }
             .filter { seen.insert("\($0.title.lowercased())|\($0.start.timeIntervalSince1970)").inserted }
 
-        AgendaCache.save(items.filter { $0.end >= from })
+        // The widget only needs around today, which keeps the shared cache small.
+        let cacheFrom = cal.date(byAdding: .day, value: -1, to: todayStart)!
+        let cacheTo = cal.date(byAdding: .day, value: 3, to: todayStart)!
+        AgendaCache.save(items.filter { $0.end >= cacheFrom && $0.start < cacheTo })
         WidgetCenter.shared.reloadAllTimelines()
     }
 

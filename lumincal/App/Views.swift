@@ -13,6 +13,10 @@ struct LuminCalendarApp: App {
         bar.shadowColor = UIColor(Theme.border)
         UITabBar.appearance().standardAppearance = bar
         UITabBar.appearance().scrollEdgeAppearance = bar
+        UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(Theme.primary)
+        UISegmentedControl.appearance().backgroundColor = UIColor(Theme.card)
+        UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(Theme.background)], for: .selected)
+        UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(Theme.muted)], for: .normal)
     }
 
     var body: some Scene {
@@ -33,7 +37,7 @@ struct RootView: View {
     var body: some View {
         TabView {
             TodayView().tabItem { Label("Today", systemImage: "checklist") }
-            MonthView().tabItem { Label("Calendar", systemImage: "calendar") }
+            CalendarRoot().tabItem { Label("Calendar", systemImage: "calendar") }
             SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }
         }
     }
@@ -47,6 +51,7 @@ struct ScreenHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
+                .lineLimit(1).minimumScaleFactor(0.6)
             if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(Theme.muted) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -359,7 +364,8 @@ struct TodayView: View {
 
 struct MonthView: View {
     @EnvironmentObject var store: CalendarStore
-    @State private var selected = Date()
+    @Binding var selected: Date
+    @Binding var mode: CalMode
     @State private var editing: AgendaItem?
     @State private var adding = false
 
@@ -395,6 +401,7 @@ struct MonthView: View {
                                 .background(Theme.card, in: Circle()).overlay(Circle().stroke(Theme.border))
                         }
                     }
+                    ModePicker(mode: $mode)
                     MonthGrid(selected: $selected, dots: { dotColors(on: $0) }).card()
                     SectionTitle(text: selected.formatted(.dateTime.weekday(.wide).month().day()))
                     ItemCard(items: items(on: selected)) { if $0.source == .apple { editing = $0 } }
