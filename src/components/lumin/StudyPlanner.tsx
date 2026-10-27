@@ -1,4 +1,4 @@
-import { Eraser, Sparkles } from "lucide-react";
+import { CalendarPlus, Eraser, Link2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import ReactMarkdown from "react-markdown";
@@ -22,20 +22,32 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { buildPlanIcs, downloadIcs } from "@/lib/ics";
+import { parseHorizonRange, parsePlanBlocks, planStartDate } from "@/lib/study-plan-ics";
 import { cn } from "@/lib/utils";
 
-const MIN_DAYS = 1;
 const MAX_DAYS = 60;
 const PRESET_DAYS = [7, 14, 30];
 
-function clampDays(value: string): number {
-  const n = Math.round(Number(value));
-  if (!Number.isFinite(n) || n < MIN_DAYS) return 7;
-  return Math.min(MAX_DAYS, n);
+/** YYYY-MM-DD for a local date, shifted by a number of days. */
+function localDate(offsetDays = 0, from = new Date()): string {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + offsetDays);
+  return d.toLocaleDateString("en-CA");
+}
+
+function addDays(date: string, days: number): string {
+  const [y = 1970, m = 1, d = 1] = date.split("-").map(Number);
+  return new Date(y, m - 1, d + days).toLocaleDateString("en-CA");
+}
+
+function daysBetween(start: string, end: string): number {
+  const a = new Date(start + "T00:00:00Z").getTime();
+  const b = new Date(end + "T00:00:00Z").getTime();
+  return Math.round((b - a) / 86_400_000) + 1;
 }
 
 type StudyPlan = {
-  /** Number of days as text; older plans saved "week" or "month". */
+  /** "start/end" dates; older plans saved "week", "month" or a day count. */
   horizon: string;
   preferences: string | null;
   plan_markdown: string;
@@ -94,7 +106,9 @@ export function StudyPlanner() {
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [horizon, setHorizon] = useState("7");
+  const [startDate, setStartDate] = useState(() => localDate(0));
+  const [endDate, setEndDate] = useState(() => localDate(6));
+  const [feedBusy, setFeedBusy] = useState(false);
   const [preferences, setPreferences] = useState("");
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [confirmClear, setConfirmClear] = useState(false);
@@ -111,13 +125,11 @@ export function StudyPlanner() {
         const data = (await res.json()) as { plan: StudyPlan | null };
         if (data.plan) {
           setPlan(data.plan);
-          setHorizon(
-            data.plan.horizon === "month"
-              ? "30"
-              : data.plan.horizon === "week"
-                ? "7"
-                : String(clampDays(data.plan.horizon)),
-          );
+          const range = parseHorizonRange(data.plan.horizon);
+          if (range && range.end >= localDate(0)) {
+            setStartDate(range.start < localDate(0) ? localDate(0) : range.start);
+            setEndDate(range.end);
+          }
           setPreferences(data.plan.preferences ?? "");
           setCompleted(new Set(data.plan.completed_blocks ?? []));
         }
@@ -136,8 +148,22 @@ export function StudyPlanner() {
     [parsed],
   );
 
+  const rangeDays = daysBetween(startDate, endDate);
+  const rangeError =
+    !startDate || !endDate
+      ? "Choose a start and end date."
+      : rangeDays < 1
+        ? "The end date must be on or after the start date."
+        : rangeDays > MAX_DAYS
+          ? "Please choose " + MAX_DAYS + " days or fewer."
+          : null;
+
   async function handleGenerate() {
     if (!session) return;
+    if (rangeError) {
+      toast.error(rangeError);
+      return;
+    }
     setGenerating(true);
     try {
       const res = await fetch("/api/study-plan", {
@@ -148,7 +174,8 @@ export function StudyPlanner() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          days: clampDays(horizon),
+          startDate,
+          endDate,
           preferences,
           // The student's local date, so "today" is right near midnight UTC.
           today: new Date().toLocaleDateString("en-CA"),
@@ -165,7 +192,7 @@ export function StudyPlanner() {
       toast.error(
         err instanceof Error && err.name !== "TimeoutError" && err.name !== "AbortError"
           ? err.message
-          : "Building the plan is taking too long. Try again, or choose fewer days.",
+          : "Building the plan is taking too long. Try again, or choose a shorter date range.",
       );
     } finally {
       setGenerating(false);
@@ -186,6 +213,44 @@ export function StudyPlanner() {
       toast.error("Could not clear your study plan. Please try again.");
     } finally {
       setClearing(false);
+    }
+  }
+
+  function planBlocks() {
+    if (!plan) return [];
+    return parsePlanBlocks(plan.plan_markdown, planStartDate(plan.horizon, plan.generated_at));
+  }
+
+  function handleExport() {
+    const blocks = planBlocks();
+    if (blocks.length === 0) {
+      toast.error("No timed blocks found in this plan to export.");
+      return;
+    }
+    downloadIcs("lumin-study-plan.ics", buildPlanIcs(blocks));
+    toast.success(
+      "Downloaded " + blocks.length + " study blocks. Open the file to add them to your calendar.",
+    );
+  }
+
+  async function handleSubscribe() {
+    if (!session) return;
+    setFeedBusy(true);
+    try {
+      const res = await fetch("/api/calendar-feed/link", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error("link");
+      const { httpsUrl } = (await res.json()) as { httpsUrl: string };
+      await navigator.clipboard.writeText(httpsUrl);
+      toast.success(
+        "Subscription link copied. In Google Calendar choose Other calendars, From URL. In Apple Calendar choose File, New Calendar Subscription.",
+      );
+    } catch {
+      toast.error("Could not create a subscription link. Please try again.");
+    } finally {
+      setFeedBusy(false);
     }
   }
 
@@ -224,29 +289,40 @@ export function StudyPlanner() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Label htmlFor="study-plan-days" className="text-xs text-muted-foreground">
-          Plan the next
+        <Label htmlFor="study-plan-start" className="text-xs text-muted-foreground">
+          From
         </Label>
         <Input
-          id="study-plan-days"
-          type="number"
-          inputMode="numeric"
-          min={MIN_DAYS}
-          max={MAX_DAYS}
-          value={horizon}
-          onChange={(e) => setHorizon(e.target.value)}
-          onBlur={() => setHorizon(String(clampDays(horizon)))}
-          className="h-8 w-20 text-sm"
+          id="study-plan-start"
+          type="date"
+          value={startDate}
+          min={localDate(0)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setStartDate(next);
+            if (next && endDate && endDate < next) setEndDate(next);
+          }}
+          className="h-8 w-auto text-sm"
         />
-        <span className="text-xs text-muted-foreground">days</span>
+        <Label htmlFor="study-plan-end" className="text-xs text-muted-foreground">
+          to
+        </Label>
+        <Input
+          id="study-plan-end"
+          type="date"
+          value={endDate}
+          min={startDate || localDate(0)}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="h-8 w-auto text-sm"
+        />
         {PRESET_DAYS.map((n) => (
           <button
             key={n}
             type="button"
-            onClick={() => setHorizon(String(n))}
+            onClick={() => setEndDate(addDays(startDate || localDate(0), n - 1))}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              clampDays(horizon) === n
+              rangeDays === n
                 ? "border-accent bg-accent/15 text-foreground"
                 : "border-border/60 bg-background/40 text-muted-foreground hover:text-foreground",
             )}
@@ -255,6 +331,13 @@ export function StudyPlanner() {
           </button>
         ))}
       </div>
+      {rangeError ? (
+        <p className="mt-1.5 text-xs text-destructive">{rangeError}</p>
+      ) : (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {rangeDays} {rangeDays === 1 ? "day" : "days"} (up to {MAX_DAYS})
+        </p>
+      )}
 
       <div className="mt-3 space-y-1.5">
         <Label htmlFor="study-plan-preferences" className="text-xs text-muted-foreground">
@@ -273,7 +356,7 @@ export function StudyPlanner() {
       <Button
         type="button"
         onClick={() => void handleGenerate()}
-        disabled={generating}
+        disabled={generating || rangeError !== null}
         className="mt-3 bg-gradient-lumin text-primary-foreground shadow-glow"
       >
         {generating ? "Building your plan…" : plan ? "Update plan" : "Generate my plan"}
@@ -326,6 +409,33 @@ export function StudyPlanner() {
               Generated {new Date(plan.generated_at).toLocaleString()}
             </p>
           </div>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+              Download .ics
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleSubscribe()}
+              disabled={feedBusy}
+              className="gap-1.5 border-border/70 bg-background/40 text-foreground hover:text-foreground"
+            >
+              <Link2 className="h-3.5 w-3.5" aria-hidden />
+              {feedBusy ? "Creating link…" : "Copy subscription link"}
+            </Button>
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            The subscription link keeps your calendar app updated with this plan, plus your classes
+            and due dates, each time you regenerate it.
+          </p>
 
           {parsed ? (
             <div className="rounded-xl border border-border/60 bg-background/40 p-4">

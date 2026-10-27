@@ -8,6 +8,8 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 
 type PlanBody = {
   days?: number;
+  startDate?: string;
+  endDate?: string;
   horizon?: string;
   preferences?: string;
   today?: string;
@@ -115,14 +117,6 @@ export const Route = createFileRoute("/api/study-plan")({
         if (!geminiApiKey) return new Response("AI is not configured", { status: 500 });
 
         const body = (await request.json().catch(() => ({}))) as PlanBody;
-        // Any number of days from 1 to 60 (older clients send "week" / "month").
-        const requestedDays = Math.round(Number(body.days));
-        const windowDays = Number.isFinite(requestedDays)
-          ? Math.min(60, Math.max(1, requestedDays))
-          : body.horizon === "month"
-            ? 30
-            : 7;
-        const horizon = String(windowDays);
         const preferences = (body.preferences ?? "").trim().slice(0, 4000);
 
         // Format times in the student's timezone. The server runs in UTC, which
@@ -141,13 +135,37 @@ export const Route = createFileRoute("/api/study-plan")({
         const todayStr = /^\d{4}-\d{2}-\d{2}$/.test(body.today ?? "")
           ? (body.today as string)
           : new Date().toISOString().slice(0, 10);
-        const today = new Date();
-        // A rolling window starting today: 7 or 30 days including today.
-        const lastDay = new Date(
-          new Date(`${todayStr}T00:00:00Z`).getTime() + (windowDays - 1) * DAY_MS,
-        );
-        const lastDayStr = lastDay.toISOString().slice(0, 10);
-        const windowEnd = new Date(lastDay.getTime() + 2 * DAY_MS);
+        const isDate = (s: string | undefined): s is string =>
+          typeof s === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(s) &&
+          !Number.isNaN(new Date(`${s}T00:00:00Z`).getTime());
+        const dayIndex = (s: string) => Math.round(new Date(`${s}T00:00:00Z`).getTime() / DAY_MS);
+        const isoOf = (index: number) => new Date(index * DAY_MS).toISOString().slice(0, 10);
+
+        // The student picks a start and an end date. Older clients send a day
+        // count (or "week" / "month"), which still works as a window from today.
+        let startStr = isDate(body.startDate) ? body.startDate : todayStr;
+        if (startStr < todayStr) startStr = todayStr;
+        let lastDayStr: string;
+        if (isDate(body.endDate)) {
+          lastDayStr = body.endDate;
+        } else {
+          const legacy = Math.round(Number(body.days));
+          const n = Number.isFinite(legacy) ? legacy : body.horizon === "month" ? 30 : 7;
+          lastDayStr = isoOf(dayIndex(startStr) + Math.max(1, n) - 1);
+        }
+        if (lastDayStr < startStr) {
+          return new Response("The end date must be on or after the start date.", { status: 400 });
+        }
+        const windowDays = dayIndex(lastDayStr) - dayIndex(startStr) + 1;
+        if (windowDays > 60) {
+          return new Response("Please choose a range of 60 days or fewer.", { status: 400 });
+        }
+        // Saved as "start/end" so the plan can be turned into real calendar dates.
+        const horizon = `${startStr}/${lastDayStr}`;
+        // A day of slack either side so time zones never hide an event.
+        const windowStart = new Date((dayIndex(startStr) - 1) * DAY_MS);
+        const windowEnd = new Date((dayIndex(lastDayStr) + 3) * DAY_MS);
 
         const [tasksRes, scheduleRes, calendarRes] = await Promise.all([
           supabase
@@ -161,7 +179,7 @@ export const Route = createFileRoute("/api/study-plan")({
           supabase
             .from("calendar_events")
             .select("title, start_at, end_at, all_day")
-            .gte("start_at", today.toISOString())
+            .gte("start_at", windowStart.toISOString())
             .lte("start_at", windowEnd.toISOString())
             .order("start_at", { ascending: true }),
         ]);
@@ -183,7 +201,7 @@ export const Route = createFileRoute("/api/study-plan")({
           .maybeSingle();
         const previousPlan = existing?.plan_markdown?.trim() ?? "";
 
-        const prompt = `Today's date: ${todayStr}. Plan window: ${windowDays} days, from ${todayStr} through ${lastDayStr} inclusive. Cover every day in that window that has something to schedule, through the last day. Do not stop at the end of a calendar week or month.
+        const prompt = `Today's date: ${todayStr}. Plan window: ${windowDays} days, from ${startStr} through ${lastDayStr} inclusive. Cover every day in that window that has something to schedule, through the last day. Do not stop at the end of a calendar week or month.
 
 STUDENT'S OUTSTANDING TASKS:
 ${formatTasks(tasksRes.data as TaskRow[])}

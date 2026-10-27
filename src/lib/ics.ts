@@ -1,4 +1,5 @@
 import type { CalendarEvent, ScheduleEvent, Task } from "@/lib/clearpath";
+import type { PlanBlock } from "@/lib/study-plan-ics";
 
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -42,6 +43,13 @@ function dateOnly(isoString: string, addDaysIfSame?: string): string {
   return `${y}${pad(mo + 1)}${pad(day)}`;
 }
 
+/** Local date + minutes-after-midnight as a floating date-time. */
+function planDateTime(date: string, minutes: number): string {
+  const [y = 1970, m = 1, d = 1] = date.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d, 0, minutes));
+  return `${t.getUTCFullYear()}${pad(t.getUTCMonth() + 1)}${pad(t.getUTCDate())}T${pad(t.getUTCHours())}${pad(t.getUTCMinutes())}00`;
+}
+
 /** Escapes text per RFC 5545 (backslash, comma, semicolon, newline). */
 function escapeText(value: string): string {
   return value
@@ -73,6 +81,7 @@ export function buildIcs(
   scheduleEvents: ScheduleEvent[],
   calendarEvents: CalendarEvent[],
   tasks: Pick<Task, "id" | "title" | "course" | "due_date">[] = [],
+  planBlocks: PlanBlock[] = [],
 ): string {
   const now = new Date();
   const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
@@ -96,7 +105,11 @@ export function buildIcs(
   }
 
   for (const event of calendarEvents) {
-    const lines = ["BEGIN:VEVENT", `UID:calendar-${event.id}@luminclearpath.ca`, `DTSTAMP:${stamp}`];
+    const lines = [
+      "BEGIN:VEVENT",
+      `UID:calendar-${event.id}@luminclearpath.ca`,
+      `DTSTAMP:${stamp}`,
+    ];
     if (event.all_day) {
       const startDate = dateOnly(event.start_at);
       lines.push(`DTSTART;VALUE=DATE:${startDate}`);
@@ -131,6 +144,22 @@ export function buildIcs(
     vevents.push(buildEvent(lines));
   }
 
+  // Study-plan blocks use floating local time: "5:00pm" means 5pm wherever
+  // the student's calendar is set, matching how the plan was written.
+  for (const block of planBlocks) {
+    vevents.push(
+      buildEvent([
+        "BEGIN:VEVENT",
+        `UID:plan-${block.date}-${block.index}@luminclearpath.ca`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${planDateTime(block.date, block.startMin)}`,
+        `DTEND:${planDateTime(block.date, block.endMin)}`,
+        `SUMMARY:${escapeText(`Study plan: ${block.title}`)}`,
+        "END:VEVENT",
+      ]),
+    );
+  }
+
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -149,4 +178,9 @@ export function downloadIcs(filename: string, contents: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** A calendar file containing only the study plan's blocks. */
+export function buildPlanIcs(blocks: PlanBlock[]): string {
+  return buildIcs([], [], [], blocks);
 }

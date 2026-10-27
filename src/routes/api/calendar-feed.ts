@@ -4,6 +4,7 @@ import { getAdminClient } from "@/lib/api-auth";
 import type { CalendarEvent, ScheduleEvent, Task } from "@/lib/clearpath";
 import { buildIcs } from "@/lib/ics";
 import { verifySignedState } from "@/lib/oauth-state";
+import { parsePlanBlocks, planStartDate } from "@/lib/study-plan-ics";
 
 // A calendar subscription URL is fetched directly by Apple/Google/Outlook's
 // own calendar apps on a recurring schedule -- there's no browser session or
@@ -22,10 +23,11 @@ export const Route = createFileRoute("/api/calendar-feed")({
         const token = new URL(request.url).searchParams.get("token");
         const payload = token ? verifySignedState(token, FEED_TOKEN_MAX_AGE_MS) : null;
         const userId = payload?.["userId"];
-        if (!userId) return new Response("This calendar link is invalid or has expired.", { status: 401 });
+        if (!userId)
+          return new Response("This calendar link is invalid or has expired.", { status: 401 });
 
         const admin = getAdminClient();
-        const [scheduleRes, calendarRes, tasksRes] = await Promise.all([
+        const [scheduleRes, calendarRes, tasksRes, planRes] = await Promise.all([
           admin
             .from("schedule_events")
             .select("id, title, category, day_of_week, start_time, end_time, location")
@@ -33,7 +35,9 @@ export const Route = createFileRoute("/api/calendar-feed")({
             .returns<ScheduleEvent[]>(),
           admin
             .from("calendar_events")
-            .select("id, title, description, location, start_at, end_at, all_day, source, google_event_id")
+            .select(
+              "id, title, description, location, start_at, end_at, all_day, source, google_event_id",
+            )
             .eq("user_id", userId)
             .returns<CalendarEvent[]>(),
           admin
@@ -41,12 +45,23 @@ export const Route = createFileRoute("/api/calendar-feed")({
             .select("id, title, course, due_date")
             .eq("user_id", userId)
             .returns<Pick<Task, "id" | "title" | "course" | "due_date">[]>(),
+          admin
+            .from("study_plans")
+            .select("horizon, plan_markdown, generated_at")
+            .eq("user_id", userId)
+            .maybeSingle(),
         ]);
+
+        const plan = planRes.data;
+        const planBlocks = plan
+          ? parsePlanBlocks(plan.plan_markdown, planStartDate(plan.horizon, plan.generated_at))
+          : [];
 
         const contents = buildIcs(
           scheduleRes.data ?? [],
           calendarRes.data ?? [],
           tasksRes.data ?? [],
+          planBlocks,
         );
 
         return new Response(contents, {
