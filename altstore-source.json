@@ -53,6 +53,26 @@
           "size": 13909096
         }
       ]
+    },
+    {
+      "name": "Lumin Calendar",
+      "bundleIdentifier": "ca.luminclearpath.calendar",
+      "developerName": "Jeevin",
+      "subtitle": "A calendar that replaces Apple Calendar, with your study plan",
+      "localizedDescription": "Lumin Calendar reads and edits your Apple Calendar events, adds your Lumin classes, due dates and AI study plan with a daily checklist, and includes a Today widget.",
+      "iconURL": "https://raw.githubusercontent.com/Jeev1028/lumin-clearpath/main/ios/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512%402x.png",
+      "tintColor": "2563EB",
+      "category": "productivity",
+      "versions": [
+        {
+          "version": "1.0",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "First release: Apple Calendar read and write, study-plan checklist, month view and a Today widget.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.0.1/LuminCalendar-unsigned.ipa",
+          "size": 197449,
+          "minOSVersion": "17.0"
+        }
+      ]
     }
   ],
   "news": []
