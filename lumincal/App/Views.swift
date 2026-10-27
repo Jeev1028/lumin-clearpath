@@ -72,6 +72,7 @@ struct SectionTitle: View {
 
 struct ItemRow: View {
     @EnvironmentObject var store: CalendarStore
+    @Environment(\.openURL) private var openURL
     let item: AgendaItem
 
     private var isDone: Bool { store.done.contains(item.id) }
@@ -124,10 +125,40 @@ struct ItemRow: View {
                 }
             }
             Spacer(minLength: 0)
+            if item.checkable, let url = askURL {
+                Button {
+                    openURL(url)
+                } label: {
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.accent.opacity(0.12), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Talk to Lumin about this")
+            }
         }
         .padding(.vertical, 8)
         .opacity(isDone ? 0.65 : 1)
         .contentShape(Rectangle())
+    }
+
+    /// Opens the Lumin chat on the website with this task already described.
+    private var askURL: URL? {
+        let day = item.start.formatted(.dateTime.weekday(.wide).month().day())
+        let when = item.allDay
+            ? day
+            : "\(day), \(item.start.formatted(date: .omitted, time: .shortened)) – \(item.end.formatted(date: .omitted, time: .shortened))"
+        let prompt = [
+            "I'm working on this study block from my Lumin study plan.",
+            "When: \(when)",
+            "Task: \(item.title)",
+            "Can you help me with it? Ask me anything you need to know first.",
+        ].joined(separator: "\n")
+        var c = URLComponents(string: "https://luminclearpath.ca/chat")
+        c?.queryItems = [URLQueryItem(name: "ask", value: prompt)]
+        return c?.url
     }
 
     private var timeColumn: some View {

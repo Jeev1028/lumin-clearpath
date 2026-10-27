@@ -3,7 +3,7 @@
 // paths are ever honored, so this can't be used as an open redirect.
 const KEY = "lumin-after-login";
 
-export type AfterLoginPath = "/app-link";
+export type AfterLoginPath = "/app-link" | "/chat";
 
 export function setAfterLogin(path: AfterLoginPath): void {
   try {
@@ -18,7 +18,7 @@ export function takeAfterLogin(): AfterLoginPath | "/home" {
   try {
     const value = sessionStorage.getItem(KEY);
     sessionStorage.removeItem(KEY);
-    if (value === "/app-link") return value;
+    if (value === "/app-link" || value === "/chat") return value;
   } catch {
     // ignore
   }

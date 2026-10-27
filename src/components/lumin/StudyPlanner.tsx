@@ -1,4 +1,5 @@
-import { CalendarPlus, Eraser, Link2, Sparkles } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { CalendarPlus, Eraser, Link2, MessageCircle, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { HighDemandNotice } from "@/components/lumin/HighDemandNotice";
 import ReactMarkdown from "react-markdown";
@@ -24,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPlanIcs, downloadIcs } from "@/lib/ics";
 import { parseHorizonRange, parsePlanBlocks, planStartDate } from "@/lib/study-plan-ics";
+import { createThread } from "@/lib/threads";
 import { cn } from "@/lib/utils";
 
 const MAX_DAYS = 60;
@@ -103,6 +105,8 @@ function blockKey(day: string, item: string): string {
 
 export function StudyPlanner() {
   const { session, user } = useAuth();
+  const navigate = useNavigate();
+  const [askingKey, setAskingKey] = useState<string | null>(null);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -213,6 +217,32 @@ export function StudyPlanner() {
       toast.error("Could not clear your study plan. Please try again.");
     } finally {
       setClearing(false);
+    }
+  }
+
+  /** Opens a new Lumin chat with this study block already described. */
+  async function handleAskLumin(dayHeading: string, item: string, key: string) {
+    if (!user) return;
+    setAskingKey(key);
+    try {
+      const plain = item.replace(/[*_`]/g, "").trim();
+      const prompt = [
+        "I'm working on this study block from my Lumin study plan.",
+        `When: ${dayHeading}`,
+        `Task: ${plain}`,
+        "Can you help me with it? Ask me anything you need to know first.",
+      ].join("\n");
+      const thread = await createThread(user.id);
+      try {
+        sessionStorage.setItem(`clearpath:chat-prefill:${thread.id}`, prompt);
+      } catch {
+        // worst case the chat just opens with an empty input
+      }
+      await navigate({ to: "/chat/$threadId", params: { threadId: thread.id } });
+    } catch {
+      toast.error("Could not start a conversation with Lumin.");
+    } finally {
+      setAskingKey(null);
     }
   }
 
@@ -481,6 +511,17 @@ export function StudyPlanner() {
                                 {item}
                               </ReactMarkdown>
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => void handleAskLumin(day.heading, item, key)}
+                              disabled={askingKey === key}
+                              title="Talk to Lumin about this"
+                              aria-label={`Talk to Lumin about: ${item}`}
+                              className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+                            >
+                              <MessageCircle className="h-3 w-3" aria-hidden />
+                              <span className="hidden sm:inline">Talk to Lumin</span>
+                            </button>
                           </li>
                         );
                       })}
