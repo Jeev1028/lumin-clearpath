@@ -37,6 +37,7 @@ struct RootView: View {
     var body: some View {
         TabView {
             TodayView().tabItem { Label("Today", systemImage: "checklist") }
+            PlannerView().tabItem { Label("Plan", systemImage: "sparkles") }
             CalendarRoot().tabItem { Label("Calendar", systemImage: "calendar") }
             SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }
         }
