@@ -613,7 +613,7 @@ struct SettingsView: View {
                         Label(
                             store.accessGranted
                                 ? "Connected. Events can be read and edited."
-                                : "No access. Allow calendar access in Settings > Lumin Calendar.",
+                                : "No access. Allow calendar access in Settings > Lumin Cal.",
                             systemImage: store.accessGranted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
                         )
                         .font(.subheadline).foregroundStyle(.white)

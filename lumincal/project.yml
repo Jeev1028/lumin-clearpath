@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.3.1"
-    CURRENT_PROJECT_VERSION: "6"
+    CURRENT_PROJECT_VERSION: "7"
 targets:
   LuminCalendar:
     type: application
@@ -20,13 +20,13 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Lumin Calendar
+        CFBundleDisplayName: Lumin Cal
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
-        NSCalendarsFullAccessUsageDescription: Lumin Calendar shows and edits your calendar events so you can use it instead of the Apple Calendar app.
-        NSCalendarsUsageDescription: Lumin Calendar shows and edits your calendar events.
-        NSRemindersFullAccessUsageDescription: Lumin Calendar can show your reminders alongside your events.
+        NSCalendarsFullAccessUsageDescription: Lumin Cal shows and edits your calendar events so you can use it instead of the Apple Calendar app.
+        NSCalendarsUsageDescription: Lumin Cal shows and edits your calendar events.
+        NSRemindersFullAccessUsageDescription: Lumin Cal can show your reminders alongside your events.
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
     settings:
       base:
@@ -45,7 +45,7 @@ targets:
     info:
       path: Widget/Info.plist
       properties:
-        CFBundleDisplayName: Lumin Calendar
+        CFBundleDisplayName: Lumin Cal
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
