@@ -28,6 +28,7 @@ import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiAppPlanRouteImport } from './routes/api/app-plan'
 import { Route as ApiCalendarFeedRouteImport } from './routes/api/calendar-feed'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiGoogleOauthExchangeRouteImport } from './routes/api/google-oauth-exchange'
@@ -161,6 +162,11 @@ const TeacherPortalRoute = TeacherPortalRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAppPlanRoute = ApiAppPlanRouteImport.update({
+  id: '/api/app-plan',
+  path: '/api/app-plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCalendarFeedRoute = ApiCalendarFeedRouteImport.update({
@@ -389,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
@@ -449,6 +456,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
@@ -510,6 +518,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/google-oauth-exchange': typeof ApiGoogleOauthExchangeRoute
@@ -572,6 +581,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
     | '/api/google-oauth-exchange'
@@ -632,6 +642,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
     | '/api/google-oauth-exchange'
@@ -692,6 +703,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
     | '/api/google-oauth-exchange'
@@ -753,6 +765,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TeacherPortalRoute: typeof TeacherPortalRoute
   TermsRoute: typeof TermsRoute
+  ApiAppPlanRoute: typeof ApiAppPlanRoute
   ApiCalendarFeedRoute: typeof ApiCalendarFeedRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   ApiGoogleOauthExchangeRoute: typeof ApiGoogleOauthExchangeRoute
@@ -926,6 +939,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/app-plan': {
+      id: '/api/app-plan'
+      path: '/api/app-plan'
+      fullPath: '/api/app-plan'
+      preLoaderRoute: typeof ApiAppPlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/calendar-feed': {
@@ -1236,6 +1256,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TeacherPortalRoute: TeacherPortalRoute,
   TermsRoute: TermsRoute,
+  ApiAppPlanRoute: ApiAppPlanRoute,
   ApiCalendarFeedRoute: ApiCalendarFeedRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   ApiGoogleOauthExchangeRoute: ApiGoogleOauthExchangeRoute,
@@ -1277,6 +1298,7 @@ const rootRouteChildren: RootRouteChildren = {
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'

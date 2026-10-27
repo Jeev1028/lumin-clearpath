@@ -1,0 +1,272 @@
+import { createClient } from "@supabase/supabase-js";
+
+import { generateTextWithFallback } from "@/lib/ai-fallback";
+import type { Database } from "@/integrations/supabase/types";
+import { STUDY_PLAN_SYSTEM_PROMPT } from "@/lib/study-plan-prompt";
+
+type Db = ReturnType<typeof createClient<Database>>;
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export type PlanBody = {
+  days?: number;
+  startDate?: string;
+  endDate?: string;
+  horizon?: string;
+  preferences?: string;
+  today?: string;
+  timeZone?: string;
+};
+
+type TaskRow = {
+  title: string;
+  course: string | null;
+  kind: string;
+  status: string;
+  due_date: string | null;
+};
+
+type ScheduleRow = {
+  title: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+};
+
+type CalendarRow = {
+  title: string;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+};
+
+function formatTasks(tasks: TaskRow[]): string {
+  if (tasks.length === 0) return "(no outstanding tasks)";
+  return tasks
+    .map((t) => {
+      const due = t.due_date ? `due ${t.due_date}` : "no due date set";
+      const status = t.status === "in_progress" ? ", in progress" : "";
+      return `- ${t.title} (${t.course ?? "no course"}, ${t.kind}) — ${due}${status}`;
+    })
+    .join("\n");
+}
+
+function formatSchedule(rows: ScheduleRow[]): string {
+  if (rows.length === 0) return "(no fixed weekly schedule saved)";
+  const byDay = new Map<number, ScheduleRow[]>();
+  for (const row of rows) {
+    const list = byDay.get(row.day_of_week) ?? [];
+    list.push(row);
+    byDay.set(row.day_of_week, list);
+  }
+  const lines: string[] = [];
+  for (let day = 0; day < 7; day++) {
+    const items = byDay.get(day);
+    if (!items?.length) continue;
+    const parts = items
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+      .map((r) => `${r.start_time.slice(0, 5)}-${r.end_time.slice(0, 5)} ${r.title}`);
+    lines.push(`- ${DAY_NAMES[day]}: ${parts.join("; ")}`);
+  }
+  return lines.length ? lines.join("\n") : "(no fixed weekly schedule saved)";
+}
+
+function formatCalendarEvents(rows: CalendarRow[], timeZone: string): string {
+  if (rows.length === 0) return "(none in this window)";
+  return rows
+    .map((r) => {
+      const start = new Date(r.start_at);
+      const label = r.all_day
+        ? start.toLocaleDateString("en-CA", {
+            timeZone,
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })
+        : start.toLocaleString("en-CA", {
+            timeZone,
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+      return `- ${label} — ${r.title}`;
+    })
+    .join("\n");
+}
+
+/** Builds, saves and returns a study plan for one user. Every query is filtered
+ * by user id, so it is safe with the service-role client too. Shared by the
+ * website route (Supabase login) and the app route (feed token). */
+export async function generateStudyPlan(
+  supabase: Db,
+  userId: string,
+  request: Request,
+): Promise<Response> {
+  const geminiApiKey = process.env["GEMINI_API_KEY"];
+  if (!geminiApiKey) return new Response("AI is not configured", { status: 500 });
+
+  const body = (await request.json().catch(() => ({}))) as PlanBody;
+  const preferences = (body.preferences ?? "").trim().slice(0, 4000);
+
+  // Format times in the student's timezone. The server runs in UTC, which
+  // moved a 2-5pm event to 9pm-midnight in the plan.
+  let timeZone = "America/Toronto";
+  try {
+    if (body.timeZone) {
+      new Intl.DateTimeFormat("en-CA", { timeZone: body.timeZone });
+      timeZone = body.timeZone;
+    }
+  } catch {
+    // keep the default
+  }
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // The student's own local date (falls back to the server's).
+  const todayStr = /^\d{4}-\d{2}-\d{2}$/.test(body.today ?? "")
+    ? (body.today as string)
+    : new Date().toISOString().slice(0, 10);
+  const isDate = (s: string | undefined): s is string =>
+    typeof s === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(s) &&
+    !Number.isNaN(new Date(`${s}T00:00:00Z`).getTime());
+  const dayIndex = (s: string) => Math.round(new Date(`${s}T00:00:00Z`).getTime() / DAY_MS);
+  const isoOf = (index: number) => new Date(index * DAY_MS).toISOString().slice(0, 10);
+
+  // The student picks a start and an end date. Older clients send a day
+  // count (or "week" / "month"), which still works as a window from today.
+  let startStr = isDate(body.startDate) ? body.startDate : todayStr;
+  if (startStr < todayStr) startStr = todayStr;
+  let lastDayStr: string;
+  if (isDate(body.endDate)) {
+    lastDayStr = body.endDate;
+  } else {
+    const legacy = Math.round(Number(body.days));
+    const n = Number.isFinite(legacy) ? legacy : body.horizon === "month" ? 30 : 7;
+    lastDayStr = isoOf(dayIndex(startStr) + Math.max(1, n) - 1);
+  }
+  if (lastDayStr < startStr) {
+    return new Response("The end date must be on or after the start date.", { status: 400 });
+  }
+  const windowDays = dayIndex(lastDayStr) - dayIndex(startStr) + 1;
+  if (windowDays > 60) {
+    return new Response("Please choose a range of 60 days or fewer.", { status: 400 });
+  }
+  // Saved as "start/end" so the plan can be turned into real calendar dates.
+  const horizon = `${startStr}/${lastDayStr}`;
+  // A day of slack either side so time zones never hide an event.
+  const windowStart = new Date((dayIndex(startStr) - 1) * DAY_MS);
+  const windowEnd = new Date((dayIndex(lastDayStr) + 3) * DAY_MS);
+
+  const [tasksRes, scheduleRes, calendarRes] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("title, course, kind, status, due_date")
+      .eq("user_id", userId)
+      .neq("status", "submitted")
+      .order("due_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("schedule_events")
+      .select("title, day_of_week, start_time, end_time, location")
+      .eq("user_id", userId),
+    supabase
+      .from("calendar_events")
+      .select("title, start_at, end_at, all_day")
+      .eq("user_id", userId)
+      .gte("start_at", windowStart.toISOString())
+      .lte("start_at", windowEnd.toISOString())
+      .order("start_at", { ascending: true }),
+  ]);
+  if (tasksRes.error) return new Response("Could not load tasks", { status: 500 });
+  if (scheduleRes.error) return new Response("Could not load schedule", { status: 500 });
+  if (calendarRes.error) return new Response("Could not load calendar events", { status: 500 });
+
+  const fullDay =
+    /\b(breaks?|eat|eating|meals?|breakfast|lunch|dinner|snacks?|outside|outdoors?|walk|exercise|sleep|bed ?time|whole day|entire day|full day|all day|every hour|define my life|rest)\b/i.test(
+      preferences,
+    );
+
+  // Hand back the current plan so a request like "keep Fridays light" or
+  // "move chemistry earlier" edits it, instead of starting from scratch.
+  const { data: existing } = await supabase
+    .from("study_plans")
+    .select("plan_markdown")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const previousPlan = existing?.plan_markdown?.trim() ?? "";
+
+  const prompt = `Today's date: ${todayStr}. Plan window: ${windowDays} days, from ${startStr} through ${lastDayStr} inclusive. Cover every day in that window that has something to schedule, through the last day. Do not stop at the end of a calendar week or month.
+
+STUDENT'S OUTSTANDING TASKS:
+${formatTasks(tasksRes.data as TaskRow[])}
+
+FIXED WEEKLY SCHEDULE (recurring every week):
+${formatSchedule(scheduleRes.data as ScheduleRow[])}
+
+ONE-OFF EVENTS ALREADY ON THE CALENDAR IN THIS WINDOW:
+${formatCalendarEvents(calendarRes.data as CalendarRow[], timeZone)}
+
+STUDENT'S HARD CONSTRAINTS AND REQUESTED CHANGES (every one of these is a rule, not a suggestion; a block that breaks one is a wrong answer):
+${preferences || "(none given — use sensible defaults)"}
+${
+  previousPlan && preferences
+    ? `
+THE STUDENT'S CURRENT PLAN (revise this one: apply every requested change above, keep the parts they did not mention, and shift dates to match the window above):
+${previousPlan}
+`
+    : ""
+}
+${
+  fullDay
+    ? "\nThe student asked for breaks, meals, or time outside, so use FULL-DAY MODE from your instructions: a complete timeline for every day in the window, with meals, breaks after focused work, and outdoor time included as bullets with exact times.\n"
+    : ""
+}
+Before you answer, check every block you wrote against the constraints above and against the fixed schedule and calendar events (including times the student says they are busy or unavailable, and days they do not want to work). Remove or move any block that overlaps or is on a forbidden day. Then produce the plan, following the output format and boundaries in your instructions.`;
+
+  let text: string;
+  try {
+    text = await generateTextWithFallback({
+      system: STUDY_PLAN_SYSTEM_PROMPT,
+      prompt,
+      maxOutputTokens: fullDay
+        ? Math.min(14000, 1500 + windowDays * 600)
+        : Math.min(8000, 1000 + windowDays * 200),
+      // A plan is a long answer, so give each model a fair try but never
+      // leave the student watching a spinner for minutes.
+      perModelMs: fullDay ? 55_000 : 40_000,
+      totalMs: 125_000,
+    });
+  } catch (err) {
+    console.error("[study-plan] generation failed", err);
+    return new Response("Could not generate a plan right now — please try again.", {
+      status: 502,
+    });
+  }
+  if (!text?.trim()) {
+    return new Response("Could not generate a plan right now — please try again.", {
+      status: 502,
+    });
+  }
+
+  const generatedAt = new Date().toISOString();
+  const { error: saveError } = await supabase.from("study_plans").upsert({
+    user_id: userId,
+    horizon,
+    preferences: preferences || null,
+    plan_markdown: text,
+    generated_at: generatedAt,
+    completed_blocks: [],
+  });
+  if (saveError) console.error("[study-plan] failed to save plan", saveError);
+
+  return Response.json({
+    plan: {
+      horizon,
+      preferences: preferences || null,
+      plan_markdown: text,
+      generated_at: generatedAt,
+      completed_blocks: [] as string[],
+    },
+  });
+}
