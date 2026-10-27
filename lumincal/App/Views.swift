@@ -8,8 +8,9 @@ struct LuminCalendarApp: App {
 
     init() {
         let bar = UITabBarAppearance()
-        bar.configureWithTransparentBackground()
-        bar.backgroundColor = UIColor(Theme.background.opacity(0.92))
+        bar.configureWithOpaqueBackground()
+        bar.backgroundColor = UIColor(Theme.background)
+        bar.shadowColor = UIColor(Theme.border)
         UITabBar.appearance().standardAppearance = bar
         UITabBar.appearance().scrollEdgeAppearance = bar
     }
@@ -69,49 +70,170 @@ struct ItemRow: View {
     let item: AgendaItem
 
     private var isDone: Bool { store.done.contains(item.id) }
+    private var isNow: Bool {
+        !item.allDay && item.start <= Date() && Date() < item.end
+            && Calendar.current.isDateInToday(item.start)
+    }
+    private var tint: Color {
+        if let hex = item.colorHex, let c = Color(hex: hex) { return c }
+        switch item.source {
+        case .lumin: return Theme.primary
+        case .plan: return Theme.accent
+        case .apple: return Theme.muted
+        }
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             if item.checkable {
                 Button {
-                    store.toggle(item)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.snappy) { store.toggle(item) }
                 } label: {
                     Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                         .font(.title2)
-                        .foregroundStyle(isDone ? Theme.accent : Theme.muted)
+                        .foregroundStyle(isDone ? Theme.accent : Theme.muted.opacity(0.7))
+                        .symbolEffect(.bounce, value: isDone)
                 }
                 .buttonStyle(.plain)
             } else {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(item.colorHex.flatMap { Color(hex: $0) } ?? (item.source == .lumin ? Theme.primary : Theme.muted))
-                    .frame(width: 4, height: 34)
+                timeColumn
+                RoundedRectangle(cornerRadius: 2).fill(tint).frame(width: 4, height: 40)
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title)
-                    .font(.body.weight(.medium))
-                    .strikethrough(isDone)
-                    .foregroundStyle(isDone ? Theme.muted : .white)
-                    .lineLimit(2)
-                Text(timeText).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(item.title)
+                        .font(.body.weight(.medium))
+                        .strikethrough(isDone)
+                        .foregroundStyle(isDone ? Theme.muted : .white)
+                        .lineLimit(3)
+                    if isNow {
+                        Text("NOW").font(.system(size: 10, weight: .bold)).tracking(0.6)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Theme.accent, in: Capsule())
+                            .foregroundStyle(Theme.background)
+                    }
+                }
+                if let sub = subtitle {
+                    Text(sub).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
+        .opacity(isDone ? 0.65 : 1)
         .contentShape(Rectangle())
     }
 
-    private var timeText: String {
+    private var timeColumn: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            if item.allDay {
+                Text("All day").font(.caption.weight(.semibold)).foregroundStyle(.white)
+            } else {
+                Text(item.start.formatted(date: .omitted, time: .shortened))
+                    .font(.caption.weight(.semibold)).foregroundStyle(.white)
+                Text(item.end.formatted(date: .omitted, time: .shortened))
+                    .font(.caption2).foregroundStyle(Theme.muted)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .frame(width: 64, alignment: .trailing)
+    }
+
+    /// Checklist rows show their time; event rows already have a time column.
+    private var subtitle: String? {
         var parts: [String] = []
-        if item.allDay {
-            parts.append("All day")
-        } else {
-            let f = DateFormatter()
-            f.timeStyle = .short
-            f.dateStyle = .none
-            parts.append("\(f.string(from: item.start)) – \(f.string(from: item.end))")
+        if item.checkable {
+            if item.allDay {
+                parts.append("All day")
+            } else {
+                parts.append(
+                    "\(item.start.formatted(date: .omitted, time: .shortened)) – \(item.end.formatted(date: .omitted, time: .shortened))")
+            }
         }
         if let l = item.location, !l.isEmpty { parts.append(l) }
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// Morning / afternoon / evening grouping for the checklist.
+enum Daypart: CaseIterable, Identifiable {
+    case morning, afternoon, evening
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .morning: return "Morning"
+        case .afternoon: return "Afternoon"
+        case .evening: return "Evening"
+        }
+    }
+    init(_ date: Date) {
+        let h = Calendar.current.component(.hour, from: date)
+        self = h < 12 ? .morning : (h < 17 ? .afternoon : .evening)
+    }
+}
+
+struct ProgressCard: View {
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        let frac = total == 0 ? 0.0 : Double(done) / Double(total)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle().stroke(Theme.border, lineWidth: 8)
+                Circle().trim(from: 0, to: frac)
+                    .stroke(
+                        LinearGradient(colors: [Theme.primary, Theme.accent], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(Int(frac * 100))%").font(.caption.weight(.bold)).foregroundStyle(.white)
+            }
+            .frame(width: 58, height: 58)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(done == total ? "All done. Nice work!" : "\(done) of \(total) done")
+                    .font(.headline).foregroundStyle(.white)
+                Text(done == total ? "Enjoy the rest of your day." : "\(total - done) left today")
+                    .font(.footnote).foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
+        }
+        .card()
+        .animation(.snappy, value: done)
+    }
+}
+
+struct UpNextCard: View {
+    let item: AgendaItem
+    private var live: Bool { item.start <= Date() }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle().fill(Theme.accent).frame(width: 7, height: 7)
+                Text(live ? "HAPPENING NOW" : "UP NEXT")
+                    .font(.caption2.weight(.bold)).tracking(1).foregroundStyle(Theme.accent)
+                Spacer()
+                if !live {
+                    Text("in \(item.start, style: .relative)").font(.caption).foregroundStyle(Theme.muted)
+                }
+            }
+            Text(item.title).font(.title3.weight(.semibold)).foregroundStyle(.white).lineLimit(3)
+            Text(detail).font(.subheadline).foregroundStyle(Theme.muted)
+        }
+        .card()
+        .overlay(
+            LinearGradient(colors: [Theme.primary.opacity(0.20), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .allowsHitTesting(false)
+        )
+    }
+
+    private var detail: String {
+        var s = "\(item.start.formatted(date: .omitted, time: .shortened)) – \(item.end.formatted(date: .omitted, time: .shortened))"
+        if let l = item.location, !l.isEmpty { s += " · \(l)" }
+        return s
     }
 }
 
@@ -179,6 +301,11 @@ struct TodayView: View {
         store.items.filter { Calendar.current.isDateInToday($0.start) }
     }
 
+    private var upNext: AgendaItem? {
+        let now = Date()
+        return today.first { !$0.allDay && $0.end > now && !store.done.contains($0.id) }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -199,15 +326,22 @@ struct TodayView: View {
                     }
                     if !store.isSignedIn { SignInCard() }
 
+                    if let n = upNext { UpNextCard(item: n) }
+
                     let checks = today.filter { $0.checkable }
                     if !checks.isEmpty {
-                        SectionTitle(
-                            text: "Checklist",
-                            trailing: "\(checks.filter { store.done.contains($0.id) }.count) of \(checks.count) done")
-                        ItemCard(items: checks)
+                        ProgressCard(done: checks.filter { store.done.contains($0.id) }.count, total: checks.count)
+                        ForEach(Daypart.allCases) { part in
+                            let group = checks.filter { Daypart($0.start) == part }
+                            if !group.isEmpty {
+                                SectionTitle(text: part.title)
+                                ItemCard(items: group)
+                            }
+                        }
                     }
-                    SectionTitle(text: "Schedule")
-                    ItemCard(items: today.filter { !$0.checkable }) { if $0.source == .apple { editing = $0 } }
+                    let schedule = today.filter { !$0.checkable }
+                    SectionTitle(text: "Schedule", trailing: schedule.isEmpty ? nil : "\(schedule.count)")
+                    ItemCard(items: schedule) { if $0.source == .apple { editing = $0 } }
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 24)
@@ -235,6 +369,16 @@ struct MonthView: View {
         store.items.filter { cal.isDate($0.start, inSameDayAs: day) }
     }
 
+    /// One dot per kind of thing on that day: classes, study plan, Apple Calendar.
+    private func dotColors(on day: Date) -> [Color] {
+        let sources = Set(items(on: day).map { $0.source })
+        var out: [Color] = []
+        if sources.contains(.lumin) { out.append(Theme.primary) }
+        if sources.contains(.plan) { out.append(Theme.accent) }
+        if sources.contains(.apple) { out.append(Color(rgb: 0xB794F6)) }
+        return out
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -251,7 +395,7 @@ struct MonthView: View {
                                 .background(Theme.card, in: Circle()).overlay(Circle().stroke(Theme.border))
                         }
                     }
-                    MonthGrid(selected: $selected, hasItems: { !items(on: $0).isEmpty }).card()
+                    MonthGrid(selected: $selected, dots: { dotColors(on: $0) }).card()
                     SectionTitle(text: selected.formatted(.dateTime.weekday(.wide).month().day()))
                     ItemCard(items: items(on: selected)) { if $0.source == .apple { editing = $0 } }
                 }
@@ -269,7 +413,7 @@ struct MonthView: View {
 
 struct MonthGrid: View {
     @Binding var selected: Date
-    let hasItems: (Date) -> Bool
+    let dots: (Date) -> [Color]
     private var cal: Calendar { Calendar.current }
 
     private var days: [Date?] {
@@ -307,7 +451,13 @@ struct MonthGrid: View {
                                             isSel ? Theme.primary
                                                 : cal.isDateInToday(day) ? Theme.primary.opacity(0.25) : .clear))
                                     .foregroundStyle(isSel ? Theme.background : .white)
-                                Circle().fill(hasItems(day) ? Theme.accent : .clear).frame(width: 4, height: 4)
+                                    .shadow(color: isSel ? Theme.primary.opacity(0.6) : .clear, radius: 8)
+                                HStack(spacing: 3) {
+                                    ForEach(Array(dots(day).enumerated()), id: \.offset) { _, c in
+                                        Circle().fill(c).frame(width: 4, height: 4)
+                                    }
+                                }
+                                .frame(height: 4)
                             }
                         }
                         .buttonStyle(.plain)
@@ -316,6 +466,19 @@ struct MonthGrid: View {
                     }
                 }
             }
+            HStack(spacing: 14) {
+                legend(Theme.primary, "Classes")
+                legend(Theme.accent, "Study plan")
+                legend(Color(rgb: 0xB794F6), "Calendar")
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func legend(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(c).frame(width: 6, height: 6)
+            Text(t).font(.caption2).foregroundStyle(Theme.muted)
         }
     }
 

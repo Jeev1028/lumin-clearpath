@@ -26,8 +26,12 @@ struct NightBackground: View {
         ZStack {
             Theme.background
             RadialGradient(
-                colors: [Theme.primary.opacity(0.28), .clear],
-                center: .top, startRadius: 0, endRadius: 420
+                colors: [Theme.primary.opacity(0.30), .clear],
+                center: .top, startRadius: 0, endRadius: 440
+            )
+            RadialGradient(
+                colors: [Theme.accent.opacity(0.10), .clear],
+                center: .bottomTrailing, startRadius: 0, endRadius: 380
             )
         }
         .ignoresSafeArea()
@@ -40,7 +44,14 @@ struct CardStyle: ViewModifier {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.border, lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20).stroke(
+                    LinearGradient(
+                        colors: [Theme.primary.opacity(0.40), Theme.border, Theme.border.opacity(0.6)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1)
+            )
+            .shadow(color: Theme.primary.opacity(0.12), radius: 20, y: 8)
     }
 }
 
