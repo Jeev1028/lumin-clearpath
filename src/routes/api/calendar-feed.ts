@@ -4,6 +4,7 @@ import { getAdminClient } from "@/lib/api-auth";
 import type { CalendarEvent, ScheduleEvent, Task } from "@/lib/clearpath";
 import { buildIcs } from "@/lib/ics";
 import { verifySignedState } from "@/lib/oauth-state";
+import { buildFeedItems } from "@/lib/feed-json";
 import { parsePlanBlocks, planStartDate } from "@/lib/study-plan-ics";
 
 // A calendar subscription URL is fetched directly by Apple/Google/Outlook's
@@ -56,6 +57,27 @@ export const Route = createFileRoute("/api/calendar-feed")({
         const planBlocks = plan
           ? parsePlanBlocks(plan.plan_markdown, planStartDate(plan.horizon, plan.generated_at))
           : [];
+
+        const params = new URL(request.url).searchParams;
+        if (params.get("format") === "json") {
+          const fromParam = params.get("from") ?? "";
+          const from = /^d{4}-d{2}-d{2}$/.test(fromParam)
+            ? fromParam
+            : new Date().toISOString().slice(0, 10);
+          const days = Math.min(60, Math.max(1, Math.round(Number(params.get("days"))) || 14));
+          const items = buildFeedItems({
+            from,
+            days,
+            schedule: scheduleRes.data ?? [],
+            calendar: calendarRes.data ?? [],
+            tasks: tasksRes.data ?? [],
+            planBlocks,
+          });
+          return Response.json(
+            { from, days, items },
+            { headers: { "Cache-Control": "no-cache, max-age=0" } },
+          );
+        }
 
         const contents = buildIcs(
           scheduleRes.data ?? [],
