@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.2"
-    CURRENT_PROJECT_VERSION: "3"
+    CURRENT_PROJECT_VERSION: "4"
 targets:
   LuminCalendar:
     type: application
@@ -21,6 +21,8 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Lumin Calendar
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         NSCalendarsFullAccessUsageDescription: Lumin Calendar shows and edits your calendar events so you can use it instead of the Apple Calendar app.
         NSCalendarsUsageDescription: Lumin Calendar shows and edits your calendar events.
@@ -44,6 +46,8 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: Lumin Calendar
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
