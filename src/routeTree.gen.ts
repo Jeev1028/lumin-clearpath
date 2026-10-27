@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppLinkRouteImport } from './routes/app-link'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ClassroomRouteImport } from './routes/classroom'
@@ -85,6 +86,11 @@ const AccountRoute = AccountRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppLinkRoute = AppLinkRouteImport.update({
+  id: '/app-link',
+  path: '/app-link',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/app-link': typeof AppLinkRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/app-link': typeof AppLinkRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
@@ -487,6 +495,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/app-link': typeof AppLinkRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/classroom': typeof ClassroomRoute
@@ -548,6 +557,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/app-link'
     | '/auth'
     | '/calendar'
     | '/classroom'
@@ -607,6 +617,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/app-link'
     | '/auth'
     | '/calendar'
     | '/classroom'
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/app-link'
     | '/auth'
     | '/calendar'
     | '/classroom'
@@ -726,6 +738,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
+  AppLinkRoute: typeof AppLinkRoute
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   ClassroomRoute: typeof ClassroomRoute
@@ -808,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app-link': {
+      id: '/app-link'
+      path: '/app-link'
+      fullPath: '/app-link'
+      preLoaderRoute: typeof AppLinkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1201,6 +1221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
+  AppLinkRoute: AppLinkRoute,
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   ClassroomRoute: ClassroomRoute,

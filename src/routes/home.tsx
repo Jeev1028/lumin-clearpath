@@ -257,9 +257,9 @@ function TodayPage() {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Due today & overdue */}
-          <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 text-sm font-semibold">
                 <ClipboardList className="h-4 w-4 text-accent" aria-hidden />
@@ -320,7 +320,7 @@ function TodayPage() {
           </div>
 
           {/* Today's schedule */}
-          <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 text-sm font-semibold">
                 <CalendarClock className="h-4 w-4 text-accent" aria-hidden />
@@ -350,7 +350,7 @@ function TodayPage() {
           </div>
 
           {/* Notifications */}
-          <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold">
               <Bell className="h-4 w-4 text-accent" aria-hidden />
               Recent activity
@@ -377,7 +377,7 @@ function TodayPage() {
           </div>
 
           {/* Grades */}
-          <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-panel">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 text-sm font-semibold">
                 <GraduationCap className="h-4 w-4 text-accent" aria-hidden />

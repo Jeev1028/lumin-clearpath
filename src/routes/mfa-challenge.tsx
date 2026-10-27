@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { markMfaSatisfiedWithBackupCode, useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { takeAfterLogin } from "@/lib/after-login";
 
 export const Route = createFileRoute("/mfa-challenge")({
   head: () => ({
@@ -31,7 +32,7 @@ function MfaChallengePage() {
       return;
     }
     if (!needsMfa) {
-      void navigate({ to: "/home" });
+      void navigate({ to: takeAfterLogin() });
     }
   }, [loading, session, needsMfa, navigate]);
 
@@ -50,7 +51,7 @@ function MfaChallengePage() {
       });
       if (error) throw error;
 
-      void navigate({ to: "/home" });
+      void navigate({ to: takeAfterLogin() });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That code didn't work.");
     } finally {
@@ -71,7 +72,11 @@ function MfaChallengePage() {
         },
         body: JSON.stringify({ code: backupCode }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; remaining?: number };
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        remaining?: number;
+      };
       if (!res.ok || !data.ok) throw new Error(data.error || "That backup code didn't work.");
 
       markMfaSatisfiedWithBackupCode(session.user.id);
@@ -80,7 +85,7 @@ function MfaChallengePage() {
           ? `Backup code accepted — ${data.remaining} left.`
           : "Backup code accepted.",
       );
-      void navigate({ to: "/home" });
+      void navigate({ to: takeAfterLogin() });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That backup code didn't work.");
     } finally {

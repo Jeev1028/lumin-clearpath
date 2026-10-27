@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { takeAfterLogin } from "@/lib/after-login";
 import { isNativeApp } from "@/lib/native-app";
 
 // Local iOS-only native plugin (ios/ios/App/App/NativeAuthPlugin.swift) --
@@ -105,7 +106,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (loading || !session) return;
-    void navigate({ to: needsMfa ? "/mfa-challenge" : "/home" });
+    void navigate({ to: needsMfa ? "/mfa-challenge" : takeAfterLogin() });
   }, [loading, session, needsMfa, navigate]);
 
   // Google refuses to run its Sign-In flow inside an embedded WebView (the
