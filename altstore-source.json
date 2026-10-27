@@ -65,6 +65,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.2",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "New glowing-calendar app icon.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.2.3/LuminCalendar-unsigned.ipa",
+          "size": 4139840,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.1",
           "date": "2026-10-27T00:00:00Z",
           "localizedDescription": "Night-blue ClearPath look, a real app icon, and Sign in to Lumin so your classes, due dates and AI study plan show up next to your Apple Calendar.",
