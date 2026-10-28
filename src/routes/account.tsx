@@ -668,19 +668,58 @@ function AccountPage() {
             />
           </div>
 
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Natural voice</p>
+              <p className="text-xs text-muted-foreground">
+                A more human voice for reading replies aloud. If it is unavailable, Lumin uses the
+                browser voice below instead.
+              </p>
+            </div>
+            <Switch
+              checked={soundPrefs.naturalVoice}
+              disabled={!soundPrefs.enabled}
+              onCheckedChange={(checked) => setSoundPrefs({ naturalVoice: checked })}
+            />
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
             <div>
-              <p className="text-sm">Voice</p>
+              <p className="text-sm">Natural voice style</p>
+              <p className="text-xs text-muted-foreground">Female (Sarah) or male (Brian).</p>
+            </div>
+            <Select
+              value={soundPrefs.naturalGender}
+              disabled={!soundPrefs.enabled || !soundPrefs.naturalVoice}
+              onValueChange={(value) =>
+                setSoundPrefs({ naturalGender: value === "male" ? "male" : "female" })
+              }
+            >
+              <SelectTrigger id="natural-voice-style" className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="female">Female (Sarah)</SelectItem>
+                <SelectItem value="male">Male (Brian)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm">Browser voice</p>
               <p className="text-xs text-muted-foreground">
-                Which voice reads replies aloud. &quot;Auto&quot; picks the best-sounding free voice
-                your browser offers.
+                The backup voice, used when the natural voice is off or unavailable.
+                &quot;Auto&quot; picks the best-sounding free voice your browser offers.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Select
                 value={soundPrefs.voiceURI ?? "auto"}
                 disabled={!soundPrefs.enabled}
-                onValueChange={(value) => setSoundPrefs({ voiceURI: value === "auto" ? null : value })}
+                onValueChange={(value) =>
+                  setSoundPrefs({ voiceURI: value === "auto" ? null : value })
+                }
               >
                 <SelectTrigger id="read-aloud-voice" className="w-56">
                   <SelectValue />
@@ -689,7 +728,8 @@ function AccountPage() {
                   <SelectItem value="auto">Auto (recommended)</SelectItem>
                   {[...voices]
                     .sort((a, b) => {
-                      const lang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
+                      const lang =
+                        (typeof navigator !== "undefined" && navigator.language) || "en-US";
                       const aMatch = a.lang.startsWith(lang.slice(0, 2));
                       const bMatch = b.lang.startsWith(lang.slice(0, 2));
                       if (aMatch !== bMatch) return aMatch ? -1 : 1;

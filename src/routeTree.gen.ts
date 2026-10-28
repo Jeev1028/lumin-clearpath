@@ -36,6 +36,7 @@ import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge-gr
 import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
@@ -202,6 +203,11 @@ const ApiStudyPlanRoute = ApiStudyPlanRouteImport.update({
 const ApiTeacherPortalRoute = ApiTeacherPortalRouteImport.update({
   id: '/api/teacher-portal',
   path: '/api/teacher-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -403,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
+  '/api/tts': typeof ApiTtsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -464,6 +471,7 @@ export interface FileRoutesByTo {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
+  '/api/tts': typeof ApiTtsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat': typeof ChatIndexRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/api/site-chat': typeof ApiSiteChatRoute
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
+  '/api/tts': typeof ApiTtsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -589,6 +598,7 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
+    | '/api/tts'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
+    | '/api/tts'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat'
@@ -711,6 +722,7 @@ export interface FileRouteTypes {
     | '/api/site-chat'
     | '/api/study-plan'
     | '/api/teacher-portal'
+    | '/api/tts'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
@@ -773,6 +785,7 @@ export interface RootRouteChildren {
   ApiSiteChatRoute: typeof ApiSiteChatRoute
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ApiTeacherPortalRoute: typeof ApiTeacherPortalRoute
+  ApiTtsRoute: typeof ApiTtsRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
@@ -995,6 +1008,13 @@ declare module '@tanstack/react-router' {
       path: '/api/teacher-portal'
       fullPath: '/api/teacher-portal'
       preLoaderRoute: typeof ApiTeacherPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -1264,6 +1284,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSiteChatRoute: ApiSiteChatRoute,
   ApiStudyPlanRoute: ApiStudyPlanRoute,
   ApiTeacherPortalRoute: ApiTeacherPortalRoute,
+  ApiTtsRoute: ApiTtsRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
   ChatIndexRoute: ChatIndexRoute,

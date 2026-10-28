@@ -25,6 +25,10 @@ export type SoundPrefs = {
    * the browser (see pickBestVoice below) rather than locking to one that
    * might not exist on every device. */
   voiceURI: string | null;
+  /** Use the natural ElevenLabs voice (falls back to the browser voice if it fails). */
+  naturalVoice: boolean;
+  /** Which natural voice to use. */
+  naturalGender: "female" | "male";
 };
 
 export const DEFAULT_SOUND_PREFS: SoundPrefs = {
@@ -34,6 +38,8 @@ export const DEFAULT_SOUND_PREFS: SoundPrefs = {
   notificationSound: true,
   uiEffects: true,
   voiceURI: null,
+  naturalVoice: true,
+  naturalGender: "female",
 };
 
 const STORAGE_KEY = "clearpath:sound-prefs";
@@ -162,6 +168,14 @@ function sanitizeForSpeech(raw: string): string {
   return text.trim();
 }
 
+/** The natural voice is billed per character, so only the start of a very long reply is read. */
+function trimForVoice(text: string, max = 1500): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return end > max * 0.5 ? cut.slice(0, end + 1) : cut;
+}
+
 type SpeakOptions = {
   /** Auto-read (triggered by a new message arriving) respects the
    * readMessagesAloud toggle; a manual tap-to-read only respects the
@@ -206,6 +220,11 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefsState] = useState<SoundPrefs>(DEFAULT_SOUND_PREFS);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Natural-voice clips already fetched, so replaying a message costs no extra characters.
+  const clipCacheRef = useRef<Map<string, string>>(new Map());
+  // Bumped on every speak/stop so a slow download never plays over something newer.
+  const runRef = useRef(0);
 
   useEffect(() => {
     setPrefsState(readLocalPrefs());
@@ -300,14 +319,31 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function speak(text: string, opts: SpeakOptions = {}) {
-    if (!prefs.enabled) return;
-    if (opts.auto && !prefs.readMessagesAloud) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const cleaned = sanitizeForSpeech(text);
-    if (!cleaned) return;
+  function stopAudio() {
+    runRef.current += 1;
+    const a = audioRef.current;
+    if (a) {
+      a.onplay = null;
+      a.onended = null;
+      a.onerror = null;
+      a.pause();
+      audioRef.current = null;
+    }
     try {
-      window.speechSynthesis.cancel();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function speakBrowser(cleaned: string, opts: SpeakOptions) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      opts.onEnd?.();
+      return;
+    }
+    try {
       const utter = new SpeechSynthesisUtterance(cleaned);
       const available = window.speechSynthesis.getVoices();
       const preferredLang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
@@ -328,13 +364,66 @@ export function SoundSettingsProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function stopSpeaking() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  /** Plays the ElevenLabs voice. Returns false if it could not, so the caller can use the browser voice. */
+  async function speakNatural(cleaned: string, opts: SpeakOptions, run: number): Promise<boolean> {
     try {
-      window.speechSynthesis.cancel();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return false;
+      const text = trimForVoice(cleaned);
+      const cacheKey = prefs.naturalGender + "|" + text;
+      let url = clipCacheRef.current.get(cacheKey);
+      if (!url) {
+        opts.onStart?.();
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice: prefs.naturalGender }),
+        });
+        if (!res.ok) return false;
+        url = URL.createObjectURL(await res.blob());
+        clipCacheRef.current.set(cacheKey, url);
+        if (clipCacheRef.current.size > 20) {
+          const oldest = clipCacheRef.current.keys().next().value;
+          if (oldest !== undefined) {
+            const old = clipCacheRef.current.get(oldest);
+            if (old) URL.revokeObjectURL(old);
+            clipCacheRef.current.delete(oldest);
+          }
+        }
+      }
+      // Something newer started (or it was stopped) while this was downloading.
+      if (runRef.current !== run) return true;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => opts.onStart?.();
+      audio.onended = () => opts.onEnd?.();
+      audio.onerror = () => opts.onEnd?.();
+      await audio.play();
+      return true;
     } catch {
-      // ignore
+      return runRef.current !== run;
     }
+  }
+
+  function speak(text: string, opts: SpeakOptions = {}) {
+    if (!prefs.enabled) return;
+    if (opts.auto && !prefs.readMessagesAloud) return;
+    const cleaned = sanitizeForSpeech(text);
+    if (!cleaned) return;
+    stopAudio();
+    const run = runRef.current;
+    if (prefs.naturalVoice) {
+      void speakNatural(cleaned, opts, run).then((ok) => {
+        if (!ok && runRef.current === run) speakBrowser(cleaned, opts);
+      });
+      return;
+    }
+    speakBrowser(cleaned, opts);
+  }
+
+  function stopSpeaking() {
+    stopAudio();
   }
 
   const recommendedVoiceURI =
