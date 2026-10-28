@@ -65,6 +65,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.5.4",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "The widget now shows event locations.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.5.4.14/LuminCalendar-unsigned.ipa",
+          "size": 4411709,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.5.3",
           "date": "2026-10-27T00:00:00Z",
           "localizedDescription": "The widget now reads your Apple Calendar events itself, so they show even without shared storage.",
