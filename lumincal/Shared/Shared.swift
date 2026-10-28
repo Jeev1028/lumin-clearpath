@@ -15,6 +15,11 @@ enum Shared {
         return injected.first ?? fallbackGroup
     }()
     static var defaults: UserDefaults { UserDefaults(suiteName: groupId) ?? .standard }
+    /// True when the app and widget really share storage (the App Group was granted).
+    static var hasGroup: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId) != nil
+    }
+    static let savedAtKey = "agendaSavedAt"
     static let feedKey = "feedURL"
     static let doneKey = "doneIds"
     static let agendaKey = "agendaJson"
@@ -57,6 +62,11 @@ enum AgendaCache {
     static func save(_ items: [AgendaItem]) {
         let enc = JSONEncoder()
         if let data = try? enc.encode(items) { Shared.defaults.set(data, forKey: Shared.agendaKey) }
+        Shared.defaults.set(Date().timeIntervalSince1970, forKey: Shared.savedAtKey)
+    }
+    static var savedAt: Date? {
+        let t = Shared.defaults.double(forKey: Shared.savedAtKey)
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
     }
     static func load() -> [AgendaItem] {
         guard let data = Shared.defaults.data(forKey: Shared.agendaKey) else { return [] }

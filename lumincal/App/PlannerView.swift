@@ -155,13 +155,18 @@ private func plainText(_ s: String) -> String {
 }
 
 /// Opens a Lumin chat on the website with this study block already described.
-func luminAskURL(when: String, task: String) -> URL? {
-    let prompt = [
+func luminAskURL(when: String, task: String, context: String = "") -> URL? {
+    var parts = [
         "I'm working on this study block from my Lumin study plan.",
         "When: \(when)",
         "Task: \(plainText(task))",
-        "Can you help me with it? Ask me anything you need to know first.",
-    ].joined(separator: "\n")
+    ]
+    if !context.isEmpty { parts += ["", "Some context so you know my situation:", context] }
+    parts += [
+        "",
+        "Help me get started on this one. Ask me what you need to know first (what the assignment is, what I've done so far). Don't do the work for me; help me plan it and understand it.",
+    ]
+    let prompt = String(parts.joined(separator: "\n").prefix(3500))
     var c = URLComponents(string: "https://luminclearpath.ca/chat")
     c?.queryItems = [URLQueryItem(name: "ask", value: prompt)]
     return c?.url
@@ -303,6 +308,7 @@ struct PlannerView: View {
                 .padding(.horizontal, 18)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
             .refreshable { await planner.load(api) }
             .background(NightBackground())
             .toolbar(.hidden, for: .navigationBar)
@@ -314,6 +320,7 @@ struct PlannerView: View {
 private struct PlanForm: View {
     @ObservedObject var planner: PlanStore
     let api: PlanAPI?
+    @FocusState private var typing: Bool
     private let today = Calendar.current.startOfDay(for: Date())
 
     private func chip(_ title: String, days: Int) -> some View {
@@ -351,10 +358,12 @@ private struct PlanForm: View {
                     : "Ask for changes, e.g. keep Fridays light",
                 text: $planner.prefs, axis: .vertical)
                 .lineLimit(2...5)
+                .focused($typing)
                 .padding(12)
                 .background(Theme.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
             Button {
+                typing = false
                 Task { await planner.generate(api) }
             } label: {
                 Text(planner.generating ? "Working…" : (planner.plan == nil ? "Generate plan" : "Update plan"))
@@ -368,6 +377,12 @@ private struct PlanForm: View {
             .opacity(planner.generating ? 0.6 : 1)
         }
         .card()
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { typing = false }
+            }
+        }
     }
 }
 
@@ -406,6 +421,23 @@ private struct PlanBody: View {
         }
     }
 
+    /// The rest of that day's plan and what the student told Lumin, so the chat is not starting cold.
+    private func askContext(day: String, item: String) -> String {
+        var lines: [String] = []
+        if let d = parsed.days.first(where: { $0.heading == day }) {
+            let others = d.items.filter { $0 != item }
+            if !others.isEmpty {
+                lines.append("The rest of my plan for that day:")
+                lines += others.prefix(12).map { "- " + plainText($0) }
+            }
+        }
+        if let p = planner.plan?.preferences, !p.isEmpty {
+            lines.append("What I told Lumin about my schedule: \(p)")
+        }
+        if !parsed.why.isEmpty { lines.append("Why the plan is set up this way: \(String(parsed.why.prefix(500)))") }
+        return lines.joined(separator: "\n")
+    }
+
     private func row(day: String, item: String) -> some View {
         let key = planKey(day, item)
         let isDone = planner.completed.contains(key)
@@ -419,7 +451,7 @@ private struct PlanBody: View {
                 .font(.callout).foregroundStyle(isDone ? Theme.muted : .white)
                 .strikethrough(isDone)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if let url = luminAskURL(when: day, task: item) {
+            if let url = luminAskURL(when: day, task: item, context: askContext(day: day, item: item)) {
                 Button { openURL(url) } label: {
                     Image(systemName: "bubble.left.and.text.bubble.right")
                         .font(.system(size: 14)).foregroundStyle(Theme.accent)

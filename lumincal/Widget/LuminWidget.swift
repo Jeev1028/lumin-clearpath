@@ -9,6 +9,10 @@ struct AgendaEntry: TimelineEntry {
     /// Checklist progress across the whole day, including blocks already finished.
     let checkTotal: Int
     let checkDone: Int
+    /// False when the widget cannot open the app's shared storage.
+    var linked = true
+    /// False until the app has saved a day's agenda at least once.
+    var hasData = true
 }
 
 struct AgendaProvider: TimelineProvider {
@@ -46,7 +50,8 @@ struct AgendaProvider: TimelineProvider {
         let checks = todayAll.filter { $0.checkable }
         return AgendaEntry(
             date: now, items: upcoming, done: done,
-            checkTotal: checks.count, checkDone: checks.filter { done.contains($0.id) }.count)
+            checkTotal: checks.count, checkDone: checks.filter { done.contains($0.id) }.count,
+            linked: Shared.hasGroup, hasData: AgendaCache.savedAt != nil)
     }
 }
 
@@ -64,6 +69,14 @@ struct AgendaWidgetView: View {
 
     private func time(_ d: Date) -> String { d.formatted(date: .omitted, time: .shortened) }
 
+    /// What to show when there is nothing to list, and the real reason if the data is missing.
+    private var emptyText: String {
+        if !entry.linked { return "Can't reach the app's data. Open Lumin Cal > Settings." }
+        if !entry.hasData { return "Open Lumin Cal once to load your day." }
+        if entry.checkTotal > 0 && entry.checkDone == entry.checkTotal { return "All done. Nice work!" }
+        return "Nothing left today"
+    }
+
     var body: some View {
         switch family {
         case .accessoryInline: inline
@@ -80,7 +93,7 @@ struct AgendaWidgetView: View {
             if let n = next {
                 Text("\(n.title) · \(time(n.start))")
             } else {
-                Text("Nothing left today")
+                Text(entry.linked && entry.hasData ? "Nothing left today" : "Open Lumin Cal")
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
@@ -102,7 +115,7 @@ struct AgendaWidgetView: View {
                 Text(n.title).font(.headline).lineLimit(2).widgetAccentable()
                 Text(n.allDay ? "All day" : "\(time(n.start)) – \(time(n.end))").font(.caption)
             } else {
-                Text("Nothing left today").font(.headline).widgetAccentable()
+                Text(emptyText).font(.caption).widgetAccentable()
             }
             if entry.checkTotal > 0 {
                 Text("\(entry.checkDone) of \(entry.checkTotal) done").font(.caption2).foregroundStyle(.secondary)
@@ -129,8 +142,7 @@ struct AgendaWidgetView: View {
             }
             if entry.items.isEmpty {
                 Spacer()
-                Text(entry.checkTotal > 0 && entry.checkDone == entry.checkTotal
-                     ? "All done. Nice work!" : "Nothing left today")
+                Text(emptyText)
                     .font(.footnote).foregroundStyle(.secondary)
                 Spacer()
             }

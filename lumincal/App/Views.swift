@@ -34,12 +34,15 @@ struct LuminCalendarApp: App {
 }
 
 struct RootView: View {
+    // An explicit selection keeps you on the Calendar tab while its view switches modes.
+    @State private var tab = 0
+
     var body: some View {
-        TabView {
-            TodayView().tabItem { Label("Today", systemImage: "checklist") }
-            PlannerView().tabItem { Label("Plan", systemImage: "sparkles") }
-            CalendarRoot().tabItem { Label("Calendar", systemImage: "calendar") }
-            SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }
+        TabView(selection: $tab) {
+            TodayView().tabItem { Label("Today", systemImage: "checklist") }.tag(0)
+            PlannerView().tabItem { Label("Plan", systemImage: "sparkles") }.tag(1)
+            CalendarRoot().tabItem { Label("Calendar", systemImage: "calendar") }.tag(2)
+            SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }.tag(3)
         }
     }
 }
@@ -147,19 +150,28 @@ struct ItemRow: View {
 
     /// Opens the Lumin chat on the website with this task already described.
     private var askURL: URL? {
+        let cal = Calendar.current
         let day = item.start.formatted(.dateTime.weekday(.wide).month().day())
         let when = item.allDay
             ? day
             : "\(day), \(item.start.formatted(date: .omitted, time: .shortened)) – \(item.end.formatted(date: .omitted, time: .shortened))"
-        let prompt = [
-            "I'm working on this study block from my Lumin study plan.",
-            "When: \(when)",
-            "Task: \(item.title)",
-            "Can you help me with it? Ask me anything you need to know first.",
-        ].joined(separator: "\n")
-        var c = URLComponents(string: "https://luminclearpath.ca/chat")
-        c?.queryItems = [URLQueryItem(name: "ask", value: prompt)]
-        return c?.url
+        var lines: [String] = []
+        let sameDay = store.items.filter { cal.isDate($0.start, inSameDayAs: item.start) && $0.id != item.id }
+        if !sameDay.isEmpty {
+            lines.append("Everything else I have that day:")
+            lines += sameDay.prefix(12).map {
+                "- \($0.allDay ? "All day" : $0.start.formatted(date: .omitted, time: .shortened)): \($0.title)"
+            }
+        }
+        let horizon = cal.date(byAdding: .day, value: 14, to: Date()) ?? Date()
+        let due = store.items.filter {
+            $0.id.hasPrefix("task-") && $0.id != item.id && $0.start >= cal.startOfDay(for: Date()) && $0.start < horizon
+        }
+        if !due.isEmpty {
+            lines.append("Deadlines coming up in the next two weeks:")
+            lines += due.prefix(10).map { "- \($0.start.formatted(.dateTime.month().day())): \($0.title)" }
+        }
+        return luminAskURL(when: when, task: item.title, context: lines.joined(separator: "\n"))
     }
 
     private var timeColumn: some View {
@@ -644,6 +656,23 @@ struct SettingsView: View {
                             .disabled(busy)
                         }
                         if let s = store.status { Text(s).font(.footnote).foregroundStyle(.orange) }
+                    }
+                    .card()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionTitle(text: "Widget")
+                        Label(
+                            Shared.hasGroup ? "Shared storage with the widget is working." : "The widget can't open the app's shared storage, so it can't show your day.",
+                            systemImage: Shared.hasGroup ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+                        )
+                        .font(.subheadline).foregroundStyle(.white)
+                        if let t = AgendaCache.savedAt {
+                            Text("Last sent to the widget \(t.formatted(.relative(presentation: .named))). Today has \(AgendaCache.load().filter { Calendar.current.isDateInToday($0.start) }.count) items.")
+                                .font(.footnote).foregroundStyle(Theme.muted)
+                        } else {
+                            Text("Nothing has been sent to the widget yet.").font(.footnote).foregroundStyle(Theme.muted)
+                        }
+                        Text("Storage: \(Shared.groupId)").font(.caption2).foregroundStyle(Theme.muted)
                     }
                     .card()
 

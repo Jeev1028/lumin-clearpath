@@ -221,16 +221,22 @@ export function StudyPlanner() {
   }
 
   /** Opens a new Lumin chat with this study block already described. */
-  async function handleAskLumin(dayHeading: string, item: string, key: string) {
+  async function handleAskLumin(dayHeading: string, item: string, key: string, dayItems: string[]) {
     if (!user) return;
     setAskingKey(key);
     try {
       const plain = item.replace(/[*_`]/g, "").trim();
+      const others = dayItems
+        .filter((o) => o !== item)
+        .slice(0, 12)
+        .map((o) => "- " + o.replace(/[*_`]/g, "").trim());
       const prompt = [
         "I'm working on this study block from my Lumin study plan.",
         `When: ${dayHeading}`,
         `Task: ${plain}`,
-        "Can you help me with it? Ask me anything you need to know first.",
+        ...(others.length ? ["", "The rest of my plan for that day:", ...others] : []),
+        "",
+        "Help me get started on this one. Ask me what you need to know first (what the assignment is, what I've done so far). Don't do the work for me; help me plan it and understand it.",
       ].join("\n");
       const thread = await createThread(user.id);
       try {
@@ -513,7 +519,7 @@ export function StudyPlanner() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => void handleAskLumin(day.heading, item, key)}
+                              onClick={() => void handleAskLumin(day.heading, item, key, day.items)}
                               disabled={askingKey === key}
                               title="Talk to Lumin about this"
                               aria-label={`Talk to Lumin about: ${item}`}

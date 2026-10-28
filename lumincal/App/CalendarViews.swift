@@ -56,10 +56,12 @@ struct CalendarRoot: View {
     @State private var selected = Date()
 
     var body: some View {
-        switch mode {
-        case .week: WeekView(selected: $selected, mode: $mode)
-        case .month: MonthView(selected: $selected, mode: $mode)
-        case .year: YearView(selected: $selected, mode: $mode)
+        ZStack {
+            switch mode {
+            case .week: WeekView(selected: $selected, mode: $mode)
+            case .month: MonthView(selected: $selected, mode: $mode)
+            case .year: YearView(selected: $selected, mode: $mode)
+            }
         }
     }
 }

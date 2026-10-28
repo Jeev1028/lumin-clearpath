@@ -17,7 +17,7 @@ export const Route = createFileRoute("/chat/")({
   }),
   validateSearch: (search: Record<string, unknown>): { ask?: string | undefined } => {
     const ask = search["ask"];
-    return { ask: typeof ask === "string" && ask.trim() ? ask.slice(0, 2000) : undefined };
+    return { ask: typeof ask === "string" && ask.trim() ? ask.slice(0, 4000) : undefined };
   },
   component: ChatIndex,
 });
