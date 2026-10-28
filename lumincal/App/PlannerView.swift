@@ -162,6 +162,7 @@ func luminAskURL(when: String, task: String, context: String = "") -> URL? {
         "Task: \(plainText(task))",
     ]
     if !context.isEmpty { parts += ["", "Some context so you know my situation:", context] }
+    parts += ["", "How my study plan was built (keep helping in this spirit): spaced practice across several shorter sessions, mixing subjects, active recall (self-quizzing, practice problems) over rereading, focused 25-50 minute blocks with short breaks, concrete when-and-what commitments, and protected rest. Only help with WHEN and HOW to work; never do the assignment itself."]
     parts += [
         "",
         "Help me get started on this one. Ask me what you need to know first (what the assignment is, what I've done so far). Don't do the work for me; help me plan it and understand it.",
