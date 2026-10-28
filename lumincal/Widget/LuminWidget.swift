@@ -1,4 +1,5 @@
 import AppIntents
+import EventKit
 import SwiftUI
 import WidgetKit
 
@@ -26,6 +27,31 @@ struct LinkIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Link")
     var link: String?
+}
+
+/// Apple Calendar events, read by the widget itself (needs calendar access granted to the app).
+enum AppleEvents {
+    static func today() -> [AgendaItem] {
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return [] }
+        let store = EKEventStore()
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: Date())
+        guard let end = cal.date(byAdding: .day, value: 1, to: start) else { return [] }
+        let pred = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        return store.events(matching: pred).map { e in
+            var hex: String?
+            if let c = e.calendar.cgColor {
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                if UIColor(cgColor: c).getRed(&r, green: &g, blue: &b, alpha: &a) {
+                    hex = String(format: "%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+                }
+            }
+            return AgendaItem(
+                id: "apple-" + (e.eventIdentifier ?? UUID().uuidString),
+                title: e.title ?? "(No title)", start: e.startDate, end: e.endDate,
+                allDay: e.isAllDay, location: e.location, source: .apple, colorHex: hex)
+        }
+    }
 }
 
 enum RemoteFeed {
@@ -126,6 +152,13 @@ struct AgendaProvider: AppIntentTimelineProvider {
             }
         } else {
             all = AgendaCache.load()
+        }
+        // Add today's Apple Calendar events, skipping ones the app already put in the cache.
+        var seen = Set(all.map { "\($0.title.lowercased())|\($0.start.timeIntervalSince1970)" })
+        for e in AppleEvents.today() where seen.insert("\(e.title.lowercased())|\(e.start.timeIntervalSince1970)").inserted {
+            all.append(e)
+            hasData = true
+            linked = true
         }
         let todayAll = all.filter { cal.isDateInToday($0.start) }
         let done = DoneStore.all()
