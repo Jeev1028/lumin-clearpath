@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -13,9 +14,76 @@ struct AgendaEntry: TimelineEntry {
     var linked = true
     /// False until the app has saved a day's agenda at least once.
     var hasData = true
+    /// Overrides the empty text, e.g. when the pasted link failed.
+    var note: String? = nil
 }
 
-struct AgendaProvider: TimelineProvider {
+/// The widget can load your day straight from the Lumin link, so it works even when the
+/// app cannot share storage with it (some install methods do not grant App Groups).
+struct LinkIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Lumin link"
+    static var description = IntentDescription("Paste the widget link from Lumin Cal > Settings.")
+
+    @Parameter(title: "Link")
+    var link: String?
+}
+
+enum RemoteFeed {
+    private struct Response: Decodable {
+        struct Item: Decodable {
+            let id: String
+            let kind: String
+            let title: String
+            let start: String
+            let end: String
+            let allDay: Bool
+            let location: String?
+        }
+        let items: [Item]
+    }
+
+    private static func parse(_ s: String) -> Date? {
+        if s.hasSuffix("Z") {
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return f.date(from: s) ?? ISO8601DateFormatter().date(from: s)
+        }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
+        f.dateFormat = s.count > 10 ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd"
+        return f.date(from: s)
+    }
+
+    static func fetch(_ link: String) async throws -> [AgendaItem] {
+        var raw = link
+        if raw.hasPrefix("webcal://") { raw = "https://" + raw.dropFirst("webcal://".count) }
+        guard var comps = URLComponents(string: raw), comps.host != nil else { throw URLError(.badURL) }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_CA")
+        f.dateFormat = "yyyy-MM-dd"
+        var q = (comps.queryItems ?? []).filter { !["format", "from", "days"].contains($0.name) }
+        q += [
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "from", value: f.string(from: Date())),
+            URLQueryItem(name: "days", value: "2"),
+        ]
+        comps.queryItems = q
+        guard let url = comps.url else { throw URLError(.badURL) }
+        let (data, resp) = try await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 20))
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+        return try JSONDecoder().decode(Response.self, from: data).items.compactMap { it in
+            guard let s = parse(it.start), let e = parse(it.end) else { return nil }
+            return AgendaItem(
+                id: it.id, title: it.title, start: s, end: max(e, s), allDay: it.allDay,
+                location: it.location, source: it.kind == "plan" ? .plan : .lumin, colorHex: nil)
+        }
+    }
+}
+
+struct AgendaProvider: AppIntentTimelineProvider {
+    typealias Intent = LinkIntent
+
     func placeholder(in context: Context) -> AgendaEntry {
         let now = Date()
         return AgendaEntry(
@@ -27,22 +95,39 @@ struct AgendaProvider: TimelineProvider {
             done: [], checkTotal: 4, checkDone: 1)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (AgendaEntry) -> Void) {
-        completion(current())
+    func snapshot(for configuration: LinkIntent, in context: Context) async -> AgendaEntry {
+        await current(configuration)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<AgendaEntry>) -> Void) {
-        let entry = current()
+    func timeline(for configuration: LinkIntent, in context: Context) async -> Timeline<AgendaEntry> {
+        let entry = await current(configuration)
         // Refresh at the next item boundary or in 30 minutes, whichever is sooner.
         let next = entry.items.map { $0.end }.filter { $0 > Date() }.min()
         let refresh = min(next ?? .distantFuture, Date().addingTimeInterval(1800))
-        completion(Timeline(entries: [entry], policy: .after(refresh)))
+        return Timeline(entries: [entry], policy: .after(refresh))
     }
 
-    private func current() -> AgendaEntry {
+    private func current(_ cfg: LinkIntent) async -> AgendaEntry {
         let cal = Calendar.current
         let now = Date()
-        let todayAll = AgendaCache.load().filter { cal.isDateInToday($0.start) }
+        var all: [AgendaItem] = []
+        var linked = Shared.hasGroup
+        var hasData = AgendaCache.savedAt != nil
+        var note: String?
+        let pasted = (cfg.link ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !pasted.isEmpty {
+            do {
+                all = try await RemoteFeed.fetch(pasted)
+                linked = true
+                hasData = true
+            } catch {
+                all = AgendaCache.load()
+                note = "Couldn't load your link. Check it in Edit Widget."
+            }
+        } else {
+            all = AgendaCache.load()
+        }
+        let todayAll = all.filter { cal.isDateInToday($0.start) }
         let done = DoneStore.all()
         let upcoming = todayAll
             .filter { $0.allDay || $0.end >= now }
@@ -51,7 +136,7 @@ struct AgendaProvider: TimelineProvider {
         return AgendaEntry(
             date: now, items: upcoming, done: done,
             checkTotal: checks.count, checkDone: checks.filter { done.contains($0.id) }.count,
-            linked: Shared.hasGroup, hasData: AgendaCache.savedAt != nil)
+            linked: linked, hasData: hasData, note: note)
     }
 }
 
@@ -71,7 +156,8 @@ struct AgendaWidgetView: View {
 
     /// What to show when there is nothing to list, and the real reason if the data is missing.
     private var emptyText: String {
-        if !entry.linked { return "Can't reach the app's data. Open Lumin Cal > Settings." }
+        if let n = entry.note { return n }
+        if !entry.linked { return "Hold this widget > Edit Widget, then paste your link from Lumin Cal > Settings." }
         if !entry.hasData { return "Open Lumin Cal once to load your day." }
         if entry.checkTotal > 0 && entry.checkDone == entry.checkTotal { return "All done. Nice work!" }
         return "Nothing left today"
@@ -185,7 +271,7 @@ struct AgendaWidgetView: View {
 @main
 struct LuminWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "LuminAgenda", provider: AgendaProvider()) { entry in
+        AppIntentConfiguration(kind: "LuminAgenda", intent: LinkIntent.self, provider: AgendaProvider()) { entry in
             AgendaWidgetView(entry: entry)
         }
         .configurationDisplayName("Today")

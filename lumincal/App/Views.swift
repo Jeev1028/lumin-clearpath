@@ -633,6 +633,7 @@ struct EventEditor: View {
 struct SettingsView: View {
     @EnvironmentObject var store: CalendarStore
     @State private var busy = false
+    @State private var copied = false
 
     var body: some View {
         NavigationStack {
@@ -672,7 +673,16 @@ struct SettingsView: View {
                         } else {
                             Text("Nothing has been sent to the widget yet.").font(.footnote).foregroundStyle(Theme.muted)
                         }
-                        Text("Storage: \(Shared.groupId)").font(.caption2).foregroundStyle(Theme.muted)
+                        if store.isSignedIn {
+                            Divider().overlay(Theme.border)
+                            Text("If the widget is empty, paste your link into it: hold the widget, tap Edit Widget, and paste in the Link box.")
+                                .font(.footnote).foregroundStyle(Theme.muted)
+                            Button(copied ? "Copied" : "Copy widget link") {
+                                UIPasteboard.general.string = store.feedURL
+                                copied = true
+                            }
+                            Text("This link is private to you. Don't share it.").font(.caption2).foregroundStyle(Theme.muted)
+                        }
                     }
                     .card()
 
