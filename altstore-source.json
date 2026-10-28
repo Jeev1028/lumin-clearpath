@@ -65,6 +65,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.5.1",
+          "date": "2026-10-27T00:00:00Z",
+          "localizedDescription": "Planner keyboard fix, Calendar tab no longer jumps to Today, Talk to Lumin now sends your plan as context, and Settings shows widget status.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.5.1.11/LuminCalendar-unsigned.ipa",
+          "size": 4381421,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.5",
           "date": "2026-10-27T00:00:00Z",
           "localizedDescription": "A Plan tab: pick your dates, generate a study plan, tick blocks off (synced with the website) and talk to Lumin about any block.",
