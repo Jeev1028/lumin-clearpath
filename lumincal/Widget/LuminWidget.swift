@@ -233,6 +233,9 @@ struct AgendaWidgetView: View {
             if let n = next {
                 Text(n.title).font(.headline).lineLimit(2).widgetAccentable()
                 Text(n.allDay ? "All day" : "\(time(n.start)) – \(time(n.end))").font(.caption)
+                if let loc = n.location, !loc.isEmpty {
+                    Text(loc).font(.caption2).lineLimit(1).foregroundStyle(.secondary)
+                }
             } else {
                 Text(emptyText).font(.caption).widgetAccentable()
             }
@@ -279,9 +282,10 @@ struct AgendaWidgetView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(item.title).font(.caption.weight(.medium)).lineLimit(1)
                             .strikethrough(entry.done.contains(item.id))
-                        if !item.allDay {
-                            Text(time(item.start))
-                                .font(.system(size: 10)).foregroundStyle(.secondary)
+                        let sub = [item.allDay ? nil : time(item.start), item.location]
+                            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+                        if !sub.isEmpty {
+                            Text(sub).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                 }
