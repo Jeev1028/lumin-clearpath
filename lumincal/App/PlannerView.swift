@@ -186,7 +186,40 @@ final class PlanStore: ObservableObject {
     @Published var end = Calendar.current.date(byAdding: .day, value: 6, to: Calendar.current.startOfDay(for: Date()))!
     @Published var prefs = ""
 
+    /// Set once the phone's own ticks have been merged into the plan's ticks.
+    var mergedLocal = false
+
     var parsed: ParsedPlan? { plan.flatMap { parsePlan($0.plan_markdown) } }
+
+    private static func squash(_ s: String) -> String {
+        String(s.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
+    }
+
+    private static func heading(_ h: String, has token: String) -> Bool {
+        var search = h.startIndex..<h.endIndex
+        while let r = h.range(of: token, range: search) {
+            if r.upperBound == h.endIndex || !h[r.upperBound].isNumber { return true }
+            search = r.upperBound..<h.endIndex
+        }
+        return false
+    }
+
+    /// The plan checkbox that matches a plan item on the Today list, if there is one.
+    func key(for item: AgendaItem) -> String? {
+        guard let parsed else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM d"
+        let token = f.string(from: item.start)
+        let title = Self.squash(item.title)
+        guard !title.isEmpty else { return nil }
+        for day in parsed.days where Self.heading(day.heading, has: token) {
+            if let it = day.items.first(where: { Self.squash($0).contains(title) }) {
+                return planKey(day.heading, it)
+            }
+        }
+        return nil
+    }
 
     func load(_ api: PlanAPI?) async {
         guard let api else { return }
@@ -240,10 +273,14 @@ final class PlanStore: ObservableObject {
     }
 
     func toggle(_ key: String, _ api: PlanAPI?) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        set(key, done: !completed.contains(key), api)
+    }
+
+    func set(_ key: String, done: Bool, _ api: PlanAPI?) {
         guard let api else { return }
         let before = completed
-        if completed.contains(key) { completed.remove(key) } else { completed.insert(key) }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if done { completed.insert(key) } else { completed.remove(key) }
         let snapshot = Array(completed)
         Task {
             do { try await api.saveCompleted(snapshot) } catch {
@@ -258,7 +295,7 @@ final class PlanStore: ObservableObject {
 
 struct PlannerView: View {
     @EnvironmentObject var store: CalendarStore
-    @StateObject private var planner = PlanStore()
+    private var planner: PlanStore { store.planner }
     @Environment(\.openURL) private var openURL
 
     private var api: PlanAPI? { PlanAPI(feedURL: store.feedURL) }

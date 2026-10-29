@@ -1,3 +1,4 @@
+import Combine
 import EventKit
 import SwiftUI
 import WidgetKit
@@ -11,6 +12,9 @@ final class CalendarStore: ObservableObject {
     @Published var accessGranted = false
     @Published var status: String?
     private var ekIds: [String: String] = [:]
+    /// The study plan, shared so ticks on Today and on the Plan tab are the same ticks.
+    let planner = PlanStore()
+    private var bag = Set<AnyCancellable>()
     @Published var feedURL: String = Shared.defaults.string(forKey: Shared.feedKey) ?? ""
 
     /// How far around today to load.
@@ -21,6 +25,47 @@ final class CalendarStore: ObservableObject {
         NotificationCenter.default.addObserver(
             forName: .EKEventStoreChanged, object: ekStore, queue: .main
         ) { [weak self] _ in Task { @MainActor in await self?.reload() } }
+        planner.objectWillChange
+            .sink { [weak self] _ in Task { @MainActor in self?.objectWillChange.send() } }
+            .store(in: &bag)
+        planner.$completed
+            .sink { [weak self] c in Task { @MainActor in self?.syncPlanDone(c) } }
+            .store(in: &bag)
+    }
+
+    private var planAPI: PlanAPI? { PlanAPI(feedURL: feedURL) }
+
+    /// Keeps the Today ticks for study-plan items equal to the plan's own ticks.
+    private func syncPlanDone(_ completed: Set<String>) {
+        guard planner.parsed != nil else { return }
+        let planItems = items.filter { $0.source == .plan }
+        guard !planItems.isEmpty else { return }
+        var comp = completed
+        var pushed = false
+        var changed = false
+        let cur = DoneStore.all()
+        let firstMerge = !planner.mergedLocal
+        planner.mergedLocal = true
+        for it in planItems {
+            guard let k = planner.key(for: it) else { continue }
+            let local = cur.contains(it.id)
+            let remote = comp.contains(k)
+            if firstMerge && local && !remote {
+                // Ticked on the phone before the two were linked: keep it.
+                comp.insert(k)
+                pushed = true
+            } else if local != remote {
+                DoneStore.set(it.id, done: remote)
+                changed = true
+            }
+        }
+        if changed {
+            done = DoneStore.all()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        if pushed, let api = planAPI {
+            for k in comp.subtracting(completed) { planner.set(k, done: true, api) }
+        }
     }
 
     func start() async {
@@ -30,6 +75,7 @@ final class CalendarStore: ObservableObject {
             accessGranted = false
         }
         await reload()
+        await loadPlan()
     }
 
     // MARK: Loading
@@ -70,6 +116,7 @@ final class CalendarStore: ObservableObject {
         let cacheFrom = cal.date(byAdding: .day, value: -1, to: todayStart)!
         let cacheTo = cal.date(byAdding: .day, value: 3, to: todayStart)!
         AgendaCache.save(items.filter { $0.end >= cacheFrom && $0.start < cacheTo })
+        syncPlanDone(planner.completed)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -146,6 +193,14 @@ final class CalendarStore: ObservableObject {
         DoneStore.set(item.id, done: nowDone)
         done = DoneStore.all()
         WidgetCenter.shared.reloadAllTimelines()
+        if item.source == .plan, let k = planner.key(for: item) {
+            planner.set(k, done: nowDone, planAPI)
+        }
+    }
+
+    /// Loads the study plan so Today can show its ticks (the Plan tab also loads it).
+    func loadPlan() async {
+        await planner.load(planAPI)
     }
 
     func setFeed(_ url: String) async {
