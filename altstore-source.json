@@ -18,6 +18,14 @@
       "category": "productivity",
       "versions": [
         {
+          "version": "1.5.5",
+          "date": "2026-10-29T00:00:00Z",
+          "localizedDescription": "Ticks on Today and the Plan tab now stay in sync, and with the website.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/lumincal-v1.5.5.15/LuminCalendar-unsigned.ipa",
+          "size": 4416564,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.5",
           "date": "2026-08-13T00:00:00Z",
           "localizedDescription": "Stability fix: v1.3/1.4 added a custom view controller that tried to resume the last-visited page on a fresh launch, but it caused the app to freeze on a blank launch screen in real-world testing. Reverted back to the stock Capacitor setup. The microphone permissions (v1.3) and the keyboard-covering-composer fix (v1.4) are unaffected and remain in place.",
