@@ -65,6 +65,134 @@
     await api.setPins(next);
   }
 
+  function askConfirm(text, fn, yesLabel) {
+    const c = el("div", "confirm");
+    const box = el("div");
+    box.appendChild(el("div", null, text));
+    const row = el("div", "row");
+    const no = el("button", null, "Cancel");
+    const yes = el("button", "go", yesLabel || "Yes");
+    no.addEventListener("click", () => c.remove());
+    yes.addEventListener("click", () => {
+      c.remove();
+      fn();
+    });
+    row.append(no, yes);
+    box.appendChild(row);
+    c.appendChild(box);
+    document.body.appendChild(c);
+    yes.focus();
+  }
+
+  // Lumin Memory: opt-in, local-only activity log (see memory.js for the rules).
+  function memoryPanel() {
+    const box = el("div", "panel");
+    box.appendChild(el("h3", null, "Memory"));
+    const body = el("div");
+    box.appendChild(body);
+    const mem = api.memory;
+
+    function consentScreen() {
+      const c = el("div", "confirm");
+      const card = el("div", "consentcard");
+      card.appendChild(el("h2", null, "Let Lumin learn from how you use this PC?"));
+      const ul = el("ul");
+      for (const [head, text] of [
+        ["What it records", "Which app is in front and its window title, and for how long, only while you are at the keyboard."],
+        ["What it never records", "Keystrokes, passwords, the clipboard, screenshots, file contents, private or incognito windows, or password managers."],
+        ["Where it stays", "On this computer only. Nothing is uploaded unless you press Ask Lumin about my day, which sends a short summary."],
+        ["You are in control", "Pause or delete everything any time. Data older than 30 days is removed automatically."],
+      ]) {
+        const li = el("li");
+        li.append(el("b", null, head + ": "), document.createTextNode(text));
+        ul.appendChild(li);
+      }
+      card.appendChild(ul);
+      const lab = el("label", "chk");
+      const cb = el("input");
+      cb.type = "checkbox";
+      cb.checked = true;
+      lab.append(cb, document.createTextNode(" Also record window titles (turn off to record app names only)"));
+      card.appendChild(lab);
+      const row = el("div", "row");
+      const no = el("button", null, "Not now");
+      const yes = el("button", "go", "Turn on Memory");
+      no.addEventListener("click", () => c.remove());
+      yes.addEventListener("click", async () => {
+        await mem.enable({ consent: true, titles: cb.checked });
+        c.remove();
+        void paint();
+      });
+      row.append(no, yes);
+      card.appendChild(row);
+      c.appendChild(card);
+      document.body.appendChild(c);
+    }
+
+    const fmt = (min) => (min >= 60 ? Math.floor(min / 60) + " h " + (min % 60) + " min" : min + " min");
+
+    async function paint() {
+      const st = await mem.state();
+      body.replaceChildren();
+      if (!st) return;
+      if (!st.enabled) {
+        body.appendChild(
+          el("div", "memtext", "Off. Turn it on and Lumin can show where your time goes and answer what did I do today. Everything stays on this PC."),
+        );
+        const b = el("button", "btn2 go", "Turn on…");
+        b.addEventListener("click", consentScreen);
+        body.appendChild(b);
+        return;
+      }
+      body.appendChild(
+        el("div", "memstatus" + (st.paused ? " paused" : ""), st.paused ? "Paused" : "Recording on this PC"),
+      );
+      body.appendChild(el("div", "memtotal", fmt(st.today.totalMin) + " active today"));
+      const max = Math.max(1, ...st.today.apps.map((a) => a.min));
+      for (const a of st.today.apps) {
+        const r = el("div", "approw");
+        const bar = el("div", "bar");
+        bar.style.width = Math.max(4, Math.round((a.min / max) * 100)) + "%";
+        r.append(el("span", "an", a.name), el("span", "am", fmt(a.min)), bar);
+        body.appendChild(r);
+      }
+      if (!st.today.apps.length) body.appendChild(el("div", "memtext", "Nothing recorded yet today."));
+      const acts = el("div", "acts");
+      const mk = (label, fn, cls) => {
+        const b = el("button", "btn2" + (cls ? " " + cls : ""), label);
+        b.addEventListener("click", fn);
+        acts.appendChild(b);
+      };
+      mk("Ask Lumin about my day", () => void mem.ask(), "go");
+      mk(st.paused ? "Resume" : "Pause", async () => {
+        await mem.pause(!st.paused);
+        void paint();
+      });
+      mk(st.titles ? "Titles: on" : "Titles: off", async () => {
+        await mem.titles(!st.titles);
+        void paint();
+      });
+      mk("Delete all", () =>
+        askConfirm(
+          "Delete everything Lumin has recorded about your activity?",
+          async () => {
+            await mem.clear();
+            void paint();
+          },
+          "Delete",
+        ),
+      );
+      mk("Turn off", async () => {
+        await mem.disable();
+        void paint();
+      });
+      body.appendChild(acts);
+    }
+    void paint();
+    setInterval(() => void paint(), 30000);
+    return box;
+  }
+
   // ------------------------------------------------------------------ desktop
   function desktopView() {
     const left = el("div");
@@ -141,7 +269,9 @@
 
     root.appendChild(Object.assign(el("div", "desk"), {}));
     const desk = root.firstChild;
-    desk.append(left, right);
+    const col = el("div", "col");
+    col.append(right, memoryPanel());
+    desk.append(left, col);
 
     function tick() {
       const d = new Date();
@@ -195,7 +325,39 @@
     const info = el("span");
     stat.append(time, info);
 
-    bar.append(launcher, ...fixed, el("div", "sep"), running, el("div", "sep"), stat);
+    const memBtn = el("button", "dbtn", "●");
+    memBtn.style.display = "none";
+    memBtn.style.fontSize = "16px";
+    let memState = null;
+    memBtn.addEventListener("click", async () => {
+      if (!memState) return;
+      memState = await api.memory.pause(!memState.paused);
+      paintMem();
+    });
+    function paintMem() {
+      if (!memState || !memState.enabled) {
+        memBtn.style.display = "none";
+      } else {
+        memBtn.style.display = "";
+        memBtn.style.color = memState.paused ? "#ffb347" : "#ff5a5a";
+        memBtn.title = memState.paused
+          ? "Lumin Memory is paused. Click to resume."
+          : "Lumin Memory is recording app usage on this PC. Click to pause.";
+      }
+      resize();
+    }
+    async function pollMem() {
+      try {
+        memState = await api.memory.state();
+      } catch {
+        return;
+      }
+      paintMem();
+    }
+    void pollMem();
+    setInterval(() => void pollMem(), 5000);
+
+    bar.append(launcher, ...fixed, el("div", "sep"), running, el("div", "sep"), memBtn, stat);
 
     let status = { battery: null, charging: false, wifi: null };
     function paintStatus() {
@@ -287,6 +449,10 @@
       document.body.appendChild(c);
       yes.focus();
     }
+    mk("Run a file…", () => {
+      hide();
+      void api.runFile();
+    });
     mk("Windows desktop", () =>
       confirmThen("Leave Lumin mode and go back to the normal Windows desktop?", () => void api.restoreWindows()),
     );

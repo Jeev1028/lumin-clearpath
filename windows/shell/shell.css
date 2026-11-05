@@ -397,3 +397,114 @@ body.launcher {
   font-weight: 700;
   background: linear-gradient(90deg, var(--accent2), var(--accent));
 }
+
+/* ---------------------------------------------------------------- memory */
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.memtext {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.memstatus {
+  font-size: 13px;
+  color: #ff8a8a;
+}
+.memstatus::before {
+  content: "● ";
+}
+.memstatus.paused {
+  color: #ffb347;
+}
+.memtotal {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 4px 0 12px;
+}
+.approw {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  margin-bottom: 9px;
+  font-size: 13px;
+}
+.approw .am {
+  color: var(--muted);
+}
+.approw .bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+}
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.btn2 {
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 13px;
+}
+.btn2.go {
+  border: 0;
+  font-weight: 600;
+  color: #04122b;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+}
+.consentcard {
+  width: min(560px, 92vw);
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 26px 30px;
+  text-align: left;
+}
+.consentcard h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.consentcard ul {
+  padding-left: 18px;
+  margin: 0 0 14px;
+  line-height: 1.5;
+  font-size: 14px;
+  color: var(--muted);
+}
+.consentcard li {
+  margin-bottom: 8px;
+}
+.consentcard li b {
+  color: var(--text);
+}
+.consentcard .chk {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.consentcard .row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.consentcard .row button {
+  padding: 10px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+}
+.consentcard .row button.go {
+  border: 0;
+  color: #04122b;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+}

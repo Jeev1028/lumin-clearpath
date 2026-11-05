@@ -17,6 +17,7 @@ const {
   BrowserWindow,
   Menu,
   Tray,
+  dialog,
   globalShortcut,
   ipcMain,
   nativeImage,
@@ -28,6 +29,7 @@ const { execFile, spawn } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { createMemory } = require("./memory");
 
 const ORIGIN = "https://luminclearpath.ca";
 const START_URL = ORIGIN + "/auth";
@@ -508,7 +510,55 @@ if (!gotLock) {
     return { dir: target, parent: path.dirname(target), places: Object.keys(known), paths: known, items };
   });
 
-  ipcMain.handle("files:open", (_e, p) => shell.openPath(String(p)));
+  // Programs and scripts are only run after the user confirms the exact path.
+  const RUNNABLE = /\.(exe|bat|cmd|ps1|msi|vbs|js|jar|py|com|scr|lnk)$/i;
+  async function openSafely(p) {
+    const file = String(p);
+    if (RUNNABLE.test(file)) {
+      const win = BrowserWindow.getFocusedWindow() || desktopWindow || undefined;
+      const r = await dialog.showMessageBox(win, {
+        type: "question",
+        buttons: ["Run it", "Cancel"],
+        defaultId: 1,
+        cancelId: 1,
+        title: "Run this file?",
+        message: "Lumin is about to run:",
+        detail: file + "\n\nOnly run files you trust.",
+      });
+      if (r.response !== 0) return "cancelled";
+    }
+    if (/\.ps1$/i.test(file)) {
+      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], {
+        detached: true,
+        stdio: "ignore",
+      }).unref();
+      return "";
+    }
+    return shell.openPath(file);
+  }
+  ipcMain.handle("files:open", (_e, p) => openSafely(p));
+  ipcMain.handle("files:run", async () => {
+    const win = BrowserWindow.getFocusedWindow() || desktopWindow || undefined;
+    const r = await dialog.showOpenDialog(win, { title: "Run a file with Lumin", properties: ["openFile"] });
+    if (r.canceled || !r.filePaths[0]) return "cancelled";
+    return openSafely(r.filePaths[0]);
+  });
+
+  // ---- Lumin Memory (opt-in, local only; see memory.js)
+  let memory = null;
+  ipcMain.handle("memory:state", () => (memory ? memory.state() : null));
+  ipcMain.handle("memory:enable", (_e, opts) => (memory ? memory.enable(opts || {}) : null));
+  ipcMain.handle("memory:disable", () => (memory ? memory.disable() : null));
+  ipcMain.handle("memory:pause", (_e, v) => (memory ? memory.setPaused(v) : null));
+  ipcMain.handle("memory:titles", (_e, v) => (memory ? memory.setTitles(v) : null));
+  ipcMain.handle("memory:clear", () => (memory ? memory.clear() : null));
+  ipcMain.handle("memory:ask", () => {
+    if (!memory) return false;
+    const q = "Using that summary, what did I spend my time on, and what should I change to study better?";
+    const prompt = (memory.askContext() + "\n\n" + q).slice(0, 3800);
+    showWindow(ORIGIN + "/chat?ask=" + encodeURIComponent(prompt));
+    return true;
+  });
 
   ipcMain.handle("lumin:open", (_e, route) => {
     const r = typeof route === "string" && route.startsWith("/") ? route : "/chat";
@@ -581,6 +631,9 @@ if (!gotLock) {
     globalShortcut.register(HOTKEY, toggleWindow);
 
     if (luminMode) {
+      memory = createMemory(app.getPath("userData"));
+      memory.prune();
+      memory.start();
       createDesktop();
       createDock();
       globalShortcut.register(LAUNCHER_KEY, () => toggleLauncher());
@@ -604,7 +657,10 @@ if (!gotLock) {
   app.on("before-quit", () => {
     quitting = true;
   });
-  app.on("will-quit", () => globalShortcut.unregisterAll());
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
+    if (memory) memory.stop();
+  });
 
   // The app lives in the tray / as the desktop, so closing windows does not quit it.
   app.on("window-all-closed", () => {});
