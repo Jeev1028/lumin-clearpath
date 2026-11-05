@@ -153,6 +153,26 @@
           "minOSVersion": "17.0"
         }
       ]
+    },
+    {
+      "name": "Prefix Renamer",
+      "bundleIdentifier": "ca.luminclearpath.filerenamer",
+      "developerName": "Jeevin",
+      "subtitle": "Add a random number prefix to files by extension",
+      "localizedDescription": "Pick a folder, type a file extension, and every matching file gets a random 6-digit prefix (photo.jpg becomes 483920_photo.jpg). Asks before renaming; there is no undo.",
+      "iconURL": "https://raw.githubusercontent.com/Jeev1028/lumin-clearpath/main/ios/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512%402x.png",
+      "tintColor": "2563EB",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "1.0",
+          "date": "2026-11-04T00:00:00Z",
+          "localizedDescription": "First release.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/prefixrenamer-v1.0/PrefixRenamer-unsigned.ipa",
+          "size": 27831,
+          "minOSVersion": "16.0"
+        }
+      ]
     }
   ],
   "news": []
