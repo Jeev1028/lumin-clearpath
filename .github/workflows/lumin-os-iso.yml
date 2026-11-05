@@ -22,8 +22,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install system fpm (the bundled one is x86-only)
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev build-essential
+          sudo gem install --no-document fpm
       - name: Build the Lumin shell .deb
         working-directory: linux
+        env:
+          USE_SYSTEM_FPM: ${{ matrix.arch == 'arm64' && 'true' || 'false' }}
         run: |
           npm install --no-audit --no-fund
           npm run dist
