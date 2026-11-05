@@ -10,7 +10,12 @@ import {
 } from "ai";
 
 import { ATTACHMENT_BUCKET, STORAGE_URL_PREFIX } from "@/lib/file-attachments";
-import { buildModelChain, type ChatModelCandidate } from "@/lib/chat-models";
+import {
+  buildModelChain,
+  localEnabledFor,
+  probeLocal,
+  type ChatModelCandidate,
+} from "@/lib/chat-models";
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -21,6 +26,8 @@ type ChatBody = { messages?: UIMessage[]; threadId?: string; lastTier?: "primary
 const FIRST_TOKEN_MS = 12_000;
 const FALLBACK_FIRST_TOKEN_MS = 8_000;
 const LAST_RESORT_FIRST_TOKEN_MS = 45_000;
+// The owner's own server may need a while to read Lumin's long instructions.
+const LOCAL_FIRST_TOKEN_MS = Number(process.env["LOCAL_LLM_TIMEOUT_MS"]) || 25_000;
 
 // Shown when Lumin has to answer with anything below the top model. It never
 // says which model: each step down the chain is only slightly worse.
@@ -159,7 +166,11 @@ export const Route = createFileRoute("/api/chat")({
           /pdf|document|worksheet|handout|practice (test|exam|paper)|study guide|combine|merge|full (test|paper)|all of (it|them)/i.test(
             lastUserText,
           ) || messages.some((m) => m.role === "assistant" && textOf(m).includes(":::pdf"));
-        const chain = buildModelChain(process.env, hasAttachments, longOutput);
+        const useLocal = localEnabledFor(process.env, userId) && (await probeLocal(process.env));
+        const chain = buildModelChain(process.env, hasAttachments, longOutput, useLocal);
+        // The owner's own server sits above the quality tiers: skipping it
+        // (PC asleep) must not show the "high demand" notice.
+        const localCount = chain.filter((c) => c.local).length;
 
         // Files uploaded to storage arrive as small references; download them
         // with the student's own token (storage rules limit them to their own
@@ -286,13 +297,16 @@ export const Route = createFileRoute("/api/chat")({
             for (let i = 0; i < chain.length; i++) {
               const isLast = i === chain.length - 1;
               try {
+                const rank = i - localCount;
                 forward = await start(
                   chain[i]!,
-                  isLast
-                    ? LAST_RESORT_FIRST_TOKEN_MS
-                    : i === 0
-                      ? FIRST_TOKEN_MS
-                      : FALLBACK_FIRST_TOKEN_MS,
+                  chain[i]!.local
+                    ? LOCAL_FIRST_TOKEN_MS
+                    : isLast
+                      ? LAST_RESORT_FIRST_TOKEN_MS
+                      : rank === 0
+                        ? FIRST_TOKEN_MS
+                        : FALLBACK_FIRST_TOKEN_MS,
                 );
               } catch (error) {
                 lastError = error;
@@ -302,8 +316,11 @@ export const Route = createFileRoute("/api/chat")({
               // The top of the chain is full quality. Anything below it is
               // "slightly worse" -- tell the student once (the client keeps
               // a banner up), and tell them when they're back at the top.
-              if (i > 0 && lastTier !== "fallback") status("fallback", DEMOTED_NOTICE);
-              else if (i === 0 && lastTier === "fallback") status("primary", RESTORED_NOTICE);
+              if (!used.local) {
+                if (i - localCount > 0 && lastTier !== "fallback") status("fallback", DEMOTED_NOTICE);
+                else if (i - localCount === 0 && lastTier === "fallback")
+                  status("primary", RESTORED_NOTICE);
+              }
               break;
             }
             if (!forward) throw lastError ?? new Error("all models failed");
