@@ -92,13 +92,30 @@ while ($true) {
 }
 `;
 
+  // Linux (X11): idle seconds, program name and window title, tab separated.
+  const LINUX_SCRIPT =
+    'while :; do w=$(xdotool getactivewindow 2>/dev/null); n=; t=; ' +
+    'if [ -n "$w" ]; then p=$(xdotool getwindowpid "$w" 2>/dev/null); ' +
+    'n=$(cat "/proc/$p/comm" 2>/dev/null); t=$(xdotool getwindowname "$w" 2>/dev/null | tr "\\t\\n" "  "); fi; ' +
+    'i=$(xprintidle 2>/dev/null || echo 0); printf "%s\\t%s\\t%s\\n" "$((i/1000))" "$n" "$t"; sleep ' + SAMPLE_EVERY_S + '; done';
+
+  function parseLine(line) {
+    if (line.startsWith("{")) return JSON.parse(line);
+    const [idle, app, ...rest] = line.split("\t");
+    return { idle: Number(idle) || 0, app: app || "", title: rest.join(" ") };
+  }
+
   function start() {
     if (child || !cfg.enabled) return;
-    fs.writeFileSync(psFile, SCRIPT);
-    child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", psFile], {
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "ignore"],
-    });
+    if (process.platform === "linux") {
+      child = spawn("sh", ["-c", LINUX_SCRIPT], { stdio: ["ignore", "pipe", "ignore"] });
+    } else {
+      fs.writeFileSync(psFile, SCRIPT);
+      child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", psFile], {
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+    }
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
       buf += chunk;
@@ -108,7 +125,7 @@ while ($true) {
         buf = buf.slice(i + 1);
         if (!line) continue;
         try {
-          onSample(JSON.parse(line));
+          onSample(parseLine(line));
         } catch {
           // ignore a garbled line
         }

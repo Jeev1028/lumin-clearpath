@@ -310,7 +310,8 @@
       el(
         "div",
         "hint",
-        "Ctrl+Space opens every app. Ctrl+Shift+L shows or hides Lumin. Ctrl+Alt+Shift+E returns to normal Windows.",
+        "Ctrl+Space opens every app. Ctrl+Shift+L shows or hides Lumin. Ctrl+Alt+Shift+E " +
+          (api.platform === "linux" ? "leaves Lumin." : "returns to normal Windows."),
       ),
     );
 
@@ -530,9 +531,13 @@
       hide();
       void api.runFile();
     });
-    mk("Windows desktop", () =>
-      confirmThen("Leave Lumin mode and go back to the normal Windows desktop?", () => void api.restoreWindows()),
-    );
+    if (api.platform === "linux") {
+      mk("Leave Lumin", () => confirmThen("Leave Lumin and return to the login screen?", () => void api.restoreWindows()));
+    } else {
+      mk("Windows desktop", () =>
+        confirmThen("Leave Lumin mode and go back to the normal Windows desktop?", () => void api.restoreWindows()),
+      );
+    }
     mk("Lock", () => void api.power("lock"));
     mk("Sleep", () => void api.power("sleep"));
     mk("Sign out", () => confirmThen("Sign out?", () => void api.power("signout")), true);

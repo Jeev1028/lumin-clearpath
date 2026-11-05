@@ -1,0 +1,9 @@
+#!/bin/sh
+# Starts the Lumin OS session: window manager, compositor (for the dock's
+# transparency), then the Lumin shell. When the shell exits, the session ends.
+xsetroot -solid '#060d1f'
+# Virtual machines rarely have 3D acceleration; use software rendering there.
+if systemd-detect-virt -q 2>/dev/null; then export LUMIN_SOFTWARE=1; fi
+openbox --config-file /etc/xdg/openbox/lumin-rc.xml &
+picom --backend xrender -b 2>/dev/null
+exec /opt/Lumin\ OS/lumin-os

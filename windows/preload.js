@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld("lumin", {
+  platform: process.platform,
   apps: () => call("apps:list"),
   icon: (id) => call("apps:icon", id),
   launch: (id) => call("apps:launch", id),

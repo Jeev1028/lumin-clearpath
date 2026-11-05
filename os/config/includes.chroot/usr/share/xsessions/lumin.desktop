@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Lumin
+Comment=Lumin OS desktop
+Exec=/usr/local/bin/lumin-session
+Type=Application

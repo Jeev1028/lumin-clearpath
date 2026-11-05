@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+# Electron's sandbox helper must be setuid root.
+for f in "/opt/Lumin OS/chrome-sandbox"; do [ -f "$f" ] && chmod 4755 "$f"; done
+systemctl enable lightdm NetworkManager || true
+systemctl set-default graphical.target || true

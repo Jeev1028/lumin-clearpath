@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse></focus>
+  <desktops><number>1</number></desktops>
+  <theme><name>Clearlooks</name></theme>
+  <applications>
+    <application title="Lumin desktop">
+      <decor>no</decor><layer>below</layer><focus>no</focus><maximized>yes</maximized>
+    </application>
+    <application title="Lumin dock">
+      <decor>no</decor><layer>above</layer><focus>no</focus><skip_taskbar>yes</skip_taskbar>
+    </application>
+    <application title="Lumin launcher">
+      <decor>no</decor><layer>above</layer><skip_taskbar>yes</skip_taskbar>
+    </application>
+  </applications>
+  <keyboard>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+  </keyboard>
+</openbox_config>

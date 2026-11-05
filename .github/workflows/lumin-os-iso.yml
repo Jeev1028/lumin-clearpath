@@ -1,0 +1,39 @@
+name: Lumin OS ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the Lumin shell .deb
+        working-directory: linux
+        run: |
+          npm install --no-audit --no-fund
+          npm run dist
+          ls dist
+      - name: Stage the .deb for live-build
+        run: cp linux/dist/*.deb os/config/packages.chroot/lumin-os.deb
+      - name: Build the ISO (Debian bookworm container)
+        run: |
+          docker run --rm --privileged -v "$PWD/os:/os" -w /os debian:bookworm bash -euxc '
+            apt-get update
+            apt-get install -y live-build
+            lb clean --purge || true
+            sh auto/config
+            lb build
+            ls -lh /os/*.iso
+          '
+      - name: Name the ISO
+        run: sudo mv os/*.iso lumin-os.iso && ls -lh lumin-os.iso
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumin-os-iso
+          path: lumin-os.iso
+          retention-days: 7

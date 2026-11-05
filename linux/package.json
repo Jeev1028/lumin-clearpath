@@ -1,0 +1,46 @@
+{
+  "name": "lumin-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lumin OS desktop shell for Linux (runs inside the Lumin OS ISO).",
+  "author": "Lumin <hello@luminclearpath.ca>",
+  "homepage": "https://luminclearpath.ca",
+  "main": "main.js",
+  "scripts": {
+    "prepare": "node prepare.mjs",
+    "start": "node prepare.mjs && electron .",
+    "dist": "node prepare.mjs && electron-builder --linux deb"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ca.luminclearpath.os",
+    "productName": "Lumin OS",
+    "files": [
+      "main.js",
+      "preload.js",
+      "memory.js",
+      "home.js",
+      "shell/**/*"
+    ],
+    "linux": {
+      "target": "deb",
+      "category": "Utility",
+      "maintainer": "Lumin <hello@luminclearpath.ca>",
+      "executableName": "lumin-os"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "libatspi2.0-0",
+        "libgbm1",
+        "libasound2"
+      ]
+    }
+  }
+}
