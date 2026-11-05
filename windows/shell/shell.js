@@ -193,6 +193,83 @@
     return box;
   }
 
+  // Home AI: your PC and Pi (see pi/README.md). Wake, shut down, and see what's up.
+  function homePanel() {
+    const box = el("div", "panel");
+    box.appendChild(el("h3", null, "Home AI"));
+    const body = el("div");
+    box.appendChild(body);
+    const h = api.home;
+
+    function setup(note) {
+      body.replaceChildren();
+      body.appendChild(
+        el("div", "memtext", note || "Connect the Lumin gateway running on your Raspberry Pi. The token is stored encrypted on this PC."),
+      );
+      const url = el("input", "field");
+      url.placeholder = "https://pi.tailXXXX.ts.net";
+      const tok = el("input", "field");
+      tok.type = "password";
+      tok.placeholder = "Gateway token";
+      const msg = el("div", "memtext");
+      const save = el("button", "btn2 go", "Connect");
+      save.addEventListener("click", async () => {
+        const r = await h.set(url.value, tok.value);
+        if (!r.ok) {
+          msg.textContent = r.error;
+          return;
+        }
+        void paint();
+      });
+      body.append(url, tok, save, msg);
+    }
+
+    async function paint() {
+      const cfg = await h.get();
+      if (!cfg.configured) return setup();
+      const r = await h.status();
+      body.replaceChildren();
+      const dot = (name, up) => {
+        const row = el("div", "approw");
+        const label = el("span", "an", name);
+        const state = el("span", "am", up ? "Online" : "Off");
+        state.style.color = up ? "#5be3a0" : "#ff8a8a";
+        row.append(label, state);
+        return row;
+      };
+      if (!r.ok) {
+        body.appendChild(
+          el("div", "memtext", r.error === "unreachable" ? "Can't reach the gateway. Is the Pi on and Tailscale up?" : "The gateway refused the request. Check the token."),
+        );
+      } else {
+        body.append(dot("PC (big model)", !!r.data.pc), dot("Raspberry Pi (small model)", !!r.data.pi));
+      }
+      const acts = el("div", "acts");
+      const mk = (label, fn, cls) => {
+        const b = el("button", "btn2" + (cls ? " " + cls : ""), label);
+        b.addEventListener("click", fn);
+        acts.appendChild(b);
+      };
+      mk("Wake PC", async () => {
+        const w = await h.wake();
+        body.appendChild(el("div", "memtext", w.ok ? "Wake signal sent. The PC takes about a minute." : "Could not send it: " + (w.error || w.data?.error || "failed")));
+      }, "go");
+      mk("Shut down PC", async () => {
+        const s = await h.shutdown();
+        if (s.error !== "cancelled") setTimeout(() => void paint(), 8000);
+      });
+      mk("Refresh", () => void paint());
+      mk("Disconnect", async () => {
+        await h.clear();
+        void paint();
+      });
+      body.appendChild(acts);
+    }
+    void paint();
+    setInterval(() => void paint(), 30000);
+    return box;
+  }
+
   // ------------------------------------------------------------------ desktop
   function desktopView() {
     const left = el("div");
@@ -270,7 +347,7 @@
     root.appendChild(Object.assign(el("div", "desk"), {}));
     const desk = root.firstChild;
     const col = el("div", "col");
-    col.append(right, memoryPanel());
+    col.append(right, memoryPanel(), homePanel());
     desk.append(left, col);
 
     function tick() {

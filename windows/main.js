@@ -21,6 +21,7 @@ const {
   globalShortcut,
   ipcMain,
   nativeImage,
+  safeStorage,
   screen,
   shell,
   session,
@@ -30,6 +31,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createMemory } = require("./memory");
+const { createHome } = require("./home");
 
 const ORIGIN = "https://luminclearpath.ca";
 const START_URL = ORIGIN + "/auth";
@@ -564,6 +566,28 @@ if (!gotLock) {
     const r = typeof route === "string" && route.startsWith("/") ? route : "/chat";
     showWindow(ORIGIN + r);
     return true;
+  });
+
+  // ---- Home AI: status / wake / shutdown through the Pi gateway (see home.js)
+  const home = createHome(app.getPath("userData"), safeStorage);
+  ipcMain.handle("home:get", () => home.get());
+  ipcMain.handle("home:set", (_e, url, token) => home.set(url, token));
+  ipcMain.handle("home:clear", () => home.clear());
+  ipcMain.handle("home:status", () => home.status());
+  ipcMain.handle("home:wake", () => home.wake());
+  ipcMain.handle("home:shutdown", async () => {
+    const win = BrowserWindow.getFocusedWindow() || desktopWindow || undefined;
+    const r = await dialog.showMessageBox(win, {
+      type: "warning",
+      buttons: ["Shut down the PC", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      title: "Shut down your PC?",
+      message: "Shut down your home PC?",
+      detail: "Unsaved work on that PC will be lost.",
+    });
+    if (r.response !== 0) return { ok: false, error: "cancelled" };
+    return home.shutdown();
   });
 
   // ---- pins (apps shown on the desktop), stored in the user's profile

@@ -182,3 +182,13 @@ If your PC and Pi are off, Lumin quietly falls back to the hosted models.
   model reads them.
 - Natural voice without ElevenLabs: Kokoro or Piper.
 - Fine-tuning a small model on free Colab/Kaggle GPUs once you know what it gets wrong.
+
+---
+
+## Control it from the Lumin desktop app (Windows, Lumin mode)
+
+Run `Lumin.exe --desktop`. On the right is a **Home AI** panel: paste your gateway address
+(`https://pi.tailXXXX.ts.net`) and the gateway token once. It then shows whether the PC and
+the Pi are online and has **Wake PC** and **Shut down PC** buttons (shutdown asks you to
+confirm first). The token is stored encrypted for your Windows account and is never shown
+to the page. Needs the version with Home AI (1.3.0 or newer).

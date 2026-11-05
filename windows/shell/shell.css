@@ -508,3 +508,19 @@ body.launcher {
   font-weight: 700;
   background: linear-gradient(90deg, var(--accent2), var(--accent));
 }
+
+.field {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  outline: none;
+  font-size: 13px;
+  user-select: text;
+}
+.field:focus {
+  border-color: var(--accent);
+}
