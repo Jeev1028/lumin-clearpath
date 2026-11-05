@@ -5,8 +5,18 @@ on:
 
 jobs:
   iso:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            bootloaders: "syslinux,grub-efi"
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            bootloaders: "grub-efi"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,19 +31,22 @@ jobs:
       - name: Stage the .deb for live-build
         run: cp linux/dist/*.deb os/config/packages.chroot/lumin-os.deb
       - name: Build the ISO (Debian bookworm container)
+        env:
+          ARCH: ${{ matrix.arch }}
+          BOOTLOADERS: ${{ matrix.bootloaders }}
         run: |
-          docker run --rm --privileged -v "$PWD/os:/os" -w /os debian:bookworm bash -euxc '
+          docker run --rm --privileged -e ARCH -e BOOTLOADERS -v "$PWD/os:/os" -w /os debian:bookworm bash -euxc '
             apt-get update
             apt-get install -y live-build
             lb clean --purge || true
-            sh auto/config
+            sh auto/config --architectures "$ARCH" --bootloaders "$BOOTLOADERS"
             lb build
             ls -lh /os/*.iso
           '
       - name: Name the ISO
-        run: sudo mv os/*.iso lumin-os.iso && ls -lh lumin-os.iso
+        run: sudo mv os/*.iso lumin-os-${{ matrix.arch }}.iso && ls -lh lumin-os-*.iso
       - uses: actions/upload-artifact@v4
         with:
-          name: lumin-os-iso
-          path: lumin-os.iso
+          name: lumin-os-iso-${{ matrix.arch }}
+          path: lumin-os-${{ matrix.arch }}.iso
           retention-days: 7
