@@ -165,6 +165,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.2",
+          "date": "2026-11-04T00:00:00Z",
+          "localizedDescription": "Fixes the Open button doing nothing in the picker (LiveContainer), supports external drives, and adds a choose-files option.",
+          "downloadURL": "https://github.com/Jeev1028/lumin-clearpath/releases/download/prefixrenamer-v1.2/PrefixRenamer-unsigned.ipa",
+          "size": 44154,
+          "minOSVersion": "16.0"
+        },
+        {
           "version": "1.0",
           "date": "2026-11-04T00:00:00Z",
           "localizedDescription": "First release.",
