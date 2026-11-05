@@ -35,6 +35,11 @@ struct ContentView: View {
                 Section("1. Choose") {
                     Button("Choose a folder…") { pickFolder = true }
                     Button("Or choose files…") { pickFiles = true }
+                    Button("Use this app's Documents folder") {
+                        if let d = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                            choose(folder: d)
+                        }
+                    }
                     Text(sourceName).foregroundColor(.secondary)
                     if !info.isEmpty { Text(info).font(.footnote).foregroundColor(.secondary) }
                 }
@@ -56,17 +61,13 @@ struct ContentView: View {
             .navigationTitle("Prefix Renamer")
         }
         .navigationViewStyle(.stack)
-        .fileImporter(isPresented: $pickFolder, allowedContentTypes: [.folder]) { r in
-            switch r {
-            case .success(let u): choose(folder: u)
-            case .failure(let e): info = "Couldn't open: \(e.localizedDescription)"
-            }
+        .sheet(isPresented: $pickFolder) {
+            DocPicker(types: [.folder], multiple: false) { urls in
+                if let u = urls.first { choose(folder: u) }
+            }.ignoresSafeArea()
         }
-        .fileImporter(isPresented: $pickFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { r in
-            switch r {
-            case .success(let urls): choose(files: urls)
-            case .failure(let e): info = "Couldn't open: \(e.localizedDescription)"
-            }
+        .sheet(isPresented: $pickFiles) {
+            DocPicker(types: [.item], multiple: true) { urls in choose(files: urls) }.ignoresSafeArea()
         }
         .alert("Rename files?", isPresented: $confirm) {
             Button("Rename", role: .destructive) { run() }
@@ -148,5 +149,26 @@ struct ContentView: View {
             } catch { out.append("Failed \(url.lastPathComponent): \(error.localizedDescription)") }
         }
         log = ["Renamed \(done) of \(targets.count) file(s)."] + out
+    }
+}
+
+struct DocPicker: UIViewControllerRepresentable {
+    let types: [UTType]
+    let multiple: Bool
+    let onPick: ([URL]) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let p = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: false)
+        p.allowsMultipleSelection = multiple
+        p.delegate = context.coordinator
+        return p
+    }
+    func updateUIViewController(_ vc: UIDocumentPickerViewController, context: Context) {}
+    func makeCoordinator() -> Coord { Coord(onPick) }
+
+    final class Coord: NSObject, UIDocumentPickerDelegate {
+        let onPick: ([URL]) -> Void
+        init(_ f: @escaping ([URL]) -> Void) { onPick = f }
+        func documentPicker(_ c: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { onPick(urls) }
     }
 }
