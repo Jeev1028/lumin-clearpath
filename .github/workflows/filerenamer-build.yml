@@ -1,0 +1,28 @@
+name: Build Prefix Renamer (unsigned .ipa)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: filerenamer
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen && xcodegen generate
+      - name: Build (no signing)
+        run: |
+          xcodebuild -project FileRenamer.xcodeproj -scheme FileRenamer \
+            -configuration Release -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Package as .ipa
+        run: |
+          rm -rf Payload && mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/FileRenamer.app Payload/
+          zip -qr PrefixRenamer-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PrefixRenamer-unsigned-ipa
+          path: filerenamer/PrefixRenamer-unsigned.ipa
