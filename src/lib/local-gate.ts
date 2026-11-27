@@ -64,10 +64,25 @@ export async function reviewReply(
 
 const URL_RE = /https?:\/\/[^\s)\]>"'`]+/g;
 
-// Only these hosts (and their subdomains) are ever fetched: the six universities our
-// data comes from. Anything else in a draft fails the gate without a request, so a
-// prompt cannot make the server call internal addresses (SSRF).
-const ALLOWED_DOMAINS = ["ubc.ca", "sfu.ca", "uvic.ca", "uwaterloo.ca", "mcmaster.ca", "utoronto.ca"];
+// Only these exact hosts are ever fetched: the ones our university data came from. Anything
+// else in a draft fails the gate without a request, so a prompt cannot make the server call
+// internal addresses (SSRF). Exact names, not wildcards, so a stray or hijacked subdomain is out.
+// shortcut: no DNS-resolution check or IP pinning; this runtime's fetch cannot reach private
+// ranges, but add a resolved-IP check if the gate ever runs somewhere that can.
+const ALLOWED_HOSTS = new Set([
+  "students.ubc.ca",
+  "you.ubc.ca",
+  "www.sfu.ca",
+  "www.uvic.ca",
+  "uwaterloo.ca",
+  "cs.uwaterloo.ca",
+  "future.mcmaster.ca",
+  "registrar.mcmaster.ca",
+  "www.eng.mcmaster.ca",
+  "future.utoronto.ca",
+  "www.artsci.utoronto.ca",
+  "tuitionexplorer.registrar.utoronto.ca",
+]);
 const MAX_REDIRECTS = 3;
 
 function allowedUrl(raw: string): URL | null {
@@ -78,9 +93,7 @@ function allowedUrl(raw: string): URL | null {
     return null;
   }
   if (u.protocol !== "https:" || u.port !== "" || u.username || u.password) return null;
-  const host = u.hostname.toLowerCase();
-  const ok = ALLOWED_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
-  return ok ? u : null;
+  return ALLOWED_HOSTS.has(u.hostname.toLowerCase()) ? u : null;
 }
 
 /** True only if every link in the draft is on an allowed host and really resolves. */
