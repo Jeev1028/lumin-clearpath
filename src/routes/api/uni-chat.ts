@@ -122,10 +122,17 @@ export const Route = createFileRoute("/api/uni-chat")({
           return new Response("A user message is required", { status: 400 });
         }
 
-        // Only valid requests are charged, so junk cannot burn the shared budget.
-        hits.push(now);
-        globalHits.push(now);
-        rateHits.set(ip, hits);
+        // Only valid requests are charged, so junk cannot burn the shared budget. Re-check and
+        // record with no await in between, so concurrent requests cannot all slip past the early check.
+        const t = Date.now();
+        const mine = (rateHits.get(ip) ?? []).filter((x) => t - x < RATE_WINDOW_MS);
+        globalHits = globalHits.filter((x) => t - x < RATE_WINDOW_MS);
+        if (mine.length >= RATE_MAX || globalHits.length >= GLOBAL_MAX) {
+          return new Response("Too many questions, try again in a few minutes", { status: 429 });
+        }
+        mine.push(t);
+        globalHits.push(t);
+        rateHits.set(ip, mine);
 
         let programData: string;
         try {
