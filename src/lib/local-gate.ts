@@ -62,31 +62,16 @@ export async function reviewReply(
   }
 }
 
-const URL_RE = /https?:\/\/[^\s)\]>"'`]+/g;
+const URL_RE = /https?:\/\/[^\s)\]>"'`]+/;
 
-/** True only if every link in the draft really resolves. */
-export async function linksResolve(draft: string): Promise<boolean> {
-  const urls = [...new Set((draft.match(URL_RE) ?? []).map((u) => u.replace(/[.,;:!?]+$/, "")))];
-  if (urls.length === 0) return true;
-  if (urls.length > 6) return false;
-  const results = await Promise.all(
-    urls.map(async (url) => {
-      try {
-        const res = await fetch(url, {
-          method: "GET",
-          redirect: "follow",
-          signal: AbortSignal.timeout(5000),
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; LuminLinkCheck/1.0)" },
-        });
-        void res.body?.cancel();
-        // Sites that block bots answer 401/403/405/429 for pages that do exist.
-        return res.status < 400 || [401, 403, 405, 429].includes(res.status);
-      } catch {
-        return false;
-      }
-    }),
-  );
-  return results.every(Boolean);
+/**
+ * True only if the draft contains no links. The old version fetched every URL the
+ * model wrote, which let a prompt make the server request internal addresses (SSRF).
+ * A draft with any link now fails the gate and falls through to the hosted models.
+ * shortcut: no live link checking, add an allowlist of known hosts if local replies need links.
+ */
+export function linksResolve(draft: string): Promise<boolean> {
+  return Promise.resolve(!URL_RE.test(draft));
 }
 
 /** Wraps already-approved text as the chunks a streamed reply would carry. */
