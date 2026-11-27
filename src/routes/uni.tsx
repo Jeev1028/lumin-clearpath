@@ -22,6 +22,18 @@ export const Route = createFileRoute("/uni")({
     ],
   }),
   component: UniPage,
+  // A crash here must stay on /uni and never take down the rest of the app.
+  errorComponent: () => (
+    <div className="min-h-screen bg-deep">
+      <SiteHeader />
+      <main className="mx-auto max-w-3xl px-6 py-20">
+        <h1 className="font-display text-3xl font-semibold">Lumin UNI hit a problem</h1>
+        <p className="mt-3 text-muted-foreground">
+          Reload the page to try again. The rest of ClearPath is not affected.
+        </p>
+      </main>
+    </div>
+  ),
 });
 
 type Row = UniProgramRow & { id: number };
