@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskReminders } from "@/hooks/useTaskReminders";
+import { useUniReminders } from "@/hooks/useUniReminders";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -31,6 +32,7 @@ export function ReminderBell() {
   const { user } = useAuth();
   const { playTone } = useSoundSettings();
   const { overdue, dueToday, total: taskTotal } = useTaskReminders();
+  const uniItems = useUniReminders();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const knownUnreadIdsRef = useRef<Set<string> | null>(null);
 
@@ -69,7 +71,7 @@ export function ReminderBell() {
 
   const items = [...overdue, ...dueToday].slice(0, 6);
   const unreadNotifications = notifications.filter((n) => !n.read_at);
-  const total = taskTotal + unreadNotifications.length;
+  const total = taskTotal + uniItems.length + unreadNotifications.length;
 
   async function handleNotificationClick(n: AppNotification) {
     if (!n.read_at) {
@@ -132,6 +134,22 @@ export function ReminderBell() {
         <DropdownMenuItem asChild className="cursor-pointer justify-center text-xs text-muted-foreground">
           <Link to="/tasks">View all tasks</Link>
         </DropdownMenuItem>
+        {uniItems.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Lumin UNI</DropdownMenuLabel>
+            {uniItems.slice(0, 6).map((r) => (
+              <DropdownMenuItem key={r.id} asChild className="cursor-pointer flex-col items-start gap-0.5">
+                <Link to="/uni/saved">
+                  <span className="truncate text-sm font-medium">{r.label}</span>
+                  <span className={`text-xs ${r.red ? "text-destructive" : "text-accent"}`}>
+                    {r.when} ({r.date})
+                  </span>
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <div className="flex items-center justify-between px-2 py-1.5">
