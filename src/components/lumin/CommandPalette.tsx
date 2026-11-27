@@ -49,6 +49,7 @@ const PAGES = [
   { to: "/practice", label: "Adaptive practice", icon: Brain },
   { to: "/flashcards", label: "Flashcards", icon: Layers },
   { to: "/chat", label: "Lumin AI", icon: Sparkles },
+  { to: "/uni", label: "Lumin UNI", icon: GraduationCap },
   { to: "/account", label: "Settings", icon: Settings },
 ] as const;
 

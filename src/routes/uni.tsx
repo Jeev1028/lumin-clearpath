@@ -200,7 +200,7 @@ function UniPage() {
                         )}
                         {!none && (
                           <span
-                            className="absolute top-[11px] z-10 pl-3 text-xs leading-[22px] font-semibold whitespace-nowrap text-accent-foreground"
+                            className="absolute top-[11px] z-10 hidden pl-3 text-xs sm:block leading-[22px] font-semibold whitespace-nowrap text-accent-foreground"
                             style={{ left: `${pct(lo)}%` }}
                           >
                             {p.admission_range_text}
@@ -211,7 +211,10 @@ function UniPage() {
                           style={{ left: `${pct(avg)}%` }}
                         />
                       </div>
-                      <div className="col-start-2 pb-2 text-xs text-muted-foreground">{status}</div>
+                      <div className="col-start-2 pb-2 text-xs text-muted-foreground">
+                        {!none && <b className="text-foreground sm:hidden">{p.admission_range_text}. </b>}
+                        {status}
+                      </div>
                     </div>
                   );
                 })}

@@ -17,6 +17,7 @@ const links = [
   { to: "/knowledge", label: "Knowledge" },
   { to: "/flashcards", label: "Flashcards" },
   { to: "/chat", label: "Lumin AI" },
+  { to: "/uni", label: "Lumin UNI" },
   { to: "/about", label: "About" },
 ] as const;
 
