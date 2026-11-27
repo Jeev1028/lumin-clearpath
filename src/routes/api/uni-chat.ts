@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  generateText,
+  streamText,
+  type UIMessage,
+} from "ai";
+
+import { probeLocal } from "@/lib/chat-models";
+import { lastStudentText, linksResolve, textAsStream } from "@/lib/local-gate";
+import { reviewUniReply } from "@/lib/uni-gate";
 
 import {
   buildUniPrompt,
@@ -142,11 +153,49 @@ export const Route = createFileRoute("/api/uni-chat")({
         }
 
         const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
+        const modelMessages = await convertToModelMessages(messages);
+        const system = buildUniPrompt(programData);
+
+        // Self-hosted model first (when configured and the probe says it is up). The reply is
+        // generated in full and released only if a hosted reviewer and the link check both pass.
+        // Any failure, a slow first answer or a sleeping PC falls through to Gemini below.
+        const base = process.env["LOCAL_LLM_BASE_URL"];
+        const localModel = process.env["LOCAL_LLM_MODEL"];
+        if (base && localModel && (await probeLocal(process.env))) {
+          try {
+            const local = createOpenAI({
+              apiKey: process.env["LOCAL_LLM_KEY"] || "local",
+              baseURL: base,
+              name: "local",
+            });
+            const { text } = await generateText({
+              model: local.chat(localModel),
+              system,
+              messages: modelMessages,
+              maxOutputTokens: 600,
+              maxRetries: 0,
+              abortSignal: AbortSignal.timeout(Number(process.env["LOCAL_LLM_TIMEOUT_MS"]) || 25_000),
+            });
+            const draft = text.trim();
+            if (!draft) throw new Error("empty local reply");
+            const [verdict, linksOk] = await Promise.all([
+              reviewUniReply(google("gemini-3.1-flash-lite"), programData, lastStudentText(modelMessages), draft),
+              linksResolve(draft),
+            ]);
+            if (!verdict.ok || !linksOk) {
+              console.warn("[uni-chat] local reply held back:", verdict.ok ? "link" : verdict.reason);
+            } else {
+              return createUIMessageStreamResponse({ stream: textAsStream(draft) });
+            }
+          } catch (error) {
+            console.warn("[uni-chat] local model failed, using Gemini:", String(error).slice(0, 120));
+          }
+        }
 
         const result = streamText({
           model: google("gemini-3.6-flash"),
-          system: buildUniPrompt(programData),
-          messages: await convertToModelMessages(messages),
+          system,
+          messages: modelMessages,
           maxOutputTokens: 600,
           providerOptions: {
             google: {

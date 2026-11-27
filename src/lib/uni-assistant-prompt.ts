@@ -11,6 +11,9 @@ export type UniProgramRow = {
   avg_low: number | null;
   avg_high: number | null;
   avg_open_ended: boolean;
+  application_deadline?: string | null;
+  deadline_note?: string | null;
+  prerequisites_text?: string | null;
   universities: { name: string; province: string };
   fact_sources: { source_url: string; verified: boolean; date_accessed: string }[];
 };
@@ -35,6 +38,12 @@ export function describePrograms(rows: UniProgramRow[]): string {
           p.tuition_first_year_cad ? `$${p.tuition_first_year_cad}` : "not found"
         } (${p.tuition_includes_fees ? "includes fees" : "tuition only"}); basis: ${p.tuition_basis ?? "n/a"}`,
         `  published admission average: ${range}`,
+        `  application deadline (Sept 2027 entry): ${
+          p.application_deadline
+            ? `${p.application_deadline}${p.deadline_note ? ` (${p.deadline_note})` : ""}`
+            : "NOT COLLECTED YET, do not guess one"
+        }`,
+        `  required high school courses: ${p.prerequisites_text ?? "NOT COLLECTED YET, do not guess"}`,
         `  notes: ${p.min_average_note ?? "none"}`,
         `  verification: ${src?.verified ? "checked on two official pages" : "checked on one page only"}; collected ${
           src?.date_accessed ?? "unknown date"
