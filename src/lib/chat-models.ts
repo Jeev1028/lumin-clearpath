@@ -44,7 +44,6 @@ const RANKED: Array<[Provider, string]> = [
   ["openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free"],
   ["gemini", "gemini-3.5-flash"],
   ["groq", "openai/gpt-oss-120b"],
-  ["openrouter", "nvidia/nemotron-3-super-120b-a12b:free"],
   ["mistral", "mistral-medium-latest"],
   ["groq", "qwen/qwen3.8-27b"],
   ["gemini", "gemini-3.7-flash"],

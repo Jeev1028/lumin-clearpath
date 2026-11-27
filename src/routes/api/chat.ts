@@ -248,34 +248,44 @@ export const Route = createFileRoute("/api/chat")({
           candidate: ChatModelCandidate,
         ): Promise<ReadableStream<UIMessageChunk>> {
           if (!reviewer) throw new Error("no reviewer available for the local model");
-          const { text } = await generateText({
-            model: candidate.model,
-            system: LUMIN_SYSTEM_PROMPT + CONSISTENCY_RULES + LOCAL_OVERRIDES,
-            messages: modelMessages,
-            // Short answers are the rule for the local model, and the gate
-            // waits for the whole reply, so cap it unless a long document was asked for.
-            maxOutputTokens: longOutput
-              ? candidate.maxOutputTokens
-              : Math.min(candidate.maxOutputTokens, 900),
-            maxRetries: 0,
-            abortSignal: AbortSignal.timeout(LOCAL_GATE_MS),
-          });
-          // The chat has no math renderer: turn any LaTeX the model wrote anyway into plain symbols.
-          const draft = stripLatex(text.trim());
-          if (!draft) throw new Error("empty local response");
-          const [verdict, linksOk] = await Promise.all([
-            reviewReply(reviewer.model, lastStudentText(modelMessages), draft),
-            linksResolve(draft),
-          ]);
-          if (!verdict.ok) {
-            console.warn("[chat] local reply blocked by review:", verdict.reason);
-            throw new Error("local reply blocked by review");
+          // The hosted models are the fallback of last resort and are often
+          // rate-limited, so a blocked draft gets one more local try, told what
+          // the reviewer objected to, before giving up on the local model.
+          let feedback = "";
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const { text } = await generateText({
+              model: candidate.model,
+              system:
+                LUMIN_SYSTEM_PROMPT +
+                CONSISTENCY_RULES +
+                LOCAL_OVERRIDES +
+                (feedback
+                  ? `\n\nREVIEWER FEEDBACK ON YOUR LAST DRAFT (it was rejected): ${feedback}\nWrite a new, shorter answer: at most 3 sentences of explanation in your own general words, no step-by-step detail, nothing a student could paste into their work, then a guiding question.`
+                  : ""),
+              messages: modelMessages,
+              // Short answers are the rule for the local model, and the gate
+              // waits for the whole reply, so cap it unless a long document was asked for.
+              maxOutputTokens: longOutput
+                ? candidate.maxOutputTokens
+                : Math.min(candidate.maxOutputTokens, attempt ? 450 : 900),
+              maxRetries: 0,
+              abortSignal: AbortSignal.timeout(LOCAL_GATE_MS),
+            });
+            // The chat has no math renderer: turn any LaTeX the model wrote anyway into plain symbols.
+            const draft = stripLatex(text.trim());
+            if (!draft) throw new Error("empty local response");
+            const [verdict, linksOk] = await Promise.all([
+              reviewReply(reviewer.model, lastStudentText(modelMessages), draft),
+              linksResolve(draft),
+            ]);
+            if (verdict.ok && linksOk) return textAsStream(draft);
+            feedback = verdict.ok ? "it contained a link that does not work; remove all links." : verdict.reason;
+            console.warn(`[chat] local reply blocked (attempt ${attempt + 1}):`, feedback);
+            // A broken reviewer won't be fixed by rewriting the answer.
+            if (feedback.startsWith("reviewer unavailable") || feedback.startsWith("empty review"))
+              break;
           }
-          if (!linksOk) {
-            console.warn("[chat] local reply blocked: a link did not resolve");
-            throw new Error("local reply blocked: unverifiable link");
-          }
-          return textAsStream(draft);
+          throw new Error("local reply blocked by review");
         }
 
         // Starts a model and waits for its first real output. Resolves with a
