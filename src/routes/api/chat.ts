@@ -25,6 +25,7 @@ import {
   textAsStream,
 } from "@/lib/local-gate";
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
+import { stripLatex } from "@/lib/pdf-latex";
 import type { Database } from "@/integrations/supabase/types";
 
 type ChatBody = { messages?: UIMessage[]; threadId?: string; lastTier?: "primary" | "fallback" };
@@ -51,7 +52,8 @@ B. Never solve the student's actual problem. If they give a specific problem, eq
 C. Never write MLA/APA entries. Only give a link if you are completely certain it exists and it is the main page of a well-known site. Never guess deep page URLs, titles, authors or years. If unsure, say what to search for.
 D. Keep it short: at most one short paragraph (about 4 sentences) explaining a concept, plus questions for the student. No step-by-step breakdowns or lists of every stage or factor.
 E. Do not praise weak work. Say plainly, in descriptive terms, what is missing.
-F. A refusal is 1 to 3 sentences, then one specific offer to help with the method, then one guiding question.`;
+F. A refusal is 1 to 3 sentences, then one specific offer to help with the method, then one guiding question.
+G. This chat cannot display LaTeX. NEVER use dollar signs, backslash commands (\\frac, \\int, \\sqrt, \\cos), or $$ blocks. Write math in plain text or Unicode, for example x², 3/4, √16, ∫ x cos(x) dx, ±.`;
 
 // Shown when Lumin has to answer with anything below the top model. It never
 // says which model: each step down the chain is only slightly worse.
@@ -250,11 +252,16 @@ export const Route = createFileRoute("/api/chat")({
             model: candidate.model,
             system: LUMIN_SYSTEM_PROMPT + CONSISTENCY_RULES + LOCAL_OVERRIDES,
             messages: modelMessages,
-            maxOutputTokens: candidate.maxOutputTokens,
+            // Short answers are the rule for the local model, and the gate
+            // waits for the whole reply, so cap it unless a long document was asked for.
+            maxOutputTokens: longOutput
+              ? candidate.maxOutputTokens
+              : Math.min(candidate.maxOutputTokens, 900),
             maxRetries: 0,
             abortSignal: AbortSignal.timeout(LOCAL_GATE_MS),
           });
-          const draft = text.trim();
+          // The chat has no math renderer: turn any LaTeX the model wrote anyway into plain symbols.
+          const draft = stripLatex(text.trim());
           if (!draft) throw new Error("empty local response");
           const [verdict, linksOk] = await Promise.all([
             reviewReply(reviewer.model, lastStudentText(modelMessages), draft),
