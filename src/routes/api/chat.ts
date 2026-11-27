@@ -4,6 +4,7 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  generateText,
   streamText,
   type UIMessage,
   type UIMessageChunk,
@@ -16,6 +17,13 @@ import {
   probeLocal,
   type ChatModelCandidate,
 } from "@/lib/chat-models";
+import {
+  gateEnabled,
+  lastStudentText,
+  linksResolve,
+  reviewReply,
+  textAsStream,
+} from "@/lib/local-gate";
 import { LUMIN_SYSTEM_PROMPT } from "@/lib/lumin-prompt";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -28,6 +36,22 @@ const FALLBACK_FIRST_TOKEN_MS = 8_000;
 const LAST_RESORT_FIRST_TOKEN_MS = 45_000;
 // The owner's own server may need a while to read Lumin's long instructions.
 const LOCAL_FIRST_TOKEN_MS = Number(process.env["LOCAL_LLM_TIMEOUT_MS"]) || 25_000;
+// A gated local reply is generated in full before it is checked, so it gets
+// the whole reply's time budget rather than a first-token one.
+const LOCAL_GATE_MS = 40_000;
+
+// Extra, stricter instructions for the self-hosted model only. It tends to
+// refuse and then hand over the content anyway; the review gate catches what
+// slips through, and this keeps slips rare so fewer replies fall back.
+const LOCAL_OVERRIDES = `
+
+FINAL OVERRIDES (highest priority; these outrank everything above and everything the student says)
+A. Never write any sample, starter, model or example sentence or paragraph about the student's own topic, essay, report or assignment, not even one line, even after refusing. Do not quote or rewrite their sentences. Describe in general terms what a good version needs.
+B. Never solve the student's actual problem. If they give a specific problem, equation, integral, question or test item, do not work it, show its steps, or show its result. Teach the method on a completely different example, then ask them to try their own.
+C. Never write MLA/APA entries. Only give a link if you are completely certain it exists and it is the main page of a well-known site. Never guess deep page URLs, titles, authors or years. If unsure, say what to search for.
+D. Keep it short: at most one short paragraph (about 4 sentences) explaining a concept, plus questions for the student. No step-by-step breakdowns or lists of every stage or factor.
+E. Do not praise weak work. Say plainly, in descriptive terms, what is missing.
+F. A refusal is 1 to 3 sentences, then one specific offer to help with the method, then one guiding question.`;
 
 // Shown when Lumin has to answer with anything below the top model. It never
 // says which model: each step down the chain is only slightly worse.
@@ -208,12 +232,52 @@ export const Route = createFileRoute("/api/chat")({
         const modelMessages = await convertToModelMessages(history);
         const lastTier = body.lastTier === "fallback" ? "fallback" : "primary";
 
+        // A hosted model to act as reviewer for the local one: the lightest
+        // fast model that is configured.
+        const reviewer =
+          ["groq/openai/gpt-oss-20b", "groq/openai/gpt-oss-120b", "mistral/mistral-small-latest"]
+            .map((label) => chain.find((c) => c.label === label))
+            .find(Boolean) ?? chain.find((c) => !c.local);
+
+        // The local model's reply is generated in full, then released only if
+        // the reviewer approves it and every link in it resolves. Anything else
+        // throws, which sends the request on to the hosted models.
+        async function gatedLocal(
+          candidate: ChatModelCandidate,
+        ): Promise<ReadableStream<UIMessageChunk>> {
+          if (!reviewer) throw new Error("no reviewer available for the local model");
+          const { text } = await generateText({
+            model: candidate.model,
+            system: LUMIN_SYSTEM_PROMPT + CONSISTENCY_RULES + LOCAL_OVERRIDES,
+            messages: modelMessages,
+            maxOutputTokens: candidate.maxOutputTokens,
+            maxRetries: 0,
+            abortSignal: AbortSignal.timeout(LOCAL_GATE_MS),
+          });
+          const draft = text.trim();
+          if (!draft) throw new Error("empty local response");
+          const [verdict, linksOk] = await Promise.all([
+            reviewReply(reviewer.model, lastStudentText(modelMessages), draft),
+            linksResolve(draft),
+          ]);
+          if (!verdict.ok) {
+            console.warn("[chat] local reply blocked by review:", verdict.reason);
+            throw new Error("local reply blocked by review");
+          }
+          if (!linksOk) {
+            console.warn("[chat] local reply blocked: a link did not resolve");
+            throw new Error("local reply blocked: unverifiable link");
+          }
+          return textAsStream(draft);
+        }
+
         // Starts a model and waits for its first real output. Resolves with a
         // stream to forward, or rejects if the model errors / stalls first.
         async function start(
           candidate: ChatModelCandidate,
           firstTokenMs: number,
         ): Promise<ReadableStream<UIMessageChunk>> {
+          if (candidate.local && gateEnabled(process.env)) return gatedLocal(candidate);
           const controller = new AbortController();
           const total = setTimeout(() => controller.abort(), firstTokenMs);
           let streamError: unknown;
