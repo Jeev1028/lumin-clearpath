@@ -75,6 +75,8 @@ const OPENAI_COMPATIBLE: Record<
 // LOCAL_LLM_USER_IDS (comma-separated Supabase user ids allowed to use it) to
 // switch it on. Only those accounts ever reach your hardware; everyone else
 // keeps using the hosted chain. LOCAL_LLM_KEY is sent as a Bearer token.
+// Use LOCAL_LLM_USER_IDS=* to allow every signed-in user. The local server only ever
+// receives chat requests; nothing on the site can wake, shut down or otherwise control it.
 // LOCAL_LLM_VISION=1 lets it take image/PDF attachments.
 export function localEnabledFor(env: Env, userId: string | undefined): boolean {
   if (!userId || !env["LOCAL_LLM_BASE_URL"] || !env["LOCAL_LLM_MODEL"]) return false;
@@ -82,7 +84,7 @@ export function localEnabledFor(env: Env, userId: string | undefined): boolean {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return allowed.includes(userId);
+  return allowed.includes("*") || allowed.includes(userId);
 }
 
 let probeCache: { at: number; ok: boolean } | null = null;
