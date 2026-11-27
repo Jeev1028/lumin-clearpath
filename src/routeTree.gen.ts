@@ -28,6 +28,7 @@ import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TeacherPortalRouteImport } from './routes/teacher-portal'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as UniRouteImport } from './routes/uni'
 import { Route as ApiAppPlanRouteImport } from './routes/api/app-plan'
 import { Route as ApiCalendarFeedRouteImport } from './routes/api/calendar-feed'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -37,6 +38,7 @@ import { Route as ApiSiteChatRouteImport } from './routes/api/site-chat'
 import { Route as ApiStudyPlanRouteImport } from './routes/api/study-plan'
 import { Route as ApiTeacherPortalRouteImport } from './routes/api/teacher-portal'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as ApiUniChatRouteImport } from './routes/api/uni-chat'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
@@ -165,6 +167,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UniRoute = UniRouteImport.update({
+  id: '/uni',
+  path: '/uni',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAppPlanRoute = ApiAppPlanRouteImport.update({
   id: '/api/app-plan',
   path: '/api/app-plan',
@@ -208,6 +215,11 @@ const ApiTeacherPortalRoute = ApiTeacherPortalRouteImport.update({
 const ApiTtsRoute = ApiTtsRouteImport.update({
   id: '/api/tts',
   path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUniChatRoute = ApiUniChatRouteImport.update({
+  id: '/api/uni-chat',
+  path: '/api/uni-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -401,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/uni': typeof UniRoute
   '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -410,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -463,6 +477,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/uni': typeof UniRoute
   '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -472,6 +487,7 @@ export interface FileRoutesByTo {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat': typeof ChatIndexRoute
@@ -526,6 +542,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/teacher-portal': typeof TeacherPortalRoute
   '/terms': typeof TermsRoute
+  '/uni': typeof UniRoute
   '/api/app-plan': typeof ApiAppPlanRoute
   '/api/calendar-feed': typeof ApiCalendarFeedRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -535,6 +552,7 @@ export interface FileRoutesById {
   '/api/study-plan': typeof ApiStudyPlanRoute
   '/api/teacher-portal': typeof ApiTeacherPortalRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -590,6 +608,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/uni'
     | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
@@ -599,6 +618,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/api/tts'
+    | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
@@ -652,6 +672,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/uni'
     | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
@@ -661,6 +682,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/api/tts'
+    | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat'
@@ -714,6 +736,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/teacher-portal'
     | '/terms'
+    | '/uni'
     | '/api/app-plan'
     | '/api/calendar-feed'
     | '/api/chat'
@@ -723,6 +746,7 @@ export interface FileRouteTypes {
     | '/api/study-plan'
     | '/api/teacher-portal'
     | '/api/tts'
+    | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
     | '/chat/'
@@ -777,6 +801,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TeacherPortalRoute: typeof TeacherPortalRoute
   TermsRoute: typeof TermsRoute
+  UniRoute: typeof UniRoute
   ApiAppPlanRoute: typeof ApiAppPlanRoute
   ApiCalendarFeedRoute: typeof ApiCalendarFeedRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
@@ -786,6 +811,7 @@ export interface RootRouteChildren {
   ApiStudyPlanRoute: typeof ApiStudyPlanRoute
   ApiTeacherPortalRoute: typeof ApiTeacherPortalRoute
   ApiTtsRoute: typeof ApiTtsRoute
+  ApiUniChatRoute: typeof ApiUniChatRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
@@ -954,6 +980,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uni': {
+      id: '/uni'
+      path: '/uni'
+      fullPath: '/uni'
+      preLoaderRoute: typeof UniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/app-plan': {
       id: '/api/app-plan'
       path: '/api/app-plan'
@@ -1015,6 +1048,13 @@ declare module '@tanstack/react-router' {
       path: '/api/tts'
       fullPath: '/api/tts'
       preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/uni-chat': {
+      id: '/api/uni-chat'
+      path: '/api/uni-chat'
+      fullPath: '/api/uni-chat'
+      preLoaderRoute: typeof ApiUniChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -1276,6 +1316,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TeacherPortalRoute: TeacherPortalRoute,
   TermsRoute: TermsRoute,
+  UniRoute: UniRoute,
   ApiAppPlanRoute: ApiAppPlanRoute,
   ApiCalendarFeedRoute: ApiCalendarFeedRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
@@ -1285,6 +1326,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStudyPlanRoute: ApiStudyPlanRoute,
   ApiTeacherPortalRoute: ApiTeacherPortalRoute,
   ApiTtsRoute: ApiTtsRoute,
+  ApiUniChatRoute: ApiUniChatRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
   ChatIndexRoute: ChatIndexRoute,
@@ -1319,7 +1361,6 @@ const rootRouteChildren: RootRouteChildren = {
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
