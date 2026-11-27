@@ -30,8 +30,10 @@ export type Urgency = "none" | "overdue" | "urgent" | "soon" | "ok";
 /** Colour-coded deadline status: red within 7 days, amber within 21. */
 export function urgency(deadline: string | null, today = new Date()): { level: Urgency; days: number | null } {
   if (!deadline) return { level: "none", days: null };
-  const d = new Date(`${deadline}T23:59:59`);
-  const days = Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
+  // whole calendar days, so "yesterday" is -1 and "today" is 0
+  const d = new Date(`${deadline}T00:00:00`);
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.round((d.getTime() - t0.getTime()) / 86_400_000);
   if (days < 0) return { level: "overdue", days };
   if (days <= 7) return { level: "urgent", days };
   if (days <= 21) return { level: "soon", days };
