@@ -62,16 +62,60 @@ export async function reviewReply(
   }
 }
 
-const URL_RE = /https?:\/\/[^\s)\]>"'`]+/;
+const URL_RE = /https?:\/\/[^\s)\]>"'`]+/g;
 
-/**
- * True only if the draft contains no links. The old version fetched every URL the
- * model wrote, which let a prompt make the server request internal addresses (SSRF).
- * A draft with any link now fails the gate and falls through to the hosted models.
- * shortcut: no live link checking, add an allowlist of known hosts if local replies need links.
- */
-export function linksResolve(draft: string): Promise<boolean> {
-  return Promise.resolve(!URL_RE.test(draft));
+// Only these hosts (and their subdomains) are ever fetched: the six universities our
+// data comes from. Anything else in a draft fails the gate without a request, so a
+// prompt cannot make the server call internal addresses (SSRF).
+const ALLOWED_DOMAINS = ["ubc.ca", "sfu.ca", "uvic.ca", "uwaterloo.ca", "mcmaster.ca", "utoronto.ca"];
+const MAX_REDIRECTS = 3;
+
+function allowedUrl(raw: string): URL | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" || u.port !== "" || u.username || u.password) return null;
+  const host = u.hostname.toLowerCase();
+  const ok = ALLOWED_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
+  return ok ? u : null;
+}
+
+/** True only if every link in the draft is on an allowed host and really resolves. */
+export async function linksResolve(draft: string): Promise<boolean> {
+  const urls = [...new Set((draft.match(URL_RE) ?? []).map((u) => u.replace(/[.,;:!?]+$/, "")))];
+  if (urls.length === 0) return true;
+  if (urls.length > 6) return false;
+  const results = await Promise.all(
+    urls.map(async (raw) => {
+      try {
+        let current = allowedUrl(raw);
+        // Follow redirects by hand so every hop is checked against the allowlist.
+        for (let hop = 0; current && hop <= MAX_REDIRECTS; hop++) {
+          const res = await fetch(current, {
+            method: "GET",
+            redirect: "manual",
+            signal: AbortSignal.timeout(5000),
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; LuminLinkCheck/1.0)" },
+          });
+          void res.body?.cancel();
+          if (res.status >= 300 && res.status < 400) {
+            const loc = res.headers.get("location");
+            current = loc ? allowedUrl(new URL(loc, current).toString()) : null;
+            continue;
+          }
+          // Sites that block bots answer 401/403/405/429 for pages that do exist.
+          return res.status < 400 || [401, 403, 405, 429].includes(res.status);
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  return results.every(Boolean);
 }
 
 /** Wraps already-approved text as the chunks a streamed reply would carry. */
