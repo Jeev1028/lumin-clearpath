@@ -43,6 +43,7 @@ import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
 import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
+import { Route as UniSavedRouteImport } from './routes/uni_.saved'
 import { Route as ApiAdaptiveLevelCheckRouteImport } from './routes/api/adaptive/level-check'
 import { Route as ApiAdaptivePracticeRouteImport } from './routes/api/adaptive/practice'
 import { Route as ApiAdminAdminsRouteImport } from './routes/api/admin/admins'
@@ -242,6 +243,11 @@ const FlashcardsDeckIdRoute = FlashcardsDeckIdRouteImport.update({
   path: '/flashcards/$deckId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UniSavedRoute = UniSavedRouteImport.update({
+  id: '/uni_/saved',
+  path: '/uni/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdaptiveLevelCheckRoute = ApiAdaptiveLevelCheckRouteImport.update({
   id: '/api/adaptive/level-check',
   path: '/api/adaptive/level-check',
@@ -426,6 +432,7 @@ export interface FileRoutesByFullPath {
   '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/uni/saved': typeof UniSavedRoute
   '/chat/': typeof ChatIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
@@ -490,6 +497,7 @@ export interface FileRoutesByTo {
   '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/uni/saved': typeof UniSavedRoute
   '/chat': typeof ChatIndexRoute
   '/flashcards': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
@@ -555,6 +563,7 @@ export interface FileRoutesById {
   '/api/uni-chat': typeof ApiUniChatRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/uni_/saved': typeof UniSavedRoute
   '/chat/': typeof ChatIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
   '/api/adaptive/level-check': typeof ApiAdaptiveLevelCheckRoute
@@ -621,6 +630,7 @@ export interface FileRouteTypes {
     | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
+    | '/uni/saved'
     | '/chat/'
     | '/flashcards/'
     | '/api/adaptive/level-check'
@@ -685,6 +695,7 @@ export interface FileRouteTypes {
     | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
+    | '/uni/saved'
     | '/chat'
     | '/flashcards'
     | '/api/adaptive/level-check'
@@ -749,6 +760,7 @@ export interface FileRouteTypes {
     | '/api/uni-chat'
     | '/chat/$threadId'
     | '/flashcards/$deckId'
+    | '/uni_/saved'
     | '/chat/'
     | '/flashcards/'
     | '/api/adaptive/level-check'
@@ -814,6 +826,7 @@ export interface RootRouteChildren {
   ApiUniChatRoute: typeof ApiUniChatRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
+  UniSavedRoute: typeof UniSavedRoute
   ChatIndexRoute: typeof ChatIndexRoute
   FlashcardsIndexRoute: typeof FlashcardsIndexRoute
   ApiAdaptiveLevelCheckRoute: typeof ApiAdaptiveLevelCheckRoute
@@ -1085,6 +1098,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlashcardsDeckIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uni_/saved': {
+      id: '/uni_/saved'
+      path: '/uni/saved'
+      fullPath: '/uni/saved'
+      preLoaderRoute: typeof UniSavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/adaptive/level-check': {
       id: '/api/adaptive/level-check'
       path: '/api/adaptive/level-check'
@@ -1329,6 +1349,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUniChatRoute: ApiUniChatRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
+  UniSavedRoute: UniSavedRoute,
   ChatIndexRoute: ChatIndexRoute,
   FlashcardsIndexRoute: FlashcardsIndexRoute,
   ApiAdaptiveLevelCheckRoute: ApiAdaptiveLevelCheckRoute,

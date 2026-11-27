@@ -1,5 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { uniDb } from "@/lib/uni-db";
 import { useMemo, useState } from "react";
 
 import { SiteHeader } from "@/components/lumin/SiteHeader";
@@ -36,7 +39,42 @@ export const Route = createFileRoute("/uni")({
   ),
 });
 
-type Row = UniProgramRow & { id: number };
+type Row = UniProgramRow & { id: number; application_deadline?: string | null };
+
+function SaveButton({ programId }: { programId: number }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: saved } = useQuery({
+    queryKey: ["uni-saved-ids", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await uniDb.from("uni_applications").select("program_id");
+      return new Set(((data as { program_id: number }[]) ?? []).map((r) => r.program_id));
+    },
+  });
+  if (saved?.has(programId))
+    return (
+      <Link to="/uni/saved" className="mt-2 inline-block text-sm text-accent underline underline-offset-4">
+        Saved, view in My applications
+      </Link>
+    );
+  return (
+    <button
+      type="button"
+      className="mt-2 rounded-xl border-2 border-border px-3 py-1 text-sm font-semibold hover:border-accent"
+      onClick={async () => {
+        if (!user) return void navigate({ to: "/auth" });
+        const { error } = await uniDb.from("uni_applications").insert({ user_id: user.id, program_id: programId });
+        if (error) return void toast.error(error.message);
+        void qc.invalidateQueries({ queryKey: ["uni-saved-ids"] });
+        toast.success("Saved to My applications");
+      }}
+    >
+      Save to my applications
+    </button>
+  );
+}
 
 const MIN = 75;
 const MAX = 100;
@@ -341,6 +379,12 @@ function ProgramCard({ p }: { p: Row }) {
         <div>
           <div className="text-xs text-muted-foreground">Published average</div>
           <div className="font-display text-lg font-semibold">{p.admission_range_text ?? "None"}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {p.application_deadline
+              ? `Apply by ${p.application_deadline}`
+              : "Deadline not collected yet"}
+          </div>
+          <SaveButton programId={p.id} />
           <span
             className={cn(
               "mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
