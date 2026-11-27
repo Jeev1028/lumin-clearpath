@@ -39,7 +39,7 @@ export const Route = createFileRoute("/uni")({
   ),
 });
 
-type Row = UniProgramRow & { id: number; application_deadline?: string | null };
+type Row = UniProgramRow & { id: number; application_deadline?: string | null; prerequisites_text?: string | null };
 
 function SaveButton({ programId }: { programId: number }) {
   const { user } = useAuth();
@@ -384,6 +384,10 @@ function ProgramCard({ p }: { p: Row }) {
               ? `Apply by ${p.application_deadline}`
               : "Deadline not collected yet"}
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            <span className="font-semibold">Required courses: </span>
+            {p.prerequisites_text ?? "not collected yet"}
+          </p>
           <SaveButton programId={p.id} />
           <span
             className={cn(
