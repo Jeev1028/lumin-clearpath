@@ -52,25 +52,6 @@ export const Route = createFileRoute("/api/uni-chat")({
       // Intentionally unauthenticated, like /api/site-chat: it is the public
       // guide on /uni. Stateless and size-capped because anyone can reach it.
       POST: async ({ request }) => {
-        // Keep /uni's traffic from using up the Gemini key shared with Lumin AI.
-        // shortcut: per-instance memory, so serverless instances each keep their own count; use a shared store if abused.
-        // cf-connecting-ip is set by Cloudflare and can't be forged by the client; the
-        // last x-forwarded-for hop (added by the proxy) is the fallback, never the first.
-        const xff = request.headers.get("x-forwarded-for")?.split(",");
-        const ip = request.headers.get("cf-connecting-ip") || xff?.[xff.length - 1]?.trim() || "unknown";
-        const now = Date.now();
-        if (rateHits.size > 5000) {
-          for (const [k, v] of rateHits) if (!v.some((t) => now - t < RATE_WINDOW_MS)) rateHits.delete(k);
-        }
-        globalHits = globalHits.filter((t) => now - t < RATE_WINDOW_MS);
-        const hits = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-        if (hits.length >= RATE_MAX || globalHits.length >= GLOBAL_MAX) {
-          return new Response("Too many questions, try again in a few minutes", { status: 429 });
-        }
-        hits.push(now);
-        globalHits.push(now);
-        rateHits.set(ip, hits);
-
         const geminiApiKey = process.env["GEMINI_API_KEY"];
         if (!geminiApiKey) {
           return new Response("AI is not configured", { status: 500 });
@@ -113,6 +94,25 @@ export const Route = createFileRoute("/api/uni-chat")({
         } catch {
           return new Response("Program data is unavailable right now", { status: 503 });
         }
+
+        // Charged only after validation, so junk requests cannot burn the budget. Keep /uni's traffic from using up the Gemini key shared with Lumin AI.
+        // shortcut: per-instance memory, so serverless instances each keep their own count; use a shared store if abused.
+        // cf-connecting-ip is set by Cloudflare and can't be forged by the client; the
+        // last x-forwarded-for hop (added by the proxy) is the fallback, never the first.
+        const xff = request.headers.get("x-forwarded-for")?.split(",");
+        const ip = request.headers.get("cf-connecting-ip") || xff?.[xff.length - 1]?.trim() || "unknown";
+        const now = Date.now();
+        if (rateHits.size > 5000) {
+          for (const [k, v] of rateHits) if (!v.some((t) => now - t < RATE_WINDOW_MS)) rateHits.delete(k);
+        }
+        globalHits = globalHits.filter((t) => now - t < RATE_WINDOW_MS);
+        const hits = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+        if (hits.length >= RATE_MAX || globalHits.length >= GLOBAL_MAX) {
+          return new Response("Too many questions, try again in a few minutes", { status: 429 });
+        }
+        hits.push(now);
+        globalHits.push(now);
+        rateHits.set(ip, hits);
 
         const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
 
