@@ -16,7 +16,9 @@ const CACHE_MS = 5 * 60 * 1000;
 
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = 20;
+const GLOBAL_MAX = 300;
 const rateHits = new Map<string, number[]>();
+let globalHits: number[] = [];
 
 let cached: { at: number; text: string } | null = null;
 
@@ -52,15 +54,22 @@ export const Route = createFileRoute("/api/uni-chat")({
       POST: async ({ request }) => {
         // Keep /uni's traffic from using up the Gemini key shared with Lumin AI.
         // shortcut: per-instance memory, so serverless instances each keep their own count; use a shared store if abused.
-        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        // cf-connecting-ip is set by Cloudflare and can't be forged by the client; the
+        // last x-forwarded-for hop (added by the proxy) is the fallback, never the first.
+        const xff = request.headers.get("x-forwarded-for")?.split(",");
+        const ip = request.headers.get("cf-connecting-ip") || xff?.[xff.length - 1]?.trim() || "unknown";
         const now = Date.now();
+        if (rateHits.size > 5000) {
+          for (const [k, v] of rateHits) if (!v.some((t) => now - t < RATE_WINDOW_MS)) rateHits.delete(k);
+        }
+        globalHits = globalHits.filter((t) => now - t < RATE_WINDOW_MS);
         const hits = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-        if (hits.length >= RATE_MAX) {
+        if (hits.length >= RATE_MAX || globalHits.length >= GLOBAL_MAX) {
           return new Response("Too many questions, try again in a few minutes", { status: 429 });
         }
         hits.push(now);
+        globalHits.push(now);
         rateHits.set(ip, hits);
-        if (rateHits.size > 5000) rateHits.clear();
 
         const geminiApiKey = process.env["GEMINI_API_KEY"];
         if (!geminiApiKey) {
