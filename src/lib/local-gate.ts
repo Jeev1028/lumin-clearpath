@@ -41,7 +41,7 @@ export async function reviewReply(
   draft: string,
 ): Promise<GateVerdict> {
   try {
-    const { text } = await generateText({
+    const { text, finishReason } = await generateText({
       model: reviewer,
       system: REVIEW_PROMPT,
       messages: [
@@ -50,13 +50,18 @@ export async function reviewReply(
           content: `STUDENT MESSAGE:\n${studentMessage.slice(0, 4000)}\n\nTUTOR DRAFT REPLY:\n${draft.slice(0, 12000)}`,
         },
       ],
-      maxOutputTokens: 120,
+      // Reasoning-style reviewers spend tokens thinking before they answer; a
+      // tight cap leaves an empty reply, which fails closed and blocks everything.
+      maxOutputTokens: 1000,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(10_000),
     });
     const first = text.trim().split("\n")[0]?.trim().toUpperCase() ?? "";
     if (first.startsWith("PASS")) return { ok: true, reason: "pass" };
-    return { ok: false, reason: text.trim().slice(0, 200) || "review failed" };
+    return {
+      ok: false,
+      reason: text.trim().slice(0, 200) || `empty review (finish: ${String(finishReason)})`,
+    };
   } catch (error) {
     return { ok: false, reason: `reviewer unavailable: ${String(error).slice(0, 120)}` };
   }

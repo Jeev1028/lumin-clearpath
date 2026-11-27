@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { stripLatex } from "@/lib/pdf-latex";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
@@ -337,7 +338,9 @@ export function ChatWindow({
                         />
                       ) : (
                         <div key={si} className="lumin-md">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.text}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {stripLatex(segment.text)}
+                          </ReactMarkdown>
                         </div>
                       ),
                     )}
